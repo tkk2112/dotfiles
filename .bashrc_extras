@@ -1,0 +1,99 @@
+alias ll="ls -lah"
+alias rm="rm -f"
+alias ..="cd .."
+alias cd..="cd .."
+alias tmux="tmux -2"
+alias minicom="minicom -c on -T"
+alias wget='wget -e robots=off --no-check-certificate --referer="http://www.google.com" --user-agent="Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.6) Gecko/20070725 Firefox/2.0.0.6" --header="Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5" --header="Accept-Language: en-us,en;q=0.5" --header="Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7" --header="Keep-Alive: 300"'
+
+# turn off flow control
+stty -ixon
+
+# ROT13-encode text. Works for decoding, too! ;)
+alias rot13='tr a-zA-Z n-za-mN-ZA-M'
+
+# Make vim the default editor
+export EDITOR="vim"
+# Don’t clear the screen after quitting a manual page
+export MANPAGER="less -X"
+
+export LESS='-R'
+export LESSOPEN='|~/.lessfilter %s'
+
+# Larger bash history (allow 32³ entries; default is 500)
+export HISTSIZE=32768
+export HISTFILESIZE=$HISTSIZE
+export HISTCONTROL=erasedups
+
+export TERM=screen-256color
+
+function cleanup {
+    rm -rf $(find -maxdepth 1 | grep __MACOSX)
+    find | grep "\.DS_Store" | xargs rm -rf
+}
+
+export GIT_PS1_SHOWCOLORHINTS=1
+export GIT_PS1_SHOWDIRTYSTATE=1
+
+function gitbackup {
+    git branch -D backup
+    git branch backup
+}
+
+function fix_ssh_permissions {
+    chmod 600 ~/.ssh/*
+    chmod 644 ~/.ssh/*.pub
+}
+
+GREEN="\033[0;32;40m"
+SILVER="\033[0;37;40m"
+CYAN="\033[0;36;40m"
+RED="\033[1;31;40m"
+YELLOW="\033[1;33;40m"
+GRAY="\033[1;30;40m"
+
+source /usr/local/Cellar/git/2.6.3/etc/bash_completion.d/git-prompt.sh
+source /usr/lib/git-core/git-sh-prompt
+PS1="${GREEN}[${CYAN}${SCHROOT_CHROOT_NAME} ${RED}\! ${SILVER}\w\$(__git_ps1 \" (${YELLOW}%s${SILVER})\") ${GREEN}]\e[m\n\$ "
+
+source ~/bin/tmux_completion.sh
+alias ciam="git ci --amend -a -C HEAD"
+
+# use ag instead of find for fzf
+if [ -d ~/.fzf ]; then
+    command -v ag >/dev/null 2>&1
+    if [[ $? == 0 ]]; then
+        export FZF_DEFAULT_COMMAND='ag -g ""'
+        export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+        _fzf_compgen_path() {
+             ag -g "" "$1"
+        }
+    fi
+
+    function cdf {
+       local file
+       local dir
+       file=$(fzf +m -q "$1") && dir=$(dirname "$file") && cd "$dir"
+    }
+
+    function fo {
+        local out file key
+        IFS=$'\n' out=($(fzf-tmux --query="$1" --exit-0 --expect=ctrl-k,ctrl-o))
+        key=$(head -1 <<< "$out")
+        file=$(head -2 <<< "$out" | tail -1)
+        if [ -n "$file" ]; then
+            [ "$key" = ctrl-o ] && open "$file" || ${EDITOR:-vim} "$file"
+        fi
+    }
+
+    function fshow {
+        git log --graph --color=always \
+            --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
+        fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
+            --bind "ctrl-m:execute:
+        (grep -o '[a-f0-9]\{7\}' | head -1 |
+        xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
+        {}
+FZF-EOF"
+    }
+fi
