@@ -73,6 +73,7 @@ if ! cmd_exists nvim; then
 fi
 $run_sudo pip install --upgrade neovim
 $run_sudo pip3 install --upgrade neovim
+mkdir ~/.config
 rm -rf ~/.config/nvim && ln -s $repo/nvim ~/.config/nvim
 vim +PlugInstall +qall
 
