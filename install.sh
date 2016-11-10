@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 function cmd_exists {
     command -v $1 >/dev/null 2>&1

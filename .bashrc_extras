@@ -45,15 +45,19 @@ function fix_ssh_permissions {
     chmod 644 ~/.ssh/*.pub
 }
 
-GREEN="\033[0;32;40m"
-SILVER="\033[0;37;40m"
-CYAN="\033[0;36;40m"
-RED="\033[1;31;40m"
-YELLOW="\033[1;33;40m"
-GRAY="\033[1;30;40m"
+GREEN="\[\033[0;32;40m\]"
+SILVER="\[\033[0;37;40m\]"
+CYAN="\[\033[0;36;40m\]"
+RED="\[\033[1;31;40m\]"
+YELLOW="\[\033[1;33;40m\]"
+GRAY="\[\033[1;30;40m\]"
 
-source /usr/local/Cellar/git/2.6.3/etc/bash_completion.d/git-prompt.sh
-source /usr/lib/git-core/git-sh-prompt
+if [[ -e /usr/local/Cellar/git/2.6.3/etc/bash_completion.d/git-prompt.sh ]]; then
+    source /usr/local/Cellar/git/2.6.3/etc/bash_completion.d/git-prompt.sh
+fi
+if [[ -e /usr/lib/git-core/git-sh-prompt ]]; then
+    source /usr/lib/git-core/git-sh-prompt
+fi
 PS1="${GREEN}[${CYAN}${SCHROOT_CHROOT_NAME} ${RED}\! ${SILVER}\w\$(__git_ps1 \" (${YELLOW}%s${SILVER})\") ${GREEN}]\e[m\n\$ "
 
 source ~/bin/tmux_completion.sh
