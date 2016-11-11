@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 function cmd_exists {
     command -v $1 >/dev/null 2>&1
@@ -59,6 +59,15 @@ make
 
 
 ###### neovim ######
+# install plugins with vim to make the process blocking
+$run_sudo apt-get install -y vim
+rm -rf ~/.vim && mkdir ~/.vim
+ln -s $repo/nvim/autoload ~/.vim/autoload
+ln -s $repo/nvim/colors ~/.vim/colors
+rm -rf ~/.vimrc && ln -s $repo/nvim/init.vim ~/.vimrc
+tmux -c "vim.basic +PlugInstall +qall"
+rm -rf ~/.vimrc && rm -rf ~/.vim
+$run_sudo apt-get remove -y vim
 if ! cmd_exists nvim; then
     $run_sudo add-apt-repository ppa:neovim-ppa/unstable
     $run_sudo apt-get update
@@ -75,8 +84,6 @@ $run_sudo pip install --upgrade neovim
 $run_sudo pip3 install --upgrade neovim
 mkdir ~/.config
 rm -rf ~/.config/nvim && ln -s $repo/nvim ~/.config/nvim
-tmux -c "vim +PlugInstall +qall"
-
 
 ###### pygmentize ######
 if ! cmd_exits pygmentize; then
