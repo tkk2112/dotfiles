@@ -67,7 +67,7 @@ ln -s $repo/nvim/colors ~/.vim/colors
 rm -rf ~/.vimrc && ln -s $repo/nvim/init.vim ~/.vimrc
 tmux -c "vim.basic +PlugInstall +qall"
 rm -rf ~/.vimrc && rm -rf ~/.vim
-$run_sudo apt-get remove -y vim
+$run_sudo apt-get purge vim
 if ! cmd_exists nvim; then
     $run_sudo add-apt-repository ppa:neovim-ppa/unstable
     $run_sudo apt-get update
