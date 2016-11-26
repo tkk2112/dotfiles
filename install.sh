@@ -19,8 +19,8 @@ $run_sudo apt-get update
 
 ###### pip ######
 if ! cmd_exists pip; then
-    $run_sudo apt-get install -y python-pip
-    $run_sudo apt-get install -y python3-pip
+    $run_sudo apt-get install -y python-pip python-dev
+    $run_sudo apt-get install -y python3-pip python3-dev
 fi
 $run_sudo pip install --upgrade pip
 $run_sudo pip3 install --upgrade pip
@@ -67,7 +67,7 @@ ln -s $repo/nvim/colors ~/.vim/colors
 rm -rf ~/.vimrc && ln -s $repo/nvim/init.vim ~/.vimrc
 tmux -c "vim.basic +PlugInstall +qall"
 rm -rf ~/.vimrc && rm -rf ~/.vim
-$run_sudo apt-get purge vim
+$run_sudo apt-get purge -y vim
 if ! cmd_exists nvim; then
     $run_sudo add-apt-repository ppa:neovim-ppa/unstable
     $run_sudo apt-get update
