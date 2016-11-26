@@ -69,7 +69,7 @@ tmux -c "vim.basic +PlugInstall +qall"
 rm -rf ~/.vimrc && rm -rf ~/.vim
 $run_sudo apt-get purge -y vim
 if ! cmd_exists nvim; then
-    $run_sudo add-apt-repository ppa:neovim-ppa/unstable
+    $run_sudo add-apt-repository -y ppa:neovim-ppa/unstable
     $run_sudo apt-get update
     $run_sudo apt-get install -y neovim
 
