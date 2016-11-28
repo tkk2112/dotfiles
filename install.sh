@@ -99,3 +99,19 @@ rm -rf ~/.bashrc_extras && ln -s $repo/.bashrc_extras ~/.bashrc_extras
 cat ~/.bashrc | grep bashrc_extras || echo "source ~/.bashrc_extras" >> ~/.bashrc
 
 rm -rf $temp
+
+if [ -f ~/.gitconfig ]; then
+    exit 0
+fi
+
+cat<<EOB > ~/.gitconfig
+[alias]
+        co = checkout
+        br = branch
+        ci = commit
+        st = status
+[pull]
+        rebase = true
+[rebase]
+        autoStash = true
+EOB
