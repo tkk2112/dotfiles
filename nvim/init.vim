@@ -315,9 +315,9 @@
     nnoremap <Leader>E :e <C-R>=expand('%:p')<CR>
 
     " incsearch
-    map /  <Plug>(incsearch-forward)
-    map ?  <Plug>(incsearch-backward)
-    map g/ <Plug>(incsearch-stay)
+    "map /  <Plug>(incsearch-forward)
+    "map ?  <Plug>(incsearch-backward)
+    "map g/ <Plug>(incsearch-stay)
 
     " easymotion
     let g:EasyMotion_leader_key='<C-Leader>'
