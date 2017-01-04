@@ -343,4 +343,10 @@
         " Use Ag over Grep
         set grepprg=ag\ --nogroup\ --nocolor
     endif
+
+    " live search/replace
+    if has("nvim")
+        set inccommand=nosplit
+    endif
+
 " }
