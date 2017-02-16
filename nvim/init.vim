@@ -25,6 +25,7 @@
         Plug 'idanarye/vim-vebugger'
         Plug 'wellsjo/wells-colorscheme.vim'
         Plug 'Valloric/YouCompleteMe', { 'do': './install.py --clang-completer --system-libclang' }
+        Plug 'tpope/vim-surround'
 
         call plug#end()
     " }
