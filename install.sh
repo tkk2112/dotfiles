@@ -59,15 +59,8 @@ make
 
 
 ###### neovim ######
-# install plugins with vim to make the process blocking
-$run_sudo apt-get install -y vim
-rm -rf ~/.vim && mkdir ~/.vim
 ln -s $repo/nvim/autoload ~/.vim/autoload
 ln -s $repo/nvim/colors ~/.vim/colors
-rm -rf ~/.vimrc && ln -s $repo/nvim/init.vim ~/.vimrc
-tmux -c "vim.basic +PlugInstall +qall"
-rm -rf ~/.vimrc && rm -rf ~/.vim
-$run_sudo apt-get purge -y vim
 if ! cmd_exists nvim; then
     $run_sudo add-apt-repository -y ppa:neovim-ppa/unstable
     $run_sudo apt-get update
@@ -79,6 +72,12 @@ if ! cmd_exists nvim; then
     $run_sudo update-alternatives --set vim /usr/bin/nvim
     $run_sudo update-alternatives --install /usr/bin/editor editor /usr/bin/nvim 60
     $run_sudo update-alternatives --set editor /usr/bin/nvim
+
+    # plugins
+    mkdir ~/.vim-plugged
+    cd ~/.vim-plugged
+    for r in $(cat $repo/nvim/init.vim | grep "Plug '" | awk '{print $2}' | sed s,\',,g); do git clone https://github.com/$r; done
+
 fi
 $run_sudo pip install --upgrade neovim
 $run_sudo pip3 install --upgrade neovim
@@ -90,6 +89,11 @@ if ! cmd_exits pygmentize; then
     $run_sudo apt-get install -y python-pygments
 fi
 rm -rf ~/.lessfilter && ln -s $repo/.lessfilter ~/.lessfilter
+
+###### spacemacs ######
+git clone https://github.com/syl20bnr/spacemacs ~/.emacs.d
+sudo apt install -y emacs
+ln -s $repo/.spacemacs ~/.spacemacs
 
 ###### misc ######
 mkdir ~/bin
