@@ -81,7 +81,7 @@ mkdir ~/.config
 rm -rf ~/.config/nvim && ln -s $repo/nvim ~/.config/nvim
 
 ###### pygmentize ######
-if ! cmd_exits pygmentize; then
+if ! cmd_exists pygmentize; then
     $run_sudo apt-get install -y python-pygments
 fi
 rm -rf ~/.lessfilter && ln -s $repo/.lessfilter ~/.lessfilter
