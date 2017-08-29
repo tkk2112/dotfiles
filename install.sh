@@ -59,11 +59,7 @@ make
 
 
 ###### neovim ######
-ln -s $repo/nvim/autoload ~/.vim/autoload
-ln -s $repo/nvim/colors ~/.vim/colors
 if ! cmd_exists nvim; then
-    $run_sudo add-apt-repository -y ppa:neovim-ppa/unstable
-    $run_sudo apt-get update
     $run_sudo apt-get install -y neovim
 
     $run_sudo update-alternatives --install /usr/bin/vi vi /usr/bin/nvim 60
