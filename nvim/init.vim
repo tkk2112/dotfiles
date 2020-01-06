@@ -10,7 +10,6 @@
         Plug 'sjl/gundo.vim'
         Plug 'haya14busa/incsearch.vim'
         Plug 'cdmedia/itg_flat_vim'
-        Plug 'scrooloose/syntastic'
         Plug 'marijnh/tern_for_vim'
         Plug 'bling/vim-airline'
         Plug 'Lokaltog/vim-distinguished'
@@ -213,17 +212,6 @@
     " FSwitch
     au! BufEnter *.cpp let b:fswitchdst = 'hpp,h' | let b:fswitchlocs = '../inc'
 
-    " Syntastic
-    set statusline+=%#warningmsg#
-    set statusline+=%{SyntasticStatuslineFlag()}
-    set statusline+=%*
-    let g:syntastic_always_populate_loc_list = 1
-    let g:syntastic_auto_loc_list = 1
-    let g:syntastic_check_on_open = 1
-    let g:syntastic_check_on_wq = 0
-    let g:syntastic_python_python_exec = '/usr/bin/python3'
-    let g:syntastic_python_checkers = ['python']
-
     " vim-javascript
     au! FileType javascript call JavaScriptFold()
     let regexengine = 1
@@ -328,6 +316,14 @@
     nnoremap <Leader>r :w<CR>:!./<C-r>%<CR>
 
     map <C-k> :FZF<CR>
+
+    nnoremap <A-Down> :m .+1<CR>==
+    nnoremap <A-Up> :m .-2<CR>==
+    inoremap <A-Down> <Esc>:m .+1<CR>==gi
+    inoremap <A-Up> <Esc>:m .-2<CR>==gi
+    vnoremap <A-Down> :m '>+1<CR>gv=gv
+    vnoremap <A-Up> :m '<-2<CR>gv=gv
+
 
     " Close buffer
     nnoremap <silent> <Leader>q :Bdelete<CR>

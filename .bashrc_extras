@@ -14,14 +14,18 @@ stty -ixon
 # ROT13-encode text. Works for decoding, too! ;)
 alias rot13='tr a-zA-Z n-za-mN-ZA-M'
 
-# Make vim the default editor
+export ALTERNATE_EDITOR=""
 export EDITOR="vim"
+export VISUAL="vim" # $VISUAL opens in GUI with non-daemon as alternate
 export MANPAGER="bat"
 
 # Larger bash history (allow 32³ entries; default is 500)
 export HISTSIZE=32768
 export HISTFILESIZE=$HISTSIZE
-export HISTCONTROL=erasedups
+# Avoid duplicates
+export HISTCONTROL=ignoredups:erasedups
+# When the shell exits, append to the history file instead of overwriting it
+shopt -s histappend
 
 export TERM=screen-256color
 
@@ -43,20 +47,46 @@ function fix_ssh_permissions {
     chmod 644 ~/.ssh/*.pub
 }
 
-GREEN="\[\033[0;32;40m\]"
-SILVER="\[\033[0;37;40m\]"
-CYAN="\[\033[0;36;40m\]"
-RED="\[\033[1;31;40m\]"
-YELLOW="\[\033[1;33;40m\]"
-GRAY="\[\033[1;30;40m\]"
-
 if [[ -e /usr/local/Cellar/git/2.6.3/etc/bash_completion.d/git-prompt.sh ]]; then
     source /usr/local/Cellar/git/2.6.3/etc/bash_completion.d/git-prompt.sh
 fi
 if [[ -e /usr/lib/git-core/git-sh-prompt ]]; then
     source /usr/lib/git-core/git-sh-prompt
 fi
-PS1="${GREEN}[${CYAN}${SCHROOT_CHROOT_NAME} ${RED}\! ${SILVER}\w\$(__git_ps1 \" (${YELLOW}%s${SILVER})\") ${GREEN}]\e[m\n\$ "
+
+
+PROMPT_COMMAND=__prompt_command # Func to gen PS1 after CMDs
+
+__prompt_command() {
+    local EXIT="$?"             # This needs to be first
+    PS1=""
+
+    local GREEN="\[\033[0;32;40m\]"
+    local SILVER="\[\033[0;37;40m\]"
+    local CYAN="\[\033[0;36;40m\]"
+    local RED="\[\033[1;31;40m\]"
+    local YELLOW="\[\033[1;33;40m\]"
+    local GRAY="\[\033[1;30;40m\]"
+
+    local HOSTCOLOR="\[\033[38;5;$(hostname | od | tr ' ' '\n' | awk '{total = total + $1}END{print 21 + (total % 233)}')m\]"
+
+    PS1+="${GREEN}[ "
+    # add exit code if not 0
+    if [ $EXIT != 0 ]; then
+        PS1+="${RED}${EXIT} "
+    fi
+    # host
+    PS1+="${HOSTCOLOR}\h "
+    # history count
+    PS1+="${CYAN}\! "
+    # cwd
+    PS1+="${SILVER}\w"
+    # git branch and status
+    PS1+="\$(__git_ps1 \" (${YELLOW}%s${SILVER})\")"
+
+    PS1+=" ${GREEN}]\e[m\n\$ "
+}
+
 
 source ~/bin/tmux_completion.sh
 alias ciam="git ci --amend -a -C HEAD"
