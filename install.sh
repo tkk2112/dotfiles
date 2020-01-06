@@ -57,6 +57,10 @@ cd tmux-mem-cpu-load
 cmake .
 make
 
+###### bat ######
+wget https://github.com/sharkdp/bat/releases/download/v0.11.0/bat_0.11.0_amd64.deb
+sudo dpkg -i bat_0.11.0_amd64.deb
+rm wget bat_0.11.0_amd64.deb
 
 ###### neovim ######
 if ! cmd_exists nvim; then
@@ -84,8 +88,6 @@ rm -rf ~/.config/nvim && ln -s $repo/nvim ~/.config/nvim
 if ! cmd_exists pygmentize; then
     $run_sudo apt-get install -y python-pygments
 fi
-rm -rf ~/.lessfilter && ln -s $repo/.lessfilter ~/.lessfilter
-
 
 ###### misc ######
 mkdir ~/bin
