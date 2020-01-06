@@ -86,10 +86,6 @@ if ! cmd_exists pygmentize; then
 fi
 rm -rf ~/.lessfilter && ln -s $repo/.lessfilter ~/.lessfilter
 
-###### spacemacs ######
-git clone https://github.com/syl20bnr/spacemacs ~/.emacs.d
-sudo apt install -y emacs
-ln -s $repo/.spacemacs ~/.spacemacs
 
 ###### misc ######
 mkdir ~/bin
