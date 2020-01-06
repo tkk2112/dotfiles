@@ -17,7 +17,8 @@ alias rot13='tr a-zA-Z n-za-mN-ZA-M'
 export ALTERNATE_EDITOR=""
 export EDITOR="vim"
 export VISUAL="vim" # $VISUAL opens in GUI with non-daemon as alternate
-export MANPAGER="bat"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+export MANROFFOPT="-c"
 
 # Larger bash history (allow 32³ entries; default is 500)
 export HISTSIZE=32768
