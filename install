@@ -1,0 +1,28 @@
+#!/bin/sh
+
+{
+error() {
+    echo Error "${@}" >&2
+    exit 1
+}
+
+require_util() {
+    command -v "${1}" > /dev/null 2>&1 || error "missing '${1}', needed for ${2}"
+}
+
+require_util curl "download nix install script"
+
+curl -L https://nixos.org/nix/install | sh
+. ${HOME}/.nix-profile/etc/profile.d/nix.sh
+
+nix-channel --add https://github.com/rycee/home-manager/archive/master.tar.gz home-manager
+nix-channel --update
+
+export NIX_PATH=${HOME}/.nix-defexpr/channels${NIX_PATH:+:}${NIX_PATH}
+
+nix-shell '<home-manager>' -A install
+
+#git clone https://github.com/tkk2112/dotfiles.git .dotfiles
+git clone /mnt/e/Dropbox/code/dotfiles .dotfiles > /dev/null 2>&1
+ln -sf .dotfiles/nix/home.nix .config/nixpkgs/home.nix
+}
