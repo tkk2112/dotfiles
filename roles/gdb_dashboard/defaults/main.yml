@@ -1,0 +1,11 @@
+# URL of the upstream gdb-dashboard repository
+gdb_dashboard_repo: "https://github.com/cyrus-and/gdb-dashboard.git"
+
+# Destination directory where the repository will be cloned
+gdb_dashboard_dest: "{{ ansible_env.HOME }}/.gdb-dashboard"
+
+# Your main GDB init file that GDB loads on startup
+gdb_dashboard_init_file: "{{ ansible_env.HOME }}/.gdbinit"
+
+# Directory where the gdb-dashboard configuration files are stored
+gdb_dashboard_init_dir: "{{ ansible_env.HOME }}/.gdbinit.d"

@@ -1,0 +1,69 @@
+- name: Ensure ~/.ssh directory exists with mode 0700
+  ansible.builtin.file:
+    path: "{{ ssh_profile_target_dir }}"
+    state: directory
+    mode: '0700'
+
+- name: Check if Dropbox directory exists
+  ansible.builtin.stat:
+    path: "{{ ssh_profile_dropbox_dir }}"
+  register: dropbox_dir
+  ignore_errors: true
+
+- name: Check if Dropbox SSH profile directory exists
+  ansible.builtin.stat:
+    path: "{{ ssh_profile_dropbox_ssh_dir }}"
+  register: dropbox_ssh_dir
+  ignore_errors: true
+
+- name: Debug - Found Dropbox SSH profile folder
+  ansible.builtin.debug:
+    msg: "Found Dropbox SSH profile at {{ ssh_profile_dropbox_ssh_dir }}"
+  when: dropbox_dir.stat.exists and dropbox_ssh_dir.stat.exists
+
+- name: Find all files in the Dropbox SSH profile directory
+  ansible.builtin.find:
+    paths: "{{ ssh_profile_dropbox_ssh_dir }}"
+    file_type: file
+  register: dropbox_ssh_files
+  when: dropbox_ssh_dir.stat.exists
+
+- name: Create symlinks for SSH profile files from Dropbox
+  ansible.builtin.file:
+    src: "{{ item.path }}"
+    dest: "{{ ssh_profile_target_dir }}/{{ item.path | basename }}"
+    state: link
+    force: true
+  loop: "{{ dropbox_ssh_files.files }}"
+  when:
+    - dropbox_ssh_dir.stat.exists
+    - (item.path | basename) not in ssh_profile_exclude_files
+
+- name: Set permissions on the local SSH directory recursively to 0700
+  ansible.builtin.file:
+    path: "{{ ssh_profile_target_dir }}"
+    mode: '0700'
+    recurse: true
+
+- name: Find all files in the local SSH directory
+  ansible.builtin.find:
+    paths: "{{ ssh_profile_target_dir }}"
+    file_type: file
+  register: target_ssh_files
+
+- name: Set file permissions in the local SSH directory
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ '0644' if (item.path | basename).endswith('.pub') else '0600' }}"
+  loop: "{{ target_ssh_files.files }}"
+
+- name: Check if authorized_keys exists
+  ansible.builtin.stat:
+    path: "{{ ssh_profile_target_dir }}/authorized_keys"
+  register: authorized_keys_stat
+
+- name: Ensure authorized_keys has mode 711
+  ansible.builtin.file:
+    path: "{{ ssh_profile_target_dir }}/authorized_keys"
+    mode: '0711'
+  when: authorized_keys_stat.stat.exists

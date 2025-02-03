@@ -1,0 +1,41 @@
+- name: Install tmux package
+  ansible.builtin.apt:
+    name: tmux
+    state: present
+  become: true
+
+- name: Clone Tmux Plugin Manager repository
+  ansible.builtin.git:
+    repo: "{{ tmux_plugin_repo }}"
+    dest: "{{ ansible_env.HOME }}/.config/tmux/plugins/tpm"
+    version: "{{ tmux_plugin_version }}"
+    force: true
+
+- name: Symlink Tmux configuration file
+  ansible.builtin.file:
+    src: "{{ role_path }}/files/tmux.conf"
+    dest: "{{ ansible_env.HOME }}/.config/tmux/tmux.conf"
+    state: link
+    force: true
+
+- name: Check Tmux Plugin Manager installation
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins"
+  register: tpm_check
+
+- name: Install Tmux plugins
+  ansible.builtin.shell: |
+    tmux source {{ ansible_env.HOME }}/.config/tmux/tmux.conf
+    {{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins
+  args:
+    executable: /bin/bash
+  when: not tpm_check.stat.exists
+  changed_when: true
+
+- name: Update Tmux plugins
+  ansible.builtin.shell: |
+    {{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/update_plugins all
+  args:
+    executable: /bin/bash
+  when: tpm_check.stat.exists
+  changed_when: false

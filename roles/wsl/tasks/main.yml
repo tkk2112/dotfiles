@@ -1,0 +1,7 @@
+- name: Create /etc/wsl.conf with WSL configuration
+  ansible.builtin.copy:
+    dest: "{{ wsl_conf_dest }}"
+    content: "{{ wsl_conf_content }}"
+    mode: "{{ wsl_conf_mode }}"
+  become: true
+  when: ansible_virtualization_type == 'wsl'

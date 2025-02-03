@@ -1,0 +1,15 @@
+alacritty_repo: "https://github.com/alacritty/alacritty.git"
+
+# Git tag for the desired Alacritty release
+alacritty_git_tag: "v0.13.1"
+
+# Minimum required version of Alacritty
+alacritty_min_version: "0.13.0"
+
+# Temporary build directory for compiling Alacritty
+alacritty_build_path: "/tmp/alacritty"
+
+# Host-specific configuration overrides for Alacritty
+alacritty_host_configs:
+  metatron:
+    font_size: 12.0

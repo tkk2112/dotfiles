@@ -1,0 +1,30 @@
+# Enable testing repositories if true
+base_enable_testing: true
+
+# List of essential packages for system setup
+base_packages:
+  - bat
+  - btop
+  - cmake
+  - debian-goodies
+  - direnv
+  - dnsutils
+  - eza
+  - fontconfig
+  - fzf
+  - git
+  - git-gui
+  - git-lfs
+  - htop
+  - icdiff
+  - jq
+  - nvtop
+  - shellcheck
+  - shfmt
+  - silversearcher-ag
+  - tldr
+  - unzip
+  - yamllint
+
+# Additional repository configuration for stable packages
+base_stable_repo: "deb http://deb.debian.org/debian stable main contrib"

@@ -1,0 +1,92 @@
+- name: Configure git user info
+  community.general.git_config:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    scope: global
+  loop:
+    - { name: 'user.name', value: '{{ git_user_name }}' }
+    - { name: 'user.email', value: '{{ git_user_email }}' }
+
+- name: Configure git aliases
+  community.general.git_config:
+    name: "alias.{{ item.key }}"
+    value: "{{ item.value }}"
+    scope: global
+  loop:
+    - { key: 'ap', value: 'add -p' }
+    - { key: 'au', value: 'add -u' }
+    - { key: 'dfs', value: 'diff --stat' }
+    - { key: 'dh', value: 'diff HEAD' }
+    - { key: 'dhs', value: 'diff HEAD --stat' }
+    - { key: 'ds', value: 'diff --staged' }
+    - { key: 'dss', value: 'diff --staged --stat' }
+    - { key: 'co', value: 'checkout' }
+    - { key: 'ci', value: 'commit -v' }
+    - { key: 'cia', value: 'commit -v --amend' }
+    - { key: 'st', value: 'status' }
+    - { key: 'sm', value: 'submodule' }
+    - { key: 'ss', value: 'show --stat' }
+    - { key: 'br', value: 'branch -vv' }
+    - { key: 'bra', value: 'branch -avv' }
+    - { key: 'ls', value: '!git --no-pager log --pretty=format:"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset" --graph -20' }
+    - { key: 'lsa', value: 'log --pretty=format:"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset" --graph -20 --all' }
+    - { key: 'lg', value: 'log --pretty=format:"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset" --graph --date=short' }
+    - { key: 'lga', value: 'log --pretty=format:"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset" --graph --date=short --all' }
+    - { key: 'ff', value: 'merge --ff-only @{u}' }
+    - { key: 'up', value: 'remote update' }
+    - { key: 'rup', value: 'rebase @{u}' }
+    - { key: 'rank', value: 'shortlog -s -n --no-merges' }
+    - { key: 'desc', value: 'describe' }
+    - { key: 'track', value: '!git branch --set-upstream-to $(git for-each-ref --format="%(refname:short)" $(git symbolic-ref HEAD))' }
+    - { key: 'fixup', value: 'commit --amend -C HEAD' }
+    - { key: 'save', value: '!git add -u && git commit -m "WIP: $(git show -q --oneline HEAD)"' }
+    - { key: 'lease', value: 'push --force-with-lease' }
+    - { key: 'sync', value: '!git pull --prune && git -P branch --format "%(refname:short) %(upstream:track)" | grep -F "[gone]" | xargs -r git branch -D' }
+
+- name: Configure git pull
+  community.general.git_config:
+    name: "pull.rebase"
+    value: true
+    scope: global
+
+- name: Configure git rebase
+  community.general.git_config:
+    name: "rebase.autoStash"
+    value: true
+    scope: global
+
+- name: Configure git branch
+  community.general.git_config:
+    name: "branch.autoSetupRebase"
+    value: "remote"
+    scope: global
+
+- name: Configure git push
+  community.general.git_config:
+    name: "push.default"
+    value: "upstream"
+    scope: global
+
+- name: Configure git push followTags
+  community.general.git_config:
+    name: "push.followTags"
+    value: true
+    scope: global
+
+- name: Configure git init
+  community.general.git_config:
+    name: "init.defaultBranch"
+    value: "main"
+    scope: global
+
+- name: Configure git status
+  community.general.git_config:
+    name: "status.submoduleSummary"
+    value: true
+    scope: global
+
+- name: Configure git advice
+  community.general.git_config:
+    name: "advice.skippedCherryPicks"
+    value: false
+    scope: global

@@ -1,0 +1,3 @@
+# List of desktop essential packages
+desktop_packages:
+  - desktop-file-utils

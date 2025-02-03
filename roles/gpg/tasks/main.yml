@@ -1,0 +1,10 @@
+- name: Install GPG tools and utilities
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - pinentry-curses
+      - pcscd
+      - scdaemon
+      - yubikey-manager
+    state: present
+  become: true

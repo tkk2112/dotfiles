@@ -1,0 +1,23 @@
+- name: Check if UV is installed
+  ansible.builtin.command: uv --version
+  register: uv_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Update UV installation if present
+  ansible.builtin.command: uv self update
+  when: uv_check.rc == 0
+  changed_when: false
+
+- name: Download UV installer script
+  ansible.builtin.get_url:
+    url: "https://astral.sh/uv/install.sh"
+    dest: /tmp/uv_install.sh
+    mode: '0755'
+  when: uv_check.rc != 0
+
+- name: Execute UV installer
+  ansible.builtin.command: bash /tmp/uv_install.sh
+  args:
+    creates: /usr/local/bin/uv
+  when: uv_check.rc != 0

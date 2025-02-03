@@ -1,0 +1,82 @@
+- name: Retrieve installed Neovim version
+  ansible.builtin.shell:
+    cmd: "set -o pipefail && nvim --version | head -n1 | cut -d ' ' -f2 | cut -d 'v' -f2"
+    executable: /bin/bash
+  register: nvim_current_version
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+
+- name: Define Neovim version facts
+  ansible.builtin.set_fact:
+    nvim_current: "{{ nvim_current_version.stdout | default('0.0.0', true) }}"
+    nvim_required: "{{ neovim_min_version }}"
+
+- name: Create Neovim build directory
+  ansible.builtin.file:
+    path: "{{ neovim_build_path }}"
+    state: directory
+    mode: '0755'
+  when: nvim_current is version(nvim_required, '<')
+
+- name: Remove existing Neovim binary
+  ansible.builtin.file:
+    path: /usr/local/bin/nvim
+    state: absent
+  become: true
+  when: nvim_current is version(nvim_required, '<')
+
+- name: Clone Neovim repository
+  ansible.builtin.git:
+    repo: "{{ neovim_repo }}"
+    dest: "{{ neovim_build_path }}"
+    version: "{{ neovim_git_tag }}"
+    single_branch: true
+  when: nvim_current is version(nvim_required, '<')
+
+- name: Build Neovim from source
+  ansible.builtin.shell: |
+    make CMAKE_BUILD_TYPE=RelWithDebInfo
+  args:
+    chdir: "{{ neovim_build_path }}"
+    creates: "{{ neovim_build_path }}/build/CMakeCache.txt"
+  when: nvim_current is version(nvim_required, '<')
+
+- name: Install Neovim binary
+  ansible.builtin.command: make install
+  args:
+    chdir: "{{ neovim_build_path }}"
+    creates: /usr/local/bin/nvim
+  become: true
+  when: nvim_current is version(nvim_required, '<')
+
+- name: Remove existing Neovim configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ ansible_env.HOME }}/.local/state/nvim"
+    - "{{ ansible_env.HOME }}/.local/share/nvim"
+    - "{{ ansible_env.HOME }}/.config/nvim"
+
+- name: Clone NvChad starter configuration
+  ansible.builtin.git:
+    repo: "https://github.com/NvChad/starter"
+    dest: "{{ ansible_env.HOME }}/.config/nvim"
+    version: "main"
+    force: true
+  register: neovim_repo
+
+- name: Install Neovim plugins via Mason
+  ansible.builtin.command: nvim -c ":MasonInstallAll" -c ":qa"
+  changed_when: neovim_repo.changed
+
+- name: Register Neovim alternatives
+  ansible.builtin.shell: |
+    update-alternatives \
+      --install /bin/vi  vi  /usr/local/bin/nvim 1000 \
+      --slave   /bin/vim vim /usr/local/bin/nvim
+    update-alternatives \
+      --install /usr/bin/editor editor /usr/local/bin/nvim 1000
+  changed_when: false
+  become: true
