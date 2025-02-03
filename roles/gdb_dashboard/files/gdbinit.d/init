@@ -1,0 +1,316 @@
+# ====================================================
+# GDB Initialization File (.gdbinit)
+# ====================================================
+# This configuration file improves GDB's output, loads pretty printers
+# for GCC-14, sets up a dashboard layout (if using gdb-dashboard), and
+# defines a set of useful macros and command aliases. All comments here
+# are placed above the commands for clarity and to avoid parsing issues.
+# ====================================================
+
+# ----------------------------
+# General Settings
+# ----------------------------
+
+# Automatically save the command history between sessions.
+set history save on
+
+# Enable pretty-printing for complex data types.
+set print pretty on
+
+# Disable pagination so output is not split into pages.
+set pagination off
+
+# Disable confirmation prompts for quit and similar commands.
+set confirm off
+
+# Allow breakpoints to be set even if the target location is not yet known.
+set breakpoint pending on
+
+# Use Intel syntax for disassembly output.
+set disassembly-flavor intel
+
+# Set no limit on the number of elements printed in containers.
+set print elements 0
+
+# Show static members for C++ objects.
+set print static-members on
+
+# Display full details of objects when printing.
+set print object on
+
+# Always display pointer addresses.
+set print address on
+
+# ----------------------------
+# GCC-14 Pretty Printers for C++ (libstdc++)
+# ----------------------------
+python
+import sys
+try:
+    # Insert the path for GCC pretty printers.
+    sys.path.insert(0, '/usr/share/gcc/python')
+    # Import and register the pretty printers for libstdc++.
+    from libstdcxx.v6.printers import register_libstdcxx_printers
+    register_libstdcxx_printers(gdb.current_objfile())
+except Exception as e:
+    print("Warning: Could not load GCC pretty printers: {}".format(e))
+end
+
+# ----------------------------
+# GDB Dashboard Layout Settings
+# ----------------------------
+# Configure the dashboard layout. Requires gdb-dashboard to be installed.
+
+# Set a layout that displays memory, breakpoints, registers, variables,
+# the stack, assembly code, and the source; and exclude expressions, history, and threads.
+dashboard -layout memory breakpoints registers variables stack assembly source !expressions !history !threads
+
+# Set the style of the registers display to use column-major layout.
+dashboard registers -style column-major on
+
+# Set the variables display style to not use compact layout.
+dashboard variables -style compact off
+
+# Set the variables display style to align output.
+dashboard variables -style align on
+
+# Set the prompt style for running state with a magenta (bold) label.
+dashboard -style prompt_running '\\[\\e[1;35m\\](gdb)\\[\\e[0m\\]'
+
+# Set the prompt style for non-running state with a dim gray label.
+dashboard -style prompt_not_running '\\[\\e[1;30m\\](gdb)\\[\\e[0m\\]'
+
+# ----------------------------
+# Command Aliases
+# ----------------------------
+# Create shortcuts for frequently used commands.
+
+alias r run
+alias c continue
+alias s step
+alias ni nexti
+alias si stepi
+alias bt full
+
+# ----------------------------
+# Macros for Common Tasks
+# ----------------------------
+
+# Macro to show a backtrace for all threads.
+define tbt
+  thread apply all bt
+end
+
+# Macro to restart the program by quitting and then running it.
+define restart
+  quit
+  run
+end
+
+# ----------------------------
+# Remote Debugging Enhancements
+# ----------------------------
+# Enable verbose logging for remote debugging.
+set debug remote 1
+
+# Macro to connect to a remote target, reset it, load the program, and continue.
+define remote_reset
+  target extended-remote localhost:3333
+  monitor reset halt
+  load
+  continue
+end
+
+# ----------------------------
+# Reverse Debugging Macros
+# ----------------------------
+
+# Macro for reverse stepping.
+define rstep
+  reverse-step
+end
+
+# Macro for reverse next.
+define rnext
+  reverse-next
+end
+
+# ----------------------------
+# Layout Switching Macros
+# ----------------------------
+
+# Macro to switch to a layout showing source, assembly, registers, and stack.
+define layout_source
+  dashboard -layout source assembly registers stack
+end
+
+# Macro to switch to a layout showing memory, breakpoints, registers, variables, stack,
+# assembly, source, and excluding expressions, history, and threads.
+define layout_full
+  dashboard -layout memory breakpoints registers variables stack assembly source !expressions !history !threads
+end
+
+# ----------------------------
+# Disassembly Flavor Switching Macros
+# ----------------------------
+
+# Macro to set disassembly to Intel syntax and refresh the dashboard.
+define intel
+  set disassembly-flavor intel
+  dashboard
+end
+
+# Macro to set disassembly to AT&T syntax and refresh the dashboard.
+define att
+  set disassembly-flavor att
+  dashboard
+end
+
+# ----------------------------
+# Dashboard Refresh Hooks
+# ----------------------------
+# Automatically refresh the dashboard after common events.
+define hookpost-up
+  dashboard
+end
+
+define hookpost-down
+  dashboard
+end
+
+define hookpost-thread
+  dashboard
+end
+
+define hookpost-delete
+  dashboard
+end
+
+define hookpost-clear
+  dashboard
+end
+
+define hookpost-break
+  dashboard
+end
+
+define hookpost-signal
+  dashboard
+end
+
+# ----------------------------
+# Utility Macros
+# ----------------------------
+
+# Macro to automatically load a symbol file based on the address of the .text section.
+define add-symbol-file-auto
+  shell echo set \$text_address=$(readelf -WS $arg0 | grep .text | awk '{ print "0x"$5 }') >/tmp/temp_gdb_text_address.txt
+  source /tmp/temp_gdb_text_address.txt
+  shell rm -f /tmp/temp_gdb_text_address.txt
+  add-symbol-file $arg0 $text_address
+end
+
+# Macro to set ARM Thumb mode for embedded or ARM targets.
+define set-arm-thumb-mode
+  set architecture arm
+  set endian little
+  set arm fallback-mode thumb
+  set arm force-mode thumb
+  dashboard -style dereference off
+end
+
+# Macro to set the output format to hexadecimal.
+define set-hex-output
+  set output-radix 16
+end
+
+# Macro to dump memory in hexadecimal format.
+define hexdump
+  dump binary memory /tmp/temp_gdb_hexdump.bin $arg0 $arg0+$arg1
+  shell hexdump -C /tmp/temp_gdb_hexdump.bin
+end
+
+# Macro to follow child processes when debugging forked programs.
+define follow-child-fork
+  set follow-for-mode child
+  set detach-on-fork on
+end
+
+# ----------------------------
+# Cheatsheet Macro: halp
+# ----------------------------
+# Prints a helpful cheatsheet with common GDB commands.
+define halp
+  python print("""\
+-------- GDB Cheatsheet --------
+Basic Commands:
+  r                : run
+  c                : continue
+  s                : step (into)
+  n                : next (over)
+  ni               : nexti (next instruction)
+  si               : stepi (step instruction)
+  q                : quit
+
+Breakpoints:
+  b <location>     : set breakpoint at <location>
+  b <location> if <cond>
+                   : set breakpoint with condition
+  disable <num>    : disable breakpoint <num>
+  enable <num>     : enable breakpoint <num>
+  info breakpoints : list breakpoints
+  ignore <num> <n> : ignore breakpoint <num> for n hits
+
+Execution Control:
+  until <location> : run until a specified location
+  finish           : run until current function returns
+  rbreak <regex>   : set breakpoints on functions matching regex
+
+Watchpoints:
+  watch <expr>     : break when <expr> changes
+  awatch <expr>    : break when <expr> is read or written
+  rwatch <expr>    : break when <expr> is read
+
+Stacks & Threads:
+  bt               : backtrace (stack trace)
+  thread apply all bt
+                   : backtrace for all threads
+  info threads     : list all threads
+  thread <num>     : switch to thread <num>
+
+Memory & Symbols:
+  p <expr>         : print expression
+  x/<fmt> <addr>   : examine memory (e.g., x/10xw <addr>)
+  info registers   : show registers
+  add-symbol-file <file> <addr>
+                   : load symbols from file at <addr>
+
+Reverse Debugging (if supported):
+  record           : record program execution
+  reverse-step     : step backwards
+  reverse-next     : next backwards
+
+Miscellaneous:
+  set logging on   : start logging session
+  shell <cmd>      : execute shell command
+  help             : show help for commands
+
+Aliases:
+  r, c, s, ni, si, bt
+----------------------------------
+""")
+end
+
+# ----------------------------
+# Additional Utility Macro: infoall
+# ----------------------------
+# Displays registers, stack, and a backtrace for all threads.
+define infoall
+  info registers
+  info stack
+  thread apply all bt
+end
+
+# ====================================================
+# End of GDB Configuration
+# ====================================================

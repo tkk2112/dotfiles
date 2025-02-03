@@ -1,0 +1,7 @@
+- name: Include LLVM installation tasks
+  ansible.builtin.import_tasks:
+    file: install.yml
+
+- name: Include LLVM alternatives registration tasks
+  ansible.builtin.import_tasks:
+    file: register_alternatives.yml

@@ -1,0 +1,5 @@
+ssh_profile_dropbox_dir: "{{ ansible_env.HOME }}/Dropbox"
+ssh_profile_dropbox_ssh_dir: "{{ ssh_profile_dropbox_dir }}/unixprofile/.ssh"
+ssh_profile_target_dir: "{{ ansible_env.HOME }}/.ssh"
+ssh_profile_exclude_files:
+  - "install.sh"

@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# .direvnrc
+
+###############################################################################
+# Function: select_python
+# Description:
+#   Finds the full path for a specified Python executable and verifies its
+#   version. The function prints the selected version and sets the global
+#   variable SELECTED_PYTHON_PATH if successful.
+#
+# Arguments:
+#   $1 (optional) - The Python executable to use (default: "python").
+#
+# Returns:
+#   0 if a valid Python interpreter is found, non-zero otherwise.
+###############################################################################
+select_python() {
+  local python_executable=${1:-python}
+  unset PYTHONHOME
+
+  local python_path
+  python_path=$(uv python find "$python_executable")
+  if [[ -z $python_path ]]; then
+    log_error "Could not find the python executable for '$python_executable'."
+    return 1
+  fi
+
+  local version_output
+  version_output=$("$python_path" -V 2>&1)
+  local python_version
+  python_version=$(echo "$version_output" | cut -d' ' -f 2 | cut -d . -f 1-2)
+  if [[ -z $python_version ]]; then
+    log_error "Could not determine Python version from '$python_path'."
+    return 1
+  fi
+
+  echo "Using Python $python_version at $python_path"
+  export SELECTED_PYTHON_PATH="$python_path"
+  return 0
+}
+
+###############################################################################
+# Function: create_and_activate_venv
+# Description:
+#   Creates a virtual environment using the existing 'uv venv' command and
+#   activates it.
+#
+# Returns:
+#   0 if successful, non-zero otherwise.
+###############################################################################
+create_and_activate_venv() {
+  uv venv 2>/dev/null || return 1
+  if [[ -f .venv/bin/activate ]]; then
+    source .venv/bin/activate || return 1
+  else
+    log_error "Virtual environment activation script not found."
+    return 1
+  fi
+  return 0
+}
+
+###############################################################################
+# Function: setup_environment
+# Description:
+#   Sources environment-specific files and synchronizes the environment.
+#
+# Returns:
+#   0 if successful, non-zero otherwise.
+###############################################################################
+setup_environment() {
+  source_up_if_exists
+  dotenv_if_exists
+  source_env_if_exists .envrc.local
+  if [[ -f "pyproject.toml" ]]; then
+    uv sync
+  fi
+  return 0
+}
+
+###############################################################################
+# Function: uv_python_setup
+# Description:
+#   Integrated workflow function that:
+#     1. Selects the specified Python version.
+#     2. Creates and activates the virtual environment.
+#     3. Sets up the rest of the environment.
+#
+# Usage:
+#   uv_python_setup [desired_python_executable]
+#
+# Arguments:
+#   [optional] desired_python_executable - e.g. "python3.9" (default: "python").
+#
+# Returns:
+#   0 if successful, non-zero otherwise.
+###############################################################################
+uv_python_setup() {
+  local desired_python=${1:-python}
+  
+  # Select the desired Python version.
+  select_python "$desired_python" || return 1
+
+  # Create and activate the virtual environment.
+  create_and_activate_venv || return 1
+
+  # Source environment files and sync environment.
+  setup_environment || return 1
+
+  return 0
+}
+
+# To run the integrated workflow with a specific Python version (e.g., python3.9),
+# you can call:
+#
+#   uv_python_setup python3.9
+#
+# Or simply:
+#
+#   uv_python_setup
+#
+# to use the default "python" interpreter.
+
+
+

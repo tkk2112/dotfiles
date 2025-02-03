@@ -1,0 +1,14 @@
+- name: Update collection community.general to latest
+  community.general.ansible_galaxy_install:
+    type: collection
+    name: community.general
+    state: latest
+
+- name: "Add NOPASSWD Entry for User"
+  community.general.sudoers:
+    name: "NOPASSWD-for-{{ ansible_user_id }}"
+    user: "{{ ansible_user_id }}"
+    commands: ALL
+    nopassword: true
+    state: present
+  become: true

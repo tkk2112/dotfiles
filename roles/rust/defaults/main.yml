@@ -1,0 +1,2 @@
+# Default Rust version for installation
+rust_version: "stable"

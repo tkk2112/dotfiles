@@ -1,0 +1,51 @@
+- name: Update APT sources for testing
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: '{{ ansible_distribution_release }}'
+    replace: 'testing'
+  become: true
+  when: base_enable_testing
+
+- name: Configure stable APT repository
+  ansible.builtin.apt_repository:
+    repo: "{{ base_stable_repo }}"
+    state: present
+    filename: "stable"
+  become: true
+  when: base_enable_testing
+
+- name: Update and upgrade system packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+  become: true
+
+- name: Install essential system packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+  become: true
+
+- name: Create tldr share directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/share/tldr"
+    state: directory
+    mode: '0755'
+
+- name: Update tldr pages
+  ansible.builtin.command: tldr -u
+  changed_when: false
+
+- name: Ensure APT keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Symlink .direnvrc configuration
+  ansible.builtin.file:
+    src: "{{ role_path }}/files/.direnvrc"
+    dest: "{{ ansible_env.HOME }}/.direnvrc"
+    state: link
+    force: true

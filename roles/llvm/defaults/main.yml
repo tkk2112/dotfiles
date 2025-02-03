@@ -1,0 +1,16 @@
+# List of LLVM versions to install
+llvm_versions:
+  - 18
+  - 19
+
+# Default LLVM version used for additional components
+llvm_default_version: 19
+
+# Base URL for the LLVM apt repository
+llvm_apt_repo_base: "https://apt.llvm.org"
+
+# APT component for LLVM packages
+llvm_apt_component: "main"
+
+# Codename for the apt repository; use 'unstable' if testing is enabled
+llvm_apt_codename: "{{ 'unstable' if base_enable_testing | default(false) else ansible_distribution_release }}"
