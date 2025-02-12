@@ -4,39 +4,39 @@
     state: directory
     mode: '0700'
 
-- name: Check if Dropbox directory exists
+- name: Check if protondrive directory exists
   ansible.builtin.stat:
-    path: "{{ ssh_profile_dropbox_dir }}"
-  register: dropbox_dir
+    path: "{{ ssh_profile_protondrive_dir }}"
+  register: protondrive_dir
   ignore_errors: true
 
-- name: Check if Dropbox SSH profile directory exists
+- name: Check if protondrive SSH profile directory exists
   ansible.builtin.stat:
-    path: "{{ ssh_profile_dropbox_ssh_dir }}"
-  register: dropbox_ssh_dir
+    path: "{{ ssh_profile_protondrive_ssh_dir }}"
+  register: protondrive_ssh_dir
   ignore_errors: true
 
-- name: Debug - Found Dropbox SSH profile folder
+- name: Debug - Found protondrive SSH profile folder
   ansible.builtin.debug:
-    msg: "Found Dropbox SSH profile at {{ ssh_profile_dropbox_ssh_dir }}"
-  when: dropbox_dir.stat.exists and dropbox_ssh_dir.stat.exists
+    msg: "Found protondrive SSH profile at {{ ssh_profile_protondrive_ssh_dir }}"
+  when: protondrive_dir.stat.exists and protondrive_ssh_dir.stat.exists
 
-- name: Find all files in the Dropbox SSH profile directory
+- name: Find all files in the protondrive SSH profile directory
   ansible.builtin.find:
-    paths: "{{ ssh_profile_dropbox_ssh_dir }}"
+    paths: "{{ ssh_profile_protondrive_ssh_dir }}"
     file_type: file
-  register: dropbox_ssh_files
-  when: dropbox_ssh_dir.stat.exists
+  register: protondrive_ssh_files
+  when: protondrive_ssh_dir.stat.exists
 
-- name: Create symlinks for SSH profile files from Dropbox
+- name: Create symlinks for SSH profile files from protondrive
   ansible.builtin.file:
     src: "{{ item.path }}"
     dest: "{{ ssh_profile_target_dir }}/{{ item.path | basename }}"
     state: link
     force: true
-  loop: "{{ dropbox_ssh_files.files }}"
+  loop: "{{ protondrive_ssh_files.files }}"
   when:
-    - dropbox_ssh_dir.stat.exists
+    - protondrive_ssh_dir.stat.exists
     - (item.path | basename) not in ssh_profile_exclude_files
 
 - name: Set permissions on the local SSH directory recursively to 0700
