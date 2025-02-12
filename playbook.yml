@@ -21,7 +21,6 @@
     - gpg
     - fonts
     - gdb
-    - gdb_dashboard
     - wsl
     - role: desktop
       tags: [desktop]
