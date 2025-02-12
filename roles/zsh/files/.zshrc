@@ -3,6 +3,10 @@ source ~/.zsh/functions/darwin.zsh
 # Disable update prompt (Oh-My-Zsh setting)
 export DISABLE_UPDATE_PROMPT=true
 
+zstyle :omz:plugins:ssh-agent agent-forwarding yes
+zstyle :omz:plugins:ssh-agent quiet yes:
+zstyle :omz:plugins:ssh-agent lazy yes
+
 # Enable Powerlevel10k instant prompt (should be near the top)
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
