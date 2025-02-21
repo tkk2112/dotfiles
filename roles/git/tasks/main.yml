@@ -41,7 +41,8 @@
     - { key: 'fixup', value: 'commit --amend -C HEAD' }
     - { key: 'save', value: '!git add -u && git commit -m "WIP: $(git show -q --oneline HEAD)"' }
     - { key: 'lease', value: 'push --force-with-lease' }
-    - { key: 'sync', value: '!git pull --prune && git -P branch --format "%(refname:short) %(upstream:track)" | grep -F "[gone]" | xargs -r git branch -D' }
+    # yamllint disable-line rule:line-length
+    - { key: 'sync', value: '!git pull --prune --quiet && git -P branch --format "%(refname:short) %(upstream:track)" | grep -F "[gone]" | sed "s/\[gone\]//g" | xargs -r git branch -D' }
 
 - name: Configure git pull
   community.general.git_config:
