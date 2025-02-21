@@ -25,3 +25,11 @@
               export PATH="$PATH:$GOPATH/bin"
               ;;
       esac
+
+- name: Install yamlfmt
+  ansible.builtin.command:
+    cmd: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+  environment:
+    GOPATH: "{{ ansible_env.HOME }}/.local/share/go"
+  args:
+    creates: "{{ ansible_env.HOME }}/.local/share/go/bin/yamlfmt"
