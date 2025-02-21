@@ -1,0 +1,27 @@
+- name: Install golang
+  ansible.builtin.apt:
+    name:
+      - golang
+    state: present
+  become: true
+
+- name: Ensure GOPATH directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/share/go"
+    state: directory
+    mode: '0755'
+
+- name: Add GOPATH and its bin to PATH in env file
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.local/bin/env"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR GOPATH/BIN"
+    block: |
+      export GOPATH=$HOME/.local/share/go
+
+      case ":${PATH}:" in
+          *:"$GOPATH/bin":*)
+              ;;
+          *)
+              export PATH="$PATH:$GOPATH/bin"
+              ;;
+      esac

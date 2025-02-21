@@ -16,6 +16,7 @@
     - git
     - llvm
     - rust
+    - go
     - neovim
     - tmux
     - gpg
