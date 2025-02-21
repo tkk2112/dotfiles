@@ -17,7 +17,7 @@
   when: uv_check.rc != 0
 
 - name: Execute UV installer
-  ansible.builtin.command: bash /tmp/uv_install.sh
+  ansible.builtin.command: bash /tmp/uv_install.sh --no-modify-path
   args:
     creates: /usr/local/bin/uv
   when: uv_check.rc != 0
