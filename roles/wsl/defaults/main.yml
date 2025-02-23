@@ -3,7 +3,7 @@ wsl_conf_content: |
   systemd = true
 
   [network]
-  generateResolvConf = true
+  generateResolvConf = false
   generateHosts = true
 
   [automount]
