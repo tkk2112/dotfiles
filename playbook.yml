@@ -1,5 +1,9 @@
 - name: "Debian System Setup"
   hosts: all
+  pre_tasks:
+    - name: Include and perform pre_tasks
+      ansible.builtin.include_tasks:
+        file: pre_tasks.yml
   any_errors_fatal: true
   vars_prompt:
     - name: git_user_name
@@ -9,7 +13,6 @@
       prompt: "Enter git config --global user.email"
       private: false
   roles:
-    - prepare
     - base
     - uv
     - zsh

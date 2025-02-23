@@ -1,4 +1,14 @@
-- name: Update collection community.general to latest
+- name: Load host-specific variables if available
+  ansible.builtin.include_vars: "host_vars/{{ ansible_hostname }}.yml"
+  ignore_errors: true
+
+- name: Check distro
+  tags: always
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Debian'
+
+- name: "Update collection community.general to latest"
   community.general.ansible_galaxy_install:
     type: collection
     name: community.general
