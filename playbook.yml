@@ -27,8 +27,8 @@
     - gdb
     - wsl
     - role: desktop
-      tags: [desktop]
+      when: machine_type == 'desktop'
     - role: alacritty
-      tags: [desktop]
+      when: machine_type == 'desktop'
     - role: ssh_profile
-      tags: [dropbox]
+      when: proton_drive_enabled | bool

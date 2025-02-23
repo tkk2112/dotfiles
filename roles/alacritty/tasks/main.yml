@@ -108,6 +108,6 @@
     dest: "{{ ansible_env.HOME }}/.config/alacritty/local.toml"
     content: |
       [font]
-      size = {{ alacritty_host_configs[inventory_hostname].font_size }}
+      size = {{ alacritty.font_size }}
     mode: '0644'
-  when: inventory_hostname in alacritty_host_configs and alacritty_host_configs[inventory_hostname].font_size is defined
+  when: alacritty.font_size is defined

@@ -1,5 +1,9 @@
 all:
+  vars:
+    machine_type: ''
+    internal: false
+    proton_drive_enabled: false
+    ansible_connection: local
+    ansible_python_interpreter: /usr/bin/python3
   hosts:
     localhost:
-      ansible_connection: local
-      ansible_python_interpreter: /usr/bin/python3

@@ -1,0 +1,4 @@
+machine_type: desktop
+alacritty:
+  font_size: 12.0
+proton_drive_enabled: true
