@@ -5,3 +5,15 @@
     mode: "{{ wsl_conf_mode }}"
   become: true
   when: ansible_virtualization_type == 'wsl'
+
+- name: Add DNS to resolved.conf
+  ansible.builtin.blockinfile:
+    path: "/etc/systemd/resolved.conf"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR resolved.conf"
+    block: |
+      DNS=10.0.10.101 10.0.0.11
+  become: true
+  when:
+    - ansible_virtualization_type == 'wsl'
+    - internal is defined
+    - internal | bool
