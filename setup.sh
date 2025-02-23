@@ -18,6 +18,7 @@ Common OPTIONS:
   --list-hosts        List all hosts that the playbook will target.
   --tags <tags>       Run only tasks with the specified tags (comma-separated).
   --skip-tags <tags>  Skip tasks with the specified tags (comma-separated).
+  --skip-lint         Skip linting before running playbook
   -v                  Enable verbose mode (can use -vvv for more verbosity).
 
 Examples:
