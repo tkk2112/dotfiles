@@ -28,3 +28,16 @@
 - name: "Show current site and gateway"
   ansible.builtin.debug:
     msg: "Detected gateway: {{ detected_gateway }}, current site: {{ current_site }}"
+
+- name: "Check if ProtonDrive directory exists"
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/ProtonDrive"
+  register: proton_drive_dir
+
+- name: "Set ProtonDrive enabled fact"
+  ansible.builtin.set_fact:
+    proton_drive_enabled: "{{ proton_drive_dir.stat.exists }}"
+
+- name: "Show ProtonDrive status"
+  ansible.builtin.debug:
+    msg: "ProtonDrive is {{ 'enabled' if proton_drive_enabled else 'disabled' }}"
