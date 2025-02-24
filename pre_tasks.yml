@@ -41,3 +41,7 @@
     nopassword: true
     state: present
   become: true
+
+- name: "Include additional fact gathering tasks"
+  ansible.builtin.import_tasks:
+    file: fact_gatherer.yml
