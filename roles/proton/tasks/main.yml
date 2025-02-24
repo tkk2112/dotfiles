@@ -9,3 +9,4 @@
   when:
     - not headless | bool
     - personal | bool
+    - ansible_architecture == "x86_64"
