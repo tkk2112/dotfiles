@@ -8,7 +8,7 @@
 - name: "Run traceroute to an external IP (quad9)"
   ansible.builtin.command: traceroute -m 3 9.9.9.9
   register: traceroute_result
-  changed_when: false
+  changed_when: true
   ignore_errors: true
 
 - name: "Debug traceroute output"

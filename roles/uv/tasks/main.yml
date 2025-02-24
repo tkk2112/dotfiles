@@ -2,12 +2,12 @@
   ansible.builtin.command: uv --version
   register: uv_check
   ignore_errors: true
-  changed_when: false
+  changed_when: true
 
 - name: Update UV installation if present
   ansible.builtin.command: uv self update
   when: uv_check.rc == 0
-  changed_when: false
+  changed_when: true
 
 - name: Download UV installer script
   ansible.builtin.get_url:

@@ -4,7 +4,7 @@
     executable: /bin/bash
   register: alacritty_current_version
   ignore_errors: true
-  changed_when: false
+  changed_when: true
   check_mode: false
 
 - name: Define version comparison facts
