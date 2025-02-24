@@ -1,7 +1,7 @@
 - name: "Debian System Setup"
   hosts: all
   pre_tasks:
-    - name: Include and perform pre_tasks
+    - name: "Include pre_tasks"
       ansible.builtin.include_tasks:
         file: pre_tasks.yml
   any_errors_fatal: true
