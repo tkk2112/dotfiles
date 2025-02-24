@@ -27,8 +27,8 @@
     - gdb
     - wsl
     - role: desktop
-      when: machine_type == 'desktop'
+      when: not headless | bool
     - role: alacritty
-      when: machine_type == 'desktop'
+      when: not headless | bool
     - role: ssh_profile
       when: proton_drive_enabled | bool
