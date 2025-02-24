@@ -1,0 +1,38 @@
+- name: "Create /etc/wsl.conf with WSL configuration"
+  ansible.builtin.copy:
+    dest: "{{ wsl_conf_dest }}"
+    content: "{{ wsl_conf_content }}"
+    mode: "{{ wsl_conf_mode }}"
+  become: true
+
+- name: "Add DNS to resolved.conf"
+  ansible.builtin.blockinfile:
+    path: "/etc/systemd/resolved.conf"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR resolved.conf"
+    block: "{% if current_site == 'se' %}DNS=10.0.10.101 10.0.0.11{% else %}DNS=10.0.0.11 10.0.10.101{% endif %}"
+  become: true
+  when: internal | bool
+
+- name: "Create initial env file with PATH case structure"
+  ansible.builtin.copy:
+    dest: "/etc/hosts"
+    content: |
+      127.0.0.1       localhost
+      127.0.1.1       wsl.      wsl
+    mode: '0644'
+  become: true
+
+- name: "Set DISPLAY environment variable"
+  ansible.builtin.blockinfile:
+    path: "/etc/profile"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR DISPLAY"
+    block: |
+      {% if current_site == 'se' %}
+      export DISPLAY=10.0.10.2:0.0
+      {% elif current_site == 'no' %}
+      export DISPLAY=10.0.0.2:0.0
+      {% endif %}
+  become: true
+  when:
+    - current_site in ['se', 'no']
+    - internal | bool
