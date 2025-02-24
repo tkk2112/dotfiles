@@ -19,6 +19,7 @@ base_packages:
   - icdiff
   - jq
   - nvtop
+  - openssh-server
   - shellcheck
   - shfmt
   - silversearcher-ag

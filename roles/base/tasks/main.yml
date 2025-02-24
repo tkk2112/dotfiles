@@ -26,34 +26,12 @@
     state: present
   become: true
 
-- name: Create tldr share directory
-  ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.local/share/tldr"
-    state: directory
-    mode: '0755'
-
-- name: Update tldr pages
-  ansible.builtin.command: tldr -u
-  changed_when: false
-
 - name: Ensure APT keyrings directory exists
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
     mode: '0755'
   become: true
-
-- name: Symlink .direnvrc configuration
-  ansible.builtin.file:
-    src: "{{ role_path }}/files/.direnvrc"
-    dest: "{{ ansible_env.HOME }}/.direnvrc"
-    state: link
-    force: true
-
-- name: Enable service systemd-resolved
-  ansible.builtin.systemd_service:
-    name: systemd-resolved
-    enabled: true
 
 - name: Ensure .local/bin directory exists
   ansible.builtin.file:
@@ -81,3 +59,11 @@
       esac
     mode: '0644'
     force: false  # Won't overwrite if exists
+
+- name: Include systemd tasks
+  ansible.builtin.import_tasks:
+    file: systemd.yml
+
+- name: Include miscellaneous utilities tasks
+  ansible.builtin.import_tasks:
+    file: utils.yml

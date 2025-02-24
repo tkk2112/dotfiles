@@ -1,0 +1,9 @@
+- name: Enable service systemd-resolved
+  ansible.builtin.systemd_service:
+    name: systemd-resolved
+    enabled: true
+
+- name: Enable service ssh
+  ansible.builtin.systemd_service:
+    name: ssh
+    enabled: true
