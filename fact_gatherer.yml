@@ -15,7 +15,7 @@
   ansible.builtin.debug:
     var: traceroute_result.stdout_lines
 
-- name: "Extract first non-local hop IP (assumed to be the gateway)"
+- name: "Extract first 10.0.xxx.1 IP hop (assumed to be the gateway)"
   ansible.builtin.set_fact:
     detected_gateway: "{{ traceroute_result.stdout | regex_findall('(10\\.0\\.\\d+\\.1)') | first }}"
   when:
