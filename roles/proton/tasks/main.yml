@@ -1,0 +1,11 @@
+- name: "Include ProtonDrive tasks"
+  ansible.builtin.include_tasks: protondrive.yml
+  when:
+    - not proton_drive_enabled | bool
+    - personal | bool
+
+- name: "Include ProtonPass tasks"
+  ansible.builtin.include_tasks: protonpass.yml
+  when:
+    - not headless | bool
+    - personal | bool

@@ -1,0 +1,23 @@
+- name: Download ProtonPass version information
+  ansible.builtin.uri:
+    url: https://proton.me/download/PassDesktop/linux/x64/version.json
+    return_content: true
+  register: version_info
+
+- name: Download ProtonPass DEB package
+  ansible.builtin.get_url:
+    url: "{{ (version_info.content | from_json).Releases[0].File[0].Url }}"
+    dest: /tmp/ProtonPass.deb
+    checksum: "sha512:{{ (version_info.content | from_json).Releases[0].File[0].Sha512CheckSum }}"
+    mode: "0644"
+
+- name: Install ProtonPass DEB package
+  ansible.builtin.apt:
+    deb: /tmp/ProtonPass.deb
+    state: present
+  become: true
+
+- name: Clean up downloaded DEB file
+  ansible.builtin.file:
+    path: /tmp/ProtonPass.deb
+    state: absent
