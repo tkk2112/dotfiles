@@ -13,11 +13,9 @@ Options passed to this script are forwarded to the 'ansible-playbook' command.
 
 Common OPTIONS:
   --help              Show this help message and exit.
-  --check             Run the playbook in dry-run mode (no changes will be made).
   --list-tasks        List all tasks in the playbook without executing anything.
   --list-hosts        List all hosts that the playbook will target.
-  --tags <tags>       Run only tasks with the specified tags (comma-separated).
-  --skip-tags <tags>  Skip tasks with the specified tags (comma-separated).
+  --only-lint         Will only run the linting process and exit.
   --skip-lint         Skip linting before running playbook
   -v                  Enable verbose mode (can use -vvv for more verbosity).
 
@@ -25,32 +23,22 @@ Examples:
   Run the playbook normally:
     $(basename "$0")
 
-  Run the playbook in dry-run mode:
-    $(basename "$0") --check
-
   List all tasks in the playbook:
     $(basename "$0") --list-tasks
-
-  Run tasks for specific tags:
-    $(basename "$0") --tags "zsh,llvm"
-
-  Skip specific tags:
-    $(basename "$0") --skip-tags "zsh"
-
 EOF
 }
 
-# Check if the user requested help
-if [[ "$1" == "--help" ]]; then
-  show_help
-  exit 0
-fi
-# Check for --skip-lint argument and create new args array
 skip_lint=false
+lint_only=false
 declare -a ansible_args=()
 for arg in "$@"; do
-  if [[ "$arg" == "--skip-lint" ]]; then
+  if [[ "$arg" == "--help" ]]; then
+    show_help
+    exit 0
+  elif [[ "$arg" == "--skip-lint" ]]; then
     skip_lint=true
+  elif [[ "$arg" == "--only-lint" ]]; then
+    lint_only=true
   else
     ansible_args+=("$arg")
   fi
@@ -90,6 +78,9 @@ if [ "$skip_lint" = false ]; then
   if [[ $? -ne 0 ]]; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
+  fi
+  if [ "$lint_only" = true ]; then
+    exit 0
   fi
 fi
 
