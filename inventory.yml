@@ -1,6 +1,6 @@
 all:
   vars:
-    machine_type: ''
+    headless: false
     internal: false
     ansible_connection: local
     ansible_python_interpreter: /usr/bin/python3

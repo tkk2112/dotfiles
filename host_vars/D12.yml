@@ -1,1 +1,1 @@
-machine_type: desktop
+headless: false
