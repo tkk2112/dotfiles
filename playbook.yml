@@ -30,5 +30,4 @@
       when: not headless | bool
     - role: alacritty
       when: not headless | bool
-    - role: ssh_profile
-      when: proton_drive_enabled | bool
+    - ssh_profile
