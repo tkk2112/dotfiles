@@ -2,7 +2,7 @@
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/share/fonts"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Install FiraCode Nerd Font
   ansible.builtin.import_tasks:

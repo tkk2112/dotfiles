@@ -16,7 +16,7 @@
   ansible.builtin.file:
     path: "{{ alacritty_build_path }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   when: alacritty_current is version(alacritty_required, '<')
 
 - name: Remove outdated binary
@@ -93,7 +93,7 @@
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.config/alacritty"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Symlink configuration files
   ansible.builtin.file:
@@ -109,5 +109,5 @@
     content: |
       [font]
       size = {{ alacritty.font_size }}
-    mode: '0644'
+    mode: "0644"
   when: alacritty.font_size is defined

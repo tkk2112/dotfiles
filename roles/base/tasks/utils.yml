@@ -2,7 +2,7 @@
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/share/tldr"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Update tldr pages
   ansible.builtin.command: tldr -u

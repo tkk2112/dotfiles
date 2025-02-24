@@ -16,7 +16,7 @@
   ansible.builtin.file:
     path: "{{ neovim_build_path }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   when: nvim_current is version(nvim_required, '<')
 
 - name: Remove existing Neovim binary

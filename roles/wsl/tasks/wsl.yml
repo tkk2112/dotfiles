@@ -19,7 +19,7 @@
     content: |
       127.0.0.1       localhost
       127.0.1.1       wsl.      wsl
-    mode: '0644'
+    mode: "0644"
   become: true
 
 - name: "Set DISPLAY environment variable"

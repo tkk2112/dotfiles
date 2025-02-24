@@ -9,7 +9,7 @@
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/share/go"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Add GOPATH and its bin to PATH in env file
   ansible.builtin.blockinfile:
