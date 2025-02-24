@@ -1,15 +1,28 @@
 - name: "Create /etc/wsl.conf with WSL configuration"
   ansible.builtin.copy:
-    dest: "{{ wsl_conf_dest }}"
+    dest: "/etc/wsl.conf"
     content: "{{ wsl_conf_content }}"
-    mode: "{{ wsl_conf_mode }}"
+    mode: "0644"
   become: true
 
 - name: "Add DNS to resolved.conf"
   ansible.builtin.blockinfile:
     path: "/etc/systemd/resolved.conf"
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR resolved.conf"
-    block: "{% if current_site == 'se' %}DNS=10.0.10.101 10.0.0.11{% else %}DNS=10.0.0.11 10.0.10.101{% endif %}"
+    block: |
+      {% if current_site == 'se' %}DNS=10.0.10.101 10.0.0.11{% else %}DNS=10.0.0.11 10.0.10.101{% endif %}
+
+      Domains=local
+      MulticastDNS=no
+      ResolveUnicastSingleLabel=yes
+
+  become: true
+  when: internal | bool
+
+- name: Restart service systemd-resolved
+  ansible.builtin.service:
+    name: systemd-resolved
+    state: restarted
   become: true
   when: internal | bool
 
@@ -24,7 +37,7 @@
 
 - name: "Set DISPLAY environment variable"
   ansible.builtin.blockinfile:
-    path: "/etc/profile"
+    path: "/etc/zsh/zprofile"
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR DISPLAY"
     block: |
       {% if current_site == 'se' %}
