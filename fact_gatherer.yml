@@ -1,0 +1,30 @@
+- name: "Ensure traceroute is installed"
+  ansible.builtin.apt:
+    name: inetutils-traceroute
+    state: present
+    update_cache: true
+  become: true
+
+- name: "Run traceroute to an external IP (quad9)"
+  ansible.builtin.command: traceroute -m 3 9.9.9.9
+  register: traceroute_result
+  changed_when: false
+  ignore_errors: true
+
+- name: "Debug traceroute output"
+  ansible.builtin.debug:
+    var: traceroute_result.stdout_lines
+
+- name: "Extract first non-local hop IP (assumed to be the gateway)"
+  ansible.builtin.set_fact:
+    detected_gateway: "{{ traceroute_result.stdout | regex_findall('(10\\.0\\.\\d+\\.1)') | first }}"
+  when:
+    - traceroute_result.stdout is defined
+
+- name: "Determine current site based on detected gateway"
+  ansible.builtin.set_fact:
+    current_site: "{% if detected_gateway == '10.0.10.1' %}se{% elif detected_gateway == '10.0.0.1' %}no{% else %}unknown{% endif %}"
+
+- name: "Show current site and gateway"
+  ansible.builtin.debug:
+    msg: "Detected gateway: {{ detected_gateway }}, current site: {{ current_site }}"
