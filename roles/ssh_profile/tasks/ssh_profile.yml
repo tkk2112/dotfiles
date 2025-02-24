@@ -2,7 +2,7 @@
   ansible.builtin.file:
     path: "{{ ssh_profile_target_dir }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
 
 - name: Check if protondrive directory exists
   ansible.builtin.stat:
@@ -42,7 +42,7 @@
 - name: Set permissions on the local SSH directory recursively to 0700
   ansible.builtin.file:
     path: "{{ ssh_profile_target_dir }}"
-    mode: '0700'
+    mode: "0700"
     recurse: true
 
 - name: Find all files in the local SSH directory
@@ -65,5 +65,5 @@
 - name: Ensure authorized_keys has mode 711
   ansible.builtin.file:
     path: "{{ ssh_profile_target_dir }}/authorized_keys"
-    mode: '0711'
+    mode: "0711"
   when: authorized_keys_stat.stat.exists

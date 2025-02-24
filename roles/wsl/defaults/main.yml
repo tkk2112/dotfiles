@@ -23,6 +23,5 @@ wsl_conf_content: |
   [user]
   default = thomas
 
-
 wsl_conf_dest: /etc/wsl.conf
-wsl_conf_mode: '0644'
+wsl_conf_mode: "0644"
