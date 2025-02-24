@@ -13,7 +13,7 @@
   ansible.builtin.get_url:
     url: "https://astral.sh/uv/install.sh"
     dest: /tmp/uv_install.sh
-    mode: '0755'
+    mode: "0755"
   when: uv_check.rc != 0
 
 - name: Execute UV installer

@@ -1,8 +1,8 @@
 - name: Update APT sources for testing
   ansible.builtin.replace:
     path: /etc/apt/sources.list
-    regexp: '{{ ansible_distribution_release }}'
-    replace: 'testing'
+    regexp: "{{ ansible_distribution_release }}"
+    replace: "testing"
   become: true
   when: base_enable_testing
 
@@ -30,14 +30,14 @@
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
-    mode: '0755'
+    mode: "0755"
   become: true
 
 - name: Ensure .local/bin directory exists
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/bin"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Create initial env file with PATH case structure
   ansible.builtin.copy:
@@ -57,8 +57,8 @@
               export PATH="$HOME/.local/bin:$PATH"
               ;;
       esac
-    mode: '0644'
-    force: false  # Won't overwrite if exists
+    mode: "0644"
+    force: false # Won't overwrite if exists
 
 - name: Include systemd tasks
   ansible.builtin.import_tasks:

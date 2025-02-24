@@ -2,7 +2,7 @@
   ansible.builtin.get_url:
     url: "{{ llvm_apt_repo_base }}/llvm-snapshot.gpg.key"
     dest: /etc/apt/keyrings/apt.llvm.org.asc
-    mode: '0644'
+    mode: "0644"
   become: true
 
 - name: Configure LLVM base apt repository
