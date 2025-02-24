@@ -26,6 +26,7 @@
     - fonts
     - gdb
     - wsl
+    - proton
     - desktop
     - alacritty
     - ssh_profile
