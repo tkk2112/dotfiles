@@ -1,5 +1,3 @@
-- name: Install essential desktop packages
-  ansible.builtin.apt:
-    name: "{{ desktop_packages }}"
-    state: present
-  become: true
+- name: "Include desktop tasks"
+  ansible.builtin.include_tasks: desktop.yml
+  when: not headless | bool

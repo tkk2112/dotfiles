@@ -26,8 +26,7 @@
     - fonts
     - gdb
     - wsl
-    - role: desktop
-      when: not headless | bool
     - role: alacritty
       when: not headless | bool
+    - desktop
     - ssh_profile
