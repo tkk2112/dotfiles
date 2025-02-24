@@ -4,7 +4,7 @@
     executable: /bin/bash
   register: nvim_current_version
   ignore_errors: true
-  changed_when: false
+  changed_when: true
   check_mode: false
 
 - name: Define Neovim version facts
@@ -78,5 +78,5 @@
       --slave   /bin/vim vim /usr/local/bin/nvim
     update-alternatives \
       --install /usr/bin/editor editor /usr/local/bin/nvim 1000
-  changed_when: false
+  changed_when: true
   become: true

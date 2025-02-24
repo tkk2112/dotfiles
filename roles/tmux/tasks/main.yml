@@ -38,4 +38,4 @@
   args:
     executable: /bin/bash
   when: tpm_check.stat.exists
-  changed_when: false
+  changed_when: true
