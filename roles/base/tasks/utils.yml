@@ -1,0 +1,16 @@
+- name: Create tldr share directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/share/tldr"
+    state: directory
+    mode: '0755'
+
+- name: Update tldr pages
+  ansible.builtin.command: tldr -u
+  changed_when: false
+
+- name: Symlink .direnvrc configuration
+  ansible.builtin.file:
+    src: "{{ role_path }}/files/.direnvrc"
+    dest: "{{ ansible_env.HOME }}/.direnvrc"
+    state: link
+    force: true
