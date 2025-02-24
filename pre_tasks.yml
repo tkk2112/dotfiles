@@ -1,12 +1,31 @@
-- name: Load host-specific variables if available
-  ansible.builtin.include_vars: "host_vars/{{ ansible_hostname }}.yml"
-  ignore_errors: true
-
-- name: Check distro
+- name: "Check distro"
   tags: always
   ansible.builtin.assert:
     that:
       - ansible_distribution == 'Debian'
+
+- name: "Get system hostname"
+  ansible.builtin.command: hostname
+  register: system_hostname
+  changed_when: false
+
+- name: "Set hostname fact"
+  ansible.builtin.set_fact:
+    ansible_hostname: "{{ system_hostname.stdout }}"
+
+- name: "Check if host_vars/<hostname>.yml file exists"
+  ansible.builtin.stat:
+    path: "host_vars/{{ ansible_hostname }}.yml"
+  register: host_vars_file
+
+- name: "Prompt for continuation if file doesn't exist"
+  ansible.builtin.pause:
+    prompt: "host_vars/{{ ansible_hostname }}.yml doesn't exist. Press ENTER to continue or Ctrl+C to abort"
+  when: not host_vars_file.stat.exists
+
+- name: "Load host-specific variables if available"
+  ansible.builtin.include_vars: "host_vars/{{ ansible_hostname }}.yml"
+  when: host_vars_file.stat.exists
 
 - name: "Update collection community.general to latest"
   community.general.ansible_galaxy_install:
