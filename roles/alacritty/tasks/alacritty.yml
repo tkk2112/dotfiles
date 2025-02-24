@@ -1,0 +1,113 @@
+- name: Get installed Alacritty version
+  ansible.builtin.shell:
+    cmd: "set -o pipefail && alacritty --version | cut -d ' ' -f2"
+    executable: /bin/bash
+  register: alacritty_current_version
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+
+- name: Define version comparison facts
+  ansible.builtin.set_fact:
+    alacritty_current: "{{ alacritty_current_version.stdout | default('0.0.0', true) }}"
+    alacritty_required: "{{ alacritty_min_version }}"
+
+- name: Create build directory
+  ansible.builtin.file:
+    path: "{{ alacritty_build_path }}"
+    state: directory
+    mode: '0755'
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Remove outdated binary
+  ansible.builtin.file:
+    path: /usr/local/bin/alacritty
+    state: absent
+  become: true
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Install build dependencies
+  ansible.builtin.apt:
+    name:
+      - cmake
+      - g++
+      - pkg-config
+      - libfreetype-dev
+      - libfontconfig1-dev
+      - libxcb-xfixes0-dev
+      - libxkbcommon-dev
+      - python3
+    state: present
+  become: true
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Clone source repository
+  ansible.builtin.git:
+    repo: "{{ alacritty_repo }}"
+    dest: "{{ alacritty_build_path }}"
+    version: "{{ alacritty_git_tag }}"
+    single_branch: true
+  register: alacritty_repo
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Set Rust toolchain to stable
+  ansible.builtin.shell: |
+    source "$HOME/.cargo/env"
+    rustup override set stable
+  args:
+    chdir: "{{ alacritty_build_path }}"
+    executable: /bin/bash
+  changed_when: alacritty_repo.changed
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Compile Alacritty
+  ansible.builtin.shell: |
+    source "$HOME/.cargo/env"
+    cargo build --release
+  args:
+    chdir: "{{ alacritty_build_path }}"
+    creates: "{{ alacritty_build_path }}/target/release/alacritty"
+    executable: /bin/bash
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Deploy binary and resources
+  ansible.builtin.shell: |
+    cp target/release/alacritty /usr/local/bin/
+    cp extra/logo/alacritty-term.svg /usr/share/pixmaps/Alacritty.svg
+    desktop-file-install extra/linux/Alacritty.desktop
+    update-desktop-database
+  args:
+    chdir: "{{ alacritty_build_path }}"
+    executable: /bin/bash
+    creates: /usr/local/bin/alacritty
+  become: true
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Clean up build directory
+  ansible.builtin.file:
+    path: "{{ alacritty_build_path }}"
+    state: absent
+  when: alacritty_current is version(alacritty_required, '<')
+
+- name: Ensure configuration directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/alacritty"
+    state: directory
+    mode: '0755'
+
+- name: Symlink configuration files
+  ansible.builtin.file:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "{{ ansible_env.HOME }}/.config/alacritty/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ lookup('ansible.builtin.fileglob', role_path + '/files/*', wantlist=True) | map('basename') | list }}"
+
+- name: Generate host-specific font configuration
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.config/alacritty/local.toml"
+    content: |
+      [font]
+      size = {{ alacritty.font_size }}
+    mode: '0644'
+  when: alacritty.font_size is defined
