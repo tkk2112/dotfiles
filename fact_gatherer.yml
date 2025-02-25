@@ -23,7 +23,12 @@
 
 - name: "Determine current site based on detected gateway"
   ansible.builtin.set_fact:
-    current_site: "{% if detected_gateway == '10.0.10.1' %}se{% elif detected_gateway == '10.0.0.1' %}no{% else %}unknown{% endif %}"
+    current_site: >-
+      {{
+        'SWE' if detected_gateway == '10.0.10.1'
+        else 'NOR' if detected_gateway == '10.0.0.1'
+        else 'unknown'
+      }}
 
 - name: "Show current site and gateway"
   ansible.builtin.debug:

@@ -10,7 +10,7 @@
     path: "/etc/systemd/resolved.conf"
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR resolved.conf"
     block: |
-      {% if current_site == 'se' %}DNS=10.0.10.101 10.0.0.11{% else %}DNS=10.0.0.11 10.0.10.101{% endif %}
+      {% if current_site == 'SWE' %}DNS=10.0.10.101 10.0.0.11{% else %}DNS=10.0.0.11 10.0.10.101{% endif %}
 
       Domains=local
       MulticastDNS=no
@@ -40,12 +40,12 @@
     path: "/etc/zsh/zprofile"
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR DISPLAY"
     block: |
-      {% if current_site == 'se' %}
+      {% if current_site == 'SWE' %}
       export DISPLAY=10.0.10.2:0.0
-      {% elif current_site == 'no' %}
+      {% elif current_site == 'NOR' %}
       export DISPLAY=10.0.0.2:0.0
       {% endif %}
   become: true
   when:
-    - current_site in ['se', 'no']
+    - current_site in ['SWE', 'NOR']
     - internal | bool
