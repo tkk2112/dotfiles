@@ -15,11 +15,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Enable caching
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -42,7 +37,7 @@ jobs:
 
       - name: Run linter
         run: |
-          curl -LsSf "https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh" | sh -s -- --lint-only
+          curl -LsSf "https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh" | sh -s -- --only-lint
 
       - name: Run playbook
         run: |
