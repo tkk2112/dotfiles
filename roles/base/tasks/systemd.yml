@@ -1,3 +1,9 @@
+- name: Ensure systemd user directory exists
+  ansible.builtin.file:
+    path: "~/.config/systemd/user"
+    state: directory
+    mode: "0700"
+
 - name: Enable service systemd-resolved
   ansible.builtin.systemd_service:
     name: systemd-resolved
