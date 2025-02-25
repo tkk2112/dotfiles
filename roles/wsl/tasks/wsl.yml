@@ -12,8 +12,10 @@
     block: |
       {% if current_site == 'SWE' %}DNS=10.0.10.101 10.0.0.11{% else %}DNS=10.0.0.11 10.0.10.101{% endif %}
 
-      Domains=local
+      Domains=~local
+      LLMNR=no
       MulticastDNS=no
+      DNSStubListener=no
       ResolveUnicastSingleLabel=yes
 
   become: true
@@ -31,7 +33,10 @@
     dest: "/etc/hosts"
     content: |
       127.0.0.1       localhost
-      127.0.1.1       wsl.      wsl
+      127.0.0.1       wsl.local wsl
+      ::1             localhost ip6-localhost ip6-loopback
+      ff02::1         ip6-allnodes
+      ff02::2         ip6-allrouters
     mode: "0644"
   become: true
 
