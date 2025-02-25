@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  run:
+    name: "Run: ${{ matrix.task.name }} on ${{ matrix.os.name }}"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - name: debian:bookworm-slim
+            image: debian:bookworm-slim
+            apt_pkgs: "curl sudo"
+          - name: debian:testing-slim
+            image: debian:testing-slim
+            continue-on-error: true
+          - name: ubuntu:22.04
+            image: ubuntu:22.04
+            continue-on-error: true
+        task:
+          - name: linter
+            setup_args: "--only-lint"
+          - name: playbook
+            setup_args: "--skip-lint -v"
+            sh_args: "-x "
+        exclude:
+          - os: ubuntu
+            task: playbook
+    container:
+      image: ${{ matrix.os.image }}
+      options: --entrypoint /bin/bash
+    steps:
+      - name: Install dependencies and add user
+        env:
+          APT_PKGS: ${{ matrix.os.apt_pkgs || 'curl sudo' }}
+          USERNAME: "newuser"
+        run: |
+          set -x
+          apt update && apt install -y ${APT_PKGS}
+          useradd -ms /bin/bash ${USERNAME}
+          echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - name: Run setup script as new user
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          SETUP_ARGS: ${{ matrix.task.setup_args }}
+          SH_ARGS: ${{ matrix.task.sh_args || '' }}
+          USERNAME: "newuser"
+        run: |
+          su - ${USERNAME} -c "set -x; curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
+
+  verify-url:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify url shortener is pointing to latest setup.sh
+        run: |
+          GITHUB_URL="https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/main/setup.sh"
+          CUSTOM_URL=$(grep -oP '(?<=curl -LsSf )[^|]+' README.md | tr -d ' ')
+
+          # Get content from both URLs
+          GITHUB_CONTENT=$(curl -Ls "$GITHUB_URL")
+          CUSTOM_CONTENT=$(curl -Ls "$CUSTOM_URL")
+
+          if [ "$GITHUB_CONTENT" != "$CUSTOM_CONTENT" ]; then
+            echo "Error: Custom URL content differs from GitHub URL content"
+            exit 1
+          fi
