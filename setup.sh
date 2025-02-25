@@ -1,4 +1,8 @@
-#!/bin/sh
+#!/bin/sh -x
+
+ls -l /etc/apt/sources.list*
+
+exit 0
 
 show_help() {
   cat <<EOF
