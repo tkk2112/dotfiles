@@ -13,25 +13,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Ansible
+      - name: Set branch name
+        id: set_branch
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible
-
-      - name: Check Ansible script syntax
-        run: |
-          ansible-playbook --syntax-check playbook.yml
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+          else
+            echo "BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
 
       - name: Run linter
         run: |
-          shellcheck setup.sh
+          curl -LsSf "https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh" | sh -x -s -- --lint-only
 
-      - name: Test running directly from github
+      - name: Run playbook
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BRANCH="${{ github.event.pull_request.head.ref }}"
-          else
-            BRANCH="${{ github.ref_name }}"
-          fi
-          echo "Testing setup script from branch: $BRANCH"
-          curl -LsSf "https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh" | sh
+          curl -LsSf "https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh" | sh -x -s -- --skip-lint -v
