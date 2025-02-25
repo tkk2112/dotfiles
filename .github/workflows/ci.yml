@@ -11,8 +11,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+
+      - name: Enable caching
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -21,6 +27,8 @@ jobs:
 
       - name: Install packages
         shell: bash
+        env:
+              UV_SYSTEM_PYTHON: 1
         run: |
             uv pip install ansible ansible-lint
 
