@@ -104,7 +104,10 @@
       Environment="RCLONE_USER_TARGET_DIRECTORY=%h/ProtonDrive"
       Environment="RCLONE_VFS_CACHE_MODE=full"
       ExecStartPre=/usr/bin/mkdir -p ${RCLONE_USER_TARGET_DIRECTORY}
-      ExecStart={{ gopath }}/bin/rclone --log-level=${RCLONE_LOG_LEVEL} --vfs-cache-mode ${RCLONE_VFS_CACHE_MODE} mount ${RCLONE_USER_SOURCE_NAME}:${RCLONE_USER_SOURCE_DIRECTORY} ${RCLONE_USER_TARGET_DIRECTORY}
+      ExecStart={{ gopath }}/bin/rclone \
+        --log-level=${RCLONE_LOG_LEVEL} \
+        --vfs-cache-mode ${RCLONE_VFS_CACHE_MODE} \
+        mount ${RCLONE_USER_SOURCE_NAME}:${RCLONE_USER_SOURCE_DIRECTORY} ${RCLONE_USER_TARGET_DIRECTORY}
       ExecStop=/usr/bin/fusermount -uz ${RCLONE_USER_TARGET_DIRECTORY}
       Restart=on-failure
       RestartSec=5
