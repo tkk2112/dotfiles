@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 # Helper function to show usage information
-function show_help() {
+show_help() {
   cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
 
@@ -30,20 +30,27 @@ EOF
 
 skip_lint=false
 lint_only=false
-declare -a ansible_args=()
-for arg in "$@"; do
-  if [[ "$arg" == "--help" ]]; then
-    show_help
-    exit 0
-  elif [[ "$arg" == "--skip-lint" ]]; then
-    skip_lint=true
-  elif [[ "$arg" == "--only-lint" ]]; then
-    lint_only=true
-  else
-    ansible_args+=("$arg")
-  fi
+ansible_args=""
+
+# Process arguments
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help)
+      show_help
+      exit 0
+      ;;
+    --skip-lint)
+      skip_lint=true
+      ;;
+    --only-lint)
+      lint_only=true
+      ;;
+    *)
+      ansible_args="$ansible_args $1"
+      ;;
+  esac
+  shift
 done
-set -- "${ansible_args[@]}"  # Replace original args with filtered args
 
 # Ensure Ansible is installed
 if ! command -v ansible >/dev/null 2>&1; then
@@ -67,15 +74,13 @@ mkdir -p ~/.ansible/fact_cache
 mkdir -p ~/.ansible/retry_files
 
 # Navigate to the directory containing this script
-pushd "$(dirname "$0")" > /dev/null || exit
-repo=$(pwd)
-popd > /dev/null || exit
+script_dir=$(cd "$(dirname "$0")" && pwd)
+repo="$script_dir"
 
 if [ "$skip_lint" = false ]; then
   # Validate Ansible playbooks and roles with ansible-lint
   echo "Validating Ansible playbooks and roles with ansible-lint..."
-  ansible-lint "$repo/playbook.yml"
-  if [[ $? -ne 0 ]]; then
+  if ! ansible-lint "$repo/playbook.yml"; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -91,25 +96,16 @@ else
   extra_args="--ask-become-pass"
 fi
 
-declare -a vars=()
-
+# Handle git variables
 if command -v git >/dev/null 2>&1; then
   git_name=$(git config --global user.name)
   git_email=$(git config --global user.email)
-
-  if [[ -n "${git_name}" ]]; then
-    vars+=("\"git_user_name\":\"${git_name}\"")
-  fi
-
-  if [[ -n "${git_email}" ]]; then
-    vars+=("\"git_user_email\":\"${git_email}\"")
+  
+  if [ -n "$git_name" ] && [ -n "$git_email" ]; then
+    extra_vars="{\"git_user_name\":\"$git_name\",\"git_user_email\":\"$git_email\"}"
+    extra_args="$extra_args --extra-vars '$extra_vars'"
   fi
 fi
 
-# Convert array to JSON object and handle as a single argument
-if [ ${#vars[@]} -ne 0 ]; then
-  extra_args="${extra_args:+$extra_args }--extra-vars '{$(IFS=,; echo "${vars[*]}")}'"
-fi
-
-# Run the Ansible playbook with any additional arguments passed to this script
-eval "cd '${repo}'; ANSIBLE_CONFIG='${repo}/ansible.cfg' ansible-playbook ${extra_args} '${repo}/playbook.yml' $*"
+# Run the Ansible playbook
+cd "$repo" && ANSIBLE_CONFIG="$repo/ansible.cfg" eval "ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
