@@ -74,15 +74,51 @@
   when: not rclone_config.stat.exists or (token_check.rc != 0)
   changed_when: false
 
-- name: Create sync script
-  ansible.builtin.copy:
-    dest: "~/sync-protondrive.sh"
-    content: |
-      #!/bin/bash
-      rclone sync /path/to/local/folder protondrive:remote/folder --progress
-    mode: "0755"
-
 - name: Ensure rclone config has correct permissions
   ansible.builtin.file:
     path: "~/.config/rclone/rclone.conf"
     mode: "0600"
+
+- name: Create ProtonDrive directory
+  ansible.builtin.file:
+    path: "~/ProtonDrive"
+    state: directory
+    mode: "0700"
+
+- name: Create systemd service for ProtonDrive mount
+  ansible.builtin.copy:
+    dest: "~/.config/systemd/user/protondrive.service"
+    content: |
+      [Unit]
+      Description=Rclone mount service
+      After=network.target
+      Wants=network-online.target
+      StartLimitIntervalSec=300
+      StartLimitBurst=3
+
+      [Service]
+      Type=simple
+      Environment="RCLONE_LOG_LEVEL=INFO"
+      Environment="RCLONE_USER_SOURCE_NAME=protondrive"
+      Environment="RCLONE_USER_SOURCE_DIRECTORY="
+      Environment="RCLONE_USER_TARGET_DIRECTORY=%h/ProtonDrive"
+      Environment="RCLONE_VFS_CACHE_MODE=full"
+      ExecStartPre=/usr/bin/mkdir -p ${RCLONE_USER_TARGET_DIRECTORY}
+      ExecStart={{ gopath }}/bin/rclone --log-level=${RCLONE_LOG_LEVEL} --vfs-cache-mode ${RCLONE_VFS_CACHE_MODE} mount ${RCLONE_USER_SOURCE_NAME}:${RCLONE_USER_SOURCE_DIRECTORY} ${RCLONE_USER_TARGET_DIRECTORY}
+      ExecStop=/usr/bin/fusermount -uz ${RCLONE_USER_TARGET_DIRECTORY}
+      Restart=on-failure
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+
+      [Install]
+      WantedBy=default.target
+    mode: "0644"
+
+- name: Enable and start ProtonDrive service
+  ansible.builtin.systemd:
+    name: protondrive
+    enabled: true
+    state: started
+    scope: user
+    daemon_reload: true
