@@ -8,18 +8,18 @@
 
 - name: Ensure rclone config directory exists
   ansible.builtin.file:
-    path: "~/.config/rclone"
+    path: "{{ ansible_env.HOME }}/.config/rclone"
     state: directory
     mode: "0700"
 
 - name: Check if rclone config exists
   ansible.builtin.stat:
-    path: "~/.config/rclone/rclone.conf"
+    path: "{{ ansible_env.HOME }}/.config/rclone/rclone.conf"
   register: rclone_config
 
 - name: Check for client_access_token in config
   ansible.builtin.command:
-    cmd: grep -q "client_access_token" ~/.config/rclone/rclone.conf
+    cmd: grep -q "client_access_token" {{ ansible_env.HOME }}/.config/rclone/rclone.conf
   register: token_check
   failed_when: false
   changed_when: false
@@ -27,7 +27,7 @@
 
 - name: Configure rclone for ProtonDrive
   ansible.builtin.copy:
-    dest: "~/.config/rclone/rclone.conf"
+    dest: "{{ ansible_env.HOME }}/.config/rclone/rclone.conf"
     content: |
       [protondrive]
       type = protondrive
@@ -76,49 +76,62 @@
 
 - name: Ensure rclone config has correct permissions
   ansible.builtin.file:
-    path: "~/.config/rclone/rclone.conf"
+    path: "{{ ansible_env.HOME }}/.config/rclone/rclone.conf"
     mode: "0600"
 
-- name: Create ProtonDrive directory
-  ansible.builtin.file:
-    path: "~/ProtonDrive"
-    state: directory
-    mode: "0700"
-
-- name: Create systemd service for ProtonDrive mount
+- name: Add .proton_sync file
   ansible.builtin.copy:
-    dest: "~/.config/systemd/user/protondrive.service"
+    dest: "{{ ansible_env.HOME }}/.proton_sync"
+    content: "{{ proton_sync_content }}"
+    mode: "0600"
+    force: false
+
+- name: Symlink sync script
+  ansible.builtin.file:
+    src: "{{ role_path }}/files/proton-sync.sh"
+    dest: "{{ ansible_env.HOME }}/.local/bin/proton-sync.sh"
+    state: link
+    force: true
+
+- name: Create proton-sync.timer service
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.config/systemd/user/proton-sync.timer"
     content: |
       [Unit]
-      Description=Rclone mount service
-      After=network.target
-      Wants=network-online.target
-      StartLimitIntervalSec=300
-      StartLimitBurst=3
+      Description=Periodic ProtonDrive sync
+
+      [Timer]
+      OnBootSec={{ proton_drive_rclone_run_delay_after_boot }}
+      OnUnitActiveSec={{ proton_drive_rclone_rerun_delay }}
+
+      [Install]
+      WantedBy=timers.target
+    mode: "0644"
+  notify:
+    - Enable and start proton-sync services
+    - Reload proton-sync services
+
+- name: Create proton-sync.service
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.config/systemd/user/proton-sync.service"
+    content: |
+      [Unit]
+      Description=ProtonDrive sync service
 
       [Service]
-      Type=simple
-      Environment="RCLONE_LOG_LEVEL=INFO"
-      Environment="RCLONE_USER_SOURCE_NAME=protondrive"
-      Environment="RCLONE_USER_SOURCE_DIRECTORY="
-      Environment="RCLONE_USER_TARGET_DIRECTORY=%h/ProtonDrive"
-      Environment="RCLONE_VFS_CACHE_MODE=full"
-      ExecStartPre=/usr/bin/mkdir -p ${RCLONE_USER_TARGET_DIRECTORY}
-      ExecStart={{ gopath }}/bin/rclone --log-level=${RCLONE_LOG_LEVEL} --vfs-cache-mode ${RCLONE_VFS_CACHE_MODE} mount ${RCLONE_USER_SOURCE_NAME}:${RCLONE_USER_SOURCE_DIRECTORY} ${RCLONE_USER_TARGET_DIRECTORY}
-      ExecStop=/usr/bin/fusermount -uz ${RCLONE_USER_TARGET_DIRECTORY}
-      Restart=on-failure
-      RestartSec=5
+      Type=oneshot
+      ExecStart=%h/.local/bin/proton-sync.sh
       StandardOutput=journal
       StandardError=journal
 
       [Install]
       WantedBy=default.target
     mode: "0644"
+  notify:
+    - Enable and start proton-sync services
+    - Reload proton-sync services
 
-- name: Enable and start ProtonDrive service
-  ansible.builtin.systemd:
-    name: protondrive
-    enabled: true
-    state: started
-    scope: user
-    daemon_reload: true
+- name: Set proton_drive_enabled fact
+  ansible.builtin.set_fact:
+    proton_drive_enabled: true
+    proton_drive_rclone: true

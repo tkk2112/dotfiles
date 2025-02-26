@@ -1,7 +1,20 @@
+- name: Check for ProtonDrive directory and config
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: proton_paths
+  with_items:
+    - "{{ ansible_env.HOME }}/ProtonDrive"
+    - "{{ ansible_env.HOME }}/.proton_sync"
+
+- name: Set ProtonDrive facts
+  ansible.builtin.set_fact:
+    proton_drive_dir_exists: "{{ proton_paths.results[0].stat.exists }}"
+    proton_sync_config_exists: "{{ proton_paths.results[1].stat.exists }}"
+
 - name: "Include ProtonDrive tasks"
   ansible.builtin.include_tasks: protondrive.yml
   when:
-    - not proton_drive_enabled | bool
+    - not proton_drive_dir_exists or proton_sync_config_exists
     - personal | bool
 
 - name: "Include ProtonPass tasks"
