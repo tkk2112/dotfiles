@@ -1,8 +1,8 @@
 - name: "Check distro"
-  tags: always
   ansible.builtin.assert:
     that:
-      - ansible_distribution == 'Debian'
+      - ansible_distribution in ['Debian', 'Ubuntu']
+    fail_msg: "This playbook is only for Debian-based systems"
 
 - name: "Get system hostname"
   ansible.builtin.command: hostname
