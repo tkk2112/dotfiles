@@ -5,7 +5,7 @@
     mode: "0755"
 
 - name: Install rustup
-  ansible.builtin.shell: /tmp/rustup-init.sh -y
+  ansible.builtin.shell: /tmp/rustup-init.sh -y --no-modify-path --profile minimal
   args:
     creates: "{{ ansible_env.HOME }}/.cargo/bin/rustup"
     executable: /bin/bash
