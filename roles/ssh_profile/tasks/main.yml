@@ -1,3 +1,5 @@
 - name: "Include ssh_profile tasks"
   ansible.builtin.include_tasks: ssh_profile.yml
-  when: proton_drive_enabled | bool
+  when:
+    - proton_drive_enabled | bool
+    - personal | bool

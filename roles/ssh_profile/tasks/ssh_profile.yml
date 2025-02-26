@@ -4,6 +4,13 @@
     state: directory
     mode: "0700"
 
+- name: Run proton-sync systemd user service once
+  ansible.builtin.systemd:
+    name: proton-sync
+    state: started
+    scope: user
+  when: proton_drive_rclone | bool
+
 - name: Check if protondrive directory exists
   ansible.builtin.stat:
     path: "{{ ssh_profile_protondrive_dir }}"
