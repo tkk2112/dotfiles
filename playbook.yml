@@ -24,7 +24,7 @@
     - tmux
     - gpg
     - fonts
-    - gdb
+    # - gdb
     - wsl
     - proton
     - desktop
