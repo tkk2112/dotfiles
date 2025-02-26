@@ -55,17 +55,17 @@ done
 # Ensure Ansible is installed
 if ! command -v ansible >/dev/null 2>&1; then
   echo "Ansible not found. Installing..."
-  sudo apt update
-  sudo apt install -y software-properties-common
-  sudo apt-add-repository -y ppa:ansible/ansible
-  sudo apt update
-  sudo apt install -y ansible
+  sudo DEBIAN_FRONTEND=noninteractive apt -qq update < /dev/null > /dev/null
+  sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y apt-utils python3-launchpadlib software-properties-common < /dev/null > /dev/null
+  sudo DEBIAN_FRONTEND=noninteractive apt-add-repository -y ppa:ansible/ansible < /dev/null > /dev/null
+  sudo DEBIAN_FRONTEND=noninteractive apt -qq update < /dev/null > /dev/null
+  sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y ansible < /dev/null > /dev/null
 fi
 
 # Ensure ansible-lint is installed
 if ! command -v ansible-lint >/dev/null 2>&1; then
   echo "ansible-lint not found. Installing..."
-  sudo apt install -y ansible-lint
+  sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y ansible-lint < /dev/null > /dev/null
 fi
 
 # Create directories for caching and retry files
