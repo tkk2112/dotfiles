@@ -1,4 +1,4 @@
-- name: "Debian System Setup"
+- name: "Debian-based System Setup"
   hosts: all
   pre_tasks:
     - name: "Include pre_tasks"
