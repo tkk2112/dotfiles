@@ -9,7 +9,7 @@
     name: proton-sync
     state: started
     scope: user
-  when: proton_drive_rclone | bool
+  when: proton_drive_rclone is defined and proton_drive_rclone | bool
 
 - name: Check if protondrive directory exists
   ansible.builtin.stat:
