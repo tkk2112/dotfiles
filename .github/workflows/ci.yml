@@ -34,6 +34,13 @@ jobs:
       image: ${{ matrix.os.image }}
       options: --entrypoint /bin/bash
     steps:
+      - name: Set commit variable
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "COMMIT=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          else
+            echo "COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+          fi
       - name: Install dependencies and add user
         env:
           APT_PKGS: ${{ matrix.os.apt_pkgs || 'curl sudo' }}
@@ -46,12 +53,11 @@ jobs:
 
       - name: Run setup script as new user
         env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
           SETUP_ARGS: ${{ matrix.task.setup_args }}
           SH_ARGS: ${{ matrix.task.sh_args || '' }}
           USERNAME: "newuser"
         run: |
-          su - ${USERNAME} -c "set -x; curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/${BRANCH}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
+          su - ${USERNAME} -c "set -x; curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
 
   verify-url:
     runs-on: ubuntu-latest
