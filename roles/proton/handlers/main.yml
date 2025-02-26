@@ -1,0 +1,20 @@
+- name: Reload proton-sync services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+    scope: user
+  with_items:
+    - proton-sync.service
+    - proton-sync.timer
+
+- name: Enable and start proton-sync services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+    scope: user
+  with_items:
+    - proton-sync.service
+    - proton-sync.timer
