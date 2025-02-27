@@ -28,10 +28,9 @@
   when: host_vars_file.stat.exists
 
 - name: "Update collection community.general to latest"
-  community.general.ansible_galaxy_install:
-    type: collection
-    name: community.general
-    state: latest
+  ansible.builtin.command:
+    cmd: ansible-galaxy collection install community.general --upgrade --force
+  changed_when: true
 
 - name: "Add NOPASSWD Entry for User"
   community.general.sudoers:
