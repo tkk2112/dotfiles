@@ -1,0 +1,126 @@
+---
+# .ansible-lint
+
+profile: null
+
+exclude_paths:
+  - .git
+  - .github
+  - .vscode
+
+parseable: true
+strict: true
+verbosity: 0
+quiet: false
+
+enable_list:
+  # min
+  - internal-error
+  - load-failure
+  - parser-error
+  - syntax-check
+
+  # basic
+  - command-instead-of-module
+  - command-instead-of-shell
+  - deprecated-bare-vars
+  - deprecated-local-action
+  - deprecated-module
+  - inline-env-var
+  - key-order
+  - literal-compare
+  - jinja
+  - no-free-form
+  - no-jinja-when
+  - no-tabs
+  - partial-become
+  - playbook-extension
+  - role-name
+  - schema
+  - name
+  - var-naming
+  - yaml
+
+  # moderate
+  - name[template]
+  - name[imperative]
+  - name[casing]
+  - spell-var-name
+
+  # safety
+  - avoid-implicit
+  - latest
+  - package-latest
+  - risky-file-permissions
+  - risky-octal
+  - risky-shell-pipe
+
+  # shared
+  - galaxy
+  - ignore-errors
+  - layout
+  - meta-incorrect
+  - meta-no-tags
+  - meta-video-links
+  - meta-version
+  - meta-runtime
+  - no-changed-when
+  - no-handler
+  - no-relative-paths
+  - max-block-depth
+  - max-tasks
+  - unsafe-loop
+
+  # production
+  - avoid-dot-notation
+  - sanity
+  - fqcn
+  - import-task-no-when
+  - meta-no-dependencies
+  - single-entry-point
+  - use-loop
+
+  - args
+  - complexity
+  - empty-string-compare
+  - experimental
+  - galaxy-version-incorrect
+  - no-log-password
+  - no-same-owner
+  - only-builtins
+
+# Ansible-lint does not fail on warnings from the rules or tags listed below
+warn_list:
+  - skip_this_tag
+  - experimental # experimental is included in the implicit list
+  # - role-name
+  # - yaml[document-start]  # you can also use sub-rule matches
+
+# Some rules can transform files to fix (or make it easier to fix) identified
+# errors. `ansible-lint --fix` will reformat YAML files and run these transforms.
+# By default it will run all transforms (effectively `write_list: ["all"]`).
+# You can disable running transforms by setting `write_list: ["none"]`.
+# Or only enable a subset of rule transforms by listing rules/tags here.
+# write_list:
+#   - all
+
+offline: false
+
+# List of additional kind:pattern to be added at the top of the default
+# match list, first match determines the file kind.
+kinds:
+  - tasks: "**/tasks/*.yml"
+  - default: "**/default/main.yml"
+  - meta: "**/meta/main.yml"
+  - yaml: "**/*.yaml-too"
+
+# List of additions modules to allow in only-builtins rule.
+only_builtins_allow_modules:
+  - community.general.git_config
+
+# Limit the depth of the nested blocks:
+max_block_depth: 20
+
+# Also recognize these versions of Ansible as supported:
+supported_ansible_also:
+  - "2.18"
