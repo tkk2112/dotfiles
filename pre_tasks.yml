@@ -27,11 +27,6 @@
   ansible.builtin.include_vars: "host_vars/{{ ansible_hostname }}.yml"
   when: host_vars_file.stat.exists
 
-- name: "Update collection community.general to latest"
-  ansible.builtin.command:
-    cmd: ansible-galaxy collection install community.general --upgrade --force
-  changed_when: true
-
 - name: "Add NOPASSWD Entry for User"
   community.general.sudoers:
     name: "NOPASSWD-for-{{ ansible_user_id }}"
