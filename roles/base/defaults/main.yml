@@ -28,6 +28,3 @@ base_packages:
   - tldr
   - unzip
   - yamllint
-
-# Additional repository configuration for stable packages
-base_stable_repo: "deb http://deb.debian.org/debian stable main contrib"

@@ -1,18 +1,6 @@
-- name: Update APT sources for testing
-  ansible.builtin.replace:
-    path: /etc/apt/sources.list
-    regexp: "{{ ansible_distribution_release }}"
-    replace: "testing"
-  become: true
-  when: base_enable_testing
-
-- name: Configure stable APT repository
-  ansible.builtin.apt_repository:
-    repo: "{{ base_stable_repo }}"
-    state: present
-    filename: "stable"
-  become: true
-  when: base_enable_testing
+- name: Include repository tasks for {{ ansible_distribution }}
+  ansible.builtin.include_tasks:
+    file: "{{ ansible_distribution | lower }}.yml"
 
 - name: Update and upgrade system packages
   ansible.builtin.apt:
