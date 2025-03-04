@@ -185,8 +185,17 @@ main() {
 
   apply_extra_vars
 
+  cd "$repo" || exit 1
+
+  collections="community.general"
+  echo "Installing Ansible collections..."
+  for collection in $collections; do
+    echo "  - $collection"
+    ansible-galaxy collection install "$collection" --upgrade
+  done
+
   # Run the Ansible playbook
-  cd "$repo" && ANSIBLE_CONFIG="$repo/ansible.cfg" eval "ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
+  ANSIBLE_CONFIG="$repo/ansible.cfg" eval "ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
 }
 
 main "$@"
