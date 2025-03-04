@@ -106,7 +106,7 @@ create_ansible_directories() {
 run_ansible_linter() {
   repo="$1"
   echo "Validating Ansible playbooks and roles with ansible-lint..."
-  if ! ansible-lint "$repo/playbook.yml"; then
+  if ! ansible-lint --nocolor --config-file "$repo/.ansible-lint" "$repo/playbook.yml"; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
