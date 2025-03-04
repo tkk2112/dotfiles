@@ -6,19 +6,27 @@
   become: true
 
 - name: Configure LLVM base apt repository
-  ansible.builtin.apt_repository:
-    # yamllint disable-line rule:line-length
-    repo: "deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] {{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/ {{ 'llvm-toolchain' if base_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }} {{ llvm_apt_component }}"
+  ansible.builtin.deb822_repository:
+    name: llvm
+    types: deb
+    uris: "{{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/"
+    suites: "{{ 'llvm-toolchain' if base_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}"
+    components:
+      - "{{ llvm_apt_component }}"
+    signed_by: /etc/apt/keyrings/apt.llvm.org.asc
     state: present
-    filename: llvm
   become: true
 
 - name: Add LLVM version-specific repositories
-  ansible.builtin.apt_repository:
-    # yamllint disable-line rule:line-length
-    repo: "deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] {{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/ {{ 'llvm-toolchain' if base_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}-{{ item }} {{ llvm_apt_component }}"
+  ansible.builtin.deb822_repository:
+    name: "llvm-{{ item }}"
+    types: deb
+    uris: "{{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/"
+    suites: "{{ 'llvm-toolchain' if base_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}-{{ item }}"
+    components:
+      - "{{ llvm_apt_component }}"
+    signed_by: /etc/apt/keyrings/apt.llvm.org.asc
     state: present
-    filename: "llvm-{{ item }}"
   loop: "{{ llvm_versions }}"
   become: true
 
