@@ -14,21 +14,17 @@ jobs:
         os:
           - name: debian:bookworm
             image: debian:bookworm
-          # - name: debian:testing
-          #   image: debian:testing
-          #   continue-on-error: true
-          # - name: ubuntu:24.04
-          #   image: ubuntu:24.04
-          #   continue-on-error: true
+          - name: debian:testing
+            image: debian:testing
+            continue-on-error: true
+          - name: ubuntu:24.04
+            image: ubuntu:24.04
+            continue-on-error: true
         task:
           - name: linter
             setup_args: "--only-lint"
           - name: playbook
             setup_args: "--skip-lint -v"
-            sh_args: "-x "
-        exclude:
-          - os: ubuntu
-            task: playbook
     container:
       image: ${{ matrix.os.image }}
       # volumes:
