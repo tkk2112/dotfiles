@@ -4,6 +4,5 @@ all:
     internal: false
     personal: false
     ansible_connection: local
-    ansible_python_interpreter: /usr/bin/python3
   hosts:
     localhost:
