@@ -96,7 +96,7 @@ setup_environment() {
 ###############################################################################
 uv_python_setup() {
   local desired_python=${1:-python}
-  
+
   # Select the desired Python version.
   select_python "$desired_python" || return 1
 
@@ -119,6 +119,3 @@ uv_python_setup() {
 #   uv_python_setup
 #
 # to use the default "python" interpreter.
-
-
-

@@ -12,4 +12,3 @@ tm() {
     fi
     tmux attach-session -t "$session"
 }
-

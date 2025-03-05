@@ -2,4 +2,3 @@
 darwin() {
   [[ "$OSTYPE" == "darwin"* ]]
 }
-
