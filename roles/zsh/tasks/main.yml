@@ -4,12 +4,47 @@
     state: present
   become: true
 
-- name: Install Oh My Zsh and Powerlevel10k theme
-  ansible.builtin.shell: |
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    git clone --depth=1 https://gitee.com/romkatv/powerlevel10k.git {{ ansible_env.HOME }}/powerlevel10k
-  args:
-    creates: "{{ ansible_env.HOME }}/.oh-my-zsh"
+- name: Install Oh My Zsh # noqa: latest
+  ansible.builtin.git:
+    repo: https://github.com/ohmyzsh/ohmyzsh.git
+    dest: ~/.oh-my-zsh
+    depth: 1
+
+- name: Install zsh-autosuggestions plugin # noqa: latest
+  ansible.builtin.git:
+    repo: https://github.com/zsh-users/zsh-autosuggestions
+    dest: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+    depth: 1
+
+- name: Install zsh-completions plugin # noqa: latest
+  ansible.builtin.git:
+    repo: https://github.com/zsh-users/zsh-completions
+    dest: ~/.oh-my-zsh/custom/plugins/zsh-completions
+    depth: 1
+
+- name: Install zsh-syntax-highlighting plugin # noqa: latest
+  ansible.builtin.git:
+    repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
+    dest: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+    depth: 1
+
+- name: Install autoupdate-zsh-plugin # noqa: latest
+  ansible.builtin.git:
+    repo: https://github.com/TamCore/autoupdate-oh-my-zsh-plugins
+    dest: ~/.oh-my-zsh/custom/plugins/autoupdate
+    depth: 1
+
+- name: Install Powerline10k theme # noqa: latest
+  ansible.builtin.git:
+    repo: https://github.com/romkatv/powerlevel10k.git
+    dest: ~/.oh-my-zsh/custom/themes/powerlevel10k
+    depth: 1
+
+- name: Copy p10k.zsh
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/p10k.zsh"
+    dest: ~/.p10k.zsh
+    mode: "0644"
 
 - name: Symlink Zsh configuration files
   ansible.builtin.file:

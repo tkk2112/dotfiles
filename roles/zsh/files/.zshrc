@@ -2,6 +2,8 @@ source ~/.zsh/functions/darwin.zsh
 
 # Disable update prompt (Oh-My-Zsh setting)
 export DISABLE_UPDATE_PROMPT=true
+ZSH_CUSTOM_AUTOUPDATE_QUIET=true
+ZSH_CUSTOM_AUTOUPDATE_NUM_WORKERS=8
 
 zstyle :omz:plugins:ssh-agent agent-forwarding yes
 zstyle :omz:plugins:ssh-agent quiet yes:
@@ -26,15 +28,19 @@ plugins=(
   aliases
   command-not-found
   colored-man-pages
+  branch
   direnv
   fzf
-  gnu-utils
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  zsh-completions
   nmap
   rsync
   ssh-agent
   sudo
   uv
   virtualenv
+  autoupdate
 )
 if darwin; then
   plugins+=(macos brew)
@@ -70,9 +76,8 @@ if darwin; then
   # Google Cloud SDK
   source "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc"
   source "$(brew --prefix)/share/google-cloud-sdk/completion.zsh.inc"
-  source "$(brew --prefix)/opt/powerlevel10k/share/powerlevel10k/powerlevel10k.zsh-theme"
 else
-  source ~/powerlevel10k/powerlevel10k.zsh-theme
+  source ~/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme
 fi
 
 # Load Powerlevel10k configuration
