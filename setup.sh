@@ -108,14 +108,14 @@ install_or_update_uv() {
 }
 
 create_ansible_directories() {
-  mkdir -p ~/.ansible/cache
-  mkdir -p ~/.ansible/fact_cache
-  mkdir -p ~/.ansible/retry_files
+  mkdir -p .config/cache
+  mkdir -p .config/fact_cache
+  mkdir -p .config/retry_files
 }
 
 run_ansible_linter() {
   echo "Validating Ansible playbooks and roles with ansible-lint..."
-  if ! ~/.local/bin/uv run ansible-lint --nocolor --config-file .ansible-lint playbook.yml; then
+  if ! ~/.local/bin/uv run ansible-lint --nocolor --config-file ./.ansible-lint ./playbook.yml; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -201,7 +201,7 @@ main() {
 
   apply_extra_vars
 
-  ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
+  ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args ./playbook.yml $ansible_args"
 }
 
 main "$@"

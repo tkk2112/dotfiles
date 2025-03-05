@@ -4,5 +4,6 @@ all:
     internal: false
     personal: false
     ansible_connection: local
+    ansible_python_interpreter: auto_silent
   hosts:
     localhost:
