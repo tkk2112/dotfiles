@@ -18,6 +18,7 @@ base_packages:
   - htop
   - icdiff
   - jq
+  - nmap
   - nvtop
   - openssh-server
   - python3-argcomplete
