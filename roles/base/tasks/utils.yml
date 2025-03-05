@@ -6,7 +6,18 @@
 
 - name: Update tldr pages
   ansible.builtin.command: tldr -u
+  run_once: true
   changed_when: true
+
+- name: Add tldr update to crontab
+  ansible.builtin.cron:
+    name: "update tldr pages"
+    minute: "0"
+    hour: "0"
+    day: "*"
+    month: "*"
+    weekday: "0"
+    job: "/usr/bin/tldr -u > /dev/null"
 
 - name: Symlink .direnvrc configuration
   ansible.builtin.file:
