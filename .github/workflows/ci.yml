@@ -23,7 +23,6 @@ jobs:
         task:
           - name: linter
             setup_args: "--only-lint"
-            sh_args: "-x "
           - name: playbook
             setup_args: "--skip-lint -v"
             sh_args: "-x "
@@ -109,16 +108,19 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare container for setup script
+        run: |
+            cat > "script-$GITHUB_RUN_ID.sh" << 'EOF'
+            #!/bin/sh
+            DEBIAN_FRONTEND=noninteractive apt -qq update </dev/null >/dev/null
+            DEBIAN_FRONTEND=noninteractive apt -qq install -y apt-utils curl sudo curl </dev/null >/dev/null
+            useradd -m -s /bin/bash newuser
+            echo 'newuser ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+            su --login newuser -c 'curl -LsS https://link.m04r.space/dotfiles | sh'
+            EOF
+
       - name: Run setup script as advertised in README.md
-        env:
-          APT_PKGS: "apt-utils curl sudo"
-          USERNAME: "newuser"
-          DEBIAN_FRONTEND: "noninteractive"
         uses: docker://debian:latest
         with:
-          entrypoint: bash
-          args: >-
-            -c "apt -qq update </dev/null >/dev/null && apt -qq install -y ${APT_PKGS} </dev/null >/dev/null &&
-            useradd -m -s /bin/bash ${USERNAME} &&
-            echo '${USERNAME} ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers &&
-            su - ${USERNAME} -c 'curl -LsS https://link.m04r.space/dotfiles | sh'"
+          entrypoint: /bin/sh
+          args: script-${{ github.run_id }}.sh
