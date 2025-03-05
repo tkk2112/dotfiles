@@ -114,9 +114,8 @@ create_ansible_directories() {
 }
 
 run_ansible_linter() {
-  repo="$1"
   echo "Validating Ansible playbooks and roles with ansible-lint..."
-  if ! ~/.local/bin/uv run ansible-lint --nocolor --config-file "$repo/.ansible-lint" "$repo/playbook.yml"; then
+  if ! ~/.local/bin/uv run ansible-lint --nocolor --config-file .ansible-lint playbook.yml; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -166,15 +165,11 @@ main() {
     fi
   else
     repo="$script_dir"
-
-    cd "$repo" || exit 1
-    # Update repo if clean
-    if [ -z "$(git status --porcelain)" ]; then
-      git pull --ff-only || echo "Failed to pull updates"
-    fi
   fi
 
-  cd "$repo" || exit 1
+  cd "$repo" || { echo "Error repo: $repo not found" && exit 1; }
+
+  git pull --ff-only || { echo "Failed to pull updates, repository may be dirty." && git status --porcelain; }
   ~/.local/bin/uv sync --link-mode=copy
   ~/.local/bin/uv run pre-commit install
 
@@ -185,7 +180,7 @@ main() {
   create_ansible_directories
 
   if ! has_flag $skip_lint; then
-    run_ansible_linter "$repo"
+    run_ansible_linter
 
     if has_flag $only_lint; then
       exit 0
@@ -199,8 +194,6 @@ main() {
 
   apply_extra_vars
 
-  cd "$repo" || exit 1
-
   collections="community.general"
   echo "Installing Ansible collections..."
   for collection in $collections; do
@@ -209,7 +202,7 @@ main() {
   done
 
   # Run the Ansible playbook
-  ANSIBLE_CONFIG="$repo/ansible.cfg" eval "$HOME/.local/bin/uv run ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
+  ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
 }
 
 main "$@"
