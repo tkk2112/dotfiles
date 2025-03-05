@@ -20,6 +20,7 @@ base_packages:
   - jq
   - nvtop
   - openssh-server
+  - python3-argcomplete
   - shellcheck
   - shfmt
   - silversearcher-ag
