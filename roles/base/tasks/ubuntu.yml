@@ -1,0 +1,18 @@
+- name: Add repositories for {{ ansible_distribution_release }}
+  ansible.builtin.deb822_repository:
+    name: ubuntu
+    types: deb
+    uris: http://archive.ubuntu.com/ubuntu/
+    suites:
+      - "{{ ansible_distribution_release }}"
+      - "{{ ansible_distribution_release }}-updates"
+      - "{{ ansible_distribution_release }}-backports"
+      - "{{ ansible_distribution_release }}-security"
+    components:
+      - main
+      - universe
+      - restricted
+      - multiverse
+    signed_by: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+    enabled: true
+  become: true
