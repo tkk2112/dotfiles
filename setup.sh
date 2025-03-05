@@ -169,6 +169,8 @@ main() {
 
   cd "$repo" || { echo "Error repo: $repo not found" && exit 1; }
 
+  git remote -v | grep push | grep -q https && git remote set-url --push origin git@github.com:tkk2112/dotfiles.git
+
   git pull --ff-only || { echo "Failed to pull updates, repository may be dirty." && git status --porcelain; }
   ~/.local/bin/uv sync --link-mode=copy
   ~/.local/bin/uv run pre-commit install
