@@ -179,6 +179,13 @@ main() {
 
   create_ansible_directories
 
+  collections="community.general"
+  echo "Installing Ansible collections..."
+  for collection in $collections; do
+    echo "  - $collection"
+    ~/.local/bin/uv run ansible-galaxy collection install "$collection" --upgrade
+  done
+
   if ! has_flag $skip_lint; then
     run_ansible_linter
 
@@ -194,14 +201,6 @@ main() {
 
   apply_extra_vars
 
-  collections="community.general"
-  echo "Installing Ansible collections..."
-  for collection in $collections; do
-    echo "  - $collection"
-    ~/.local/bin/uv run ansible-galaxy collection install "$collection" --upgrade
-  done
-
-  # Run the Ansible playbook
   ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
 }
 
