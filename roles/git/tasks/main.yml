@@ -1,11 +1,11 @@
 - name: Configure git user info
   community.general.git_config:
-    name: "{{ item.name }}"
+    name: "user.{{ item.name }}"
     value: "{{ item.value }}"
     scope: global
   loop:
-    - { name: "user.name", value: "{{ git_user_name }}" }
-    - { name: "user.email", value: "{{ git_user_email }}" }
+    - { name: "name", value: "{{ git_user_name }}" }
+    - { name: "email", value: "{{ git_user_email }}" }
 
 - name: Configure git aliases
   community.general.git_config:
@@ -44,50 +44,25 @@
     # yamllint disable-line rule:line-length
     - { key: "sync", value: '!git pull --prune --quiet && git -P branch --format "%(refname:short) %(upstream:track)" | grep -F "[gone]" | sed "s/\[gone\]//g" | xargs -r git branch -D' }
 
-- name: Configure git pull
+- name: Configure git settings
   community.general.git_config:
-    name: "pull.rebase"
-    value: true
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
     scope: global
-
-- name: Configure git rebase
-  community.general.git_config:
-    name: "rebase.autoStash"
-    value: true
-    scope: global
-
-- name: Configure git branch
-  community.general.git_config:
-    name: "branch.autoSetupRebase"
-    value: "remote"
-    scope: global
-
-- name: Configure git push
-  community.general.git_config:
-    name: "push.default"
-    value: "upstream"
-    scope: global
-
-- name: Configure git push followTags
-  community.general.git_config:
-    name: "push.followTags"
-    value: true
-    scope: global
-
-- name: Configure git init
-  community.general.git_config:
-    name: "init.defaultBranch"
-    value: "main"
-    scope: global
-
-- name: Configure git status
-  community.general.git_config:
-    name: "status.submoduleSummary"
-    value: true
-    scope: global
-
-- name: Configure git advice
-  community.general.git_config:
-    name: "advice.skippedCherryPicks"
-    value: false
-    scope: global
+  loop:
+    - { name: "advice.detachedHead", value: false }
+    - { name: "advice.skippedCherryPicks", value: false }
+    - { name: "blame.ignoreRevsFile", value: ".git-blame-ignore-revs" }
+    - { name: "blame.markIgnoredLines", value: true }
+    - { name: "blame.markUnblamableLines", value: true }
+    - { name: "branch.autoSetupRebase", value: "remote" }
+    - { name: "core.fsmonitor", value: true }
+    - { name: "fetch.prune", value: true }
+    - { name: "fetch.writeCommitGraph", value: true }
+    - { name: "init.defaultBranch", value: "main" }
+    - { name: "pull.rebase", value: true }
+    - { name: "push.default", value: "upstream" }
+    - { name: "push.followTags", value: true }
+    - { name: "rebase.autoStash", value: true }
+    - { name: "status.submoduleSummary", value: true }
+    - { name: "user.useConfigOnly", value: true }
