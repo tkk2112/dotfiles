@@ -97,6 +97,16 @@ install_bin_package() {
   fi
 }
 
+install_or_update_uv() {
+  if ! command -v ~/.local/bin/uv >/dev/null 2>&1; then
+    echo "Installing 'uv'..."
+    curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh
+  else
+    echo "Updating 'uv'..."
+    ~/.local/bin/uv self update
+  fi
+}
+
 create_ansible_directories() {
   mkdir -p ~/.ansible/cache
   mkdir -p ~/.ansible/fact_cache
@@ -106,7 +116,7 @@ create_ansible_directories() {
 run_ansible_linter() {
   repo="$1"
   echo "Validating Ansible playbooks and roles with ansible-lint..."
-  if ! ansible-lint --nocolor --config-file "$repo/.ansible-lint" "$repo/playbook.yml"; then
+  if ! ~/.local/bin/uv run ansible-lint --nocolor --config-file "$repo/.ansible-lint" "$repo/playbook.yml"; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -130,6 +140,8 @@ apply_extra_vars() {
 main() {
   install_package "apt-utils"
   install_bin_package "git"
+
+  install_or_update_uv
 
   script_dir="$(cd "$(dirname "$0")" && pwd)"
 
@@ -155,11 +167,16 @@ main() {
   else
     repo="$script_dir"
 
+    cd "$repo" || exit 1
     # Update repo if clean
     if [ -z "$(git status --porcelain)" ]; then
       git pull --ff-only || echo "Failed to pull updates"
     fi
   fi
+
+  cd "$repo" || exit 1
+  ~/.local/bin/uv sync --link-mode=copy
+  ~/.local/bin/uv run pre-commit install
 
   extra_args="$(check_sudo_access)"
   ansible_args=""
@@ -168,15 +185,12 @@ main() {
   create_ansible_directories
 
   if ! has_flag $skip_lint; then
-    install_bin_package "ansible-lint"
     run_ansible_linter "$repo"
 
     if has_flag $only_lint; then
       exit 0
     fi
   fi
-
-  install_bin_package "ansible"
 
   git_name=$(git config --global user.name)
   add_extra_var "git_user_name" "$git_name"
@@ -191,11 +205,11 @@ main() {
   echo "Installing Ansible collections..."
   for collection in $collections; do
     echo "  - $collection"
-    ansible-galaxy collection install "$collection" --upgrade
+    ~/.local/bin/uv run ansible-galaxy collection install "$collection" --upgrade
   done
 
   # Run the Ansible playbook
-  ANSIBLE_CONFIG="$repo/ansible.cfg" eval "ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
+  ANSIBLE_CONFIG="$repo/ansible.cfg" eval "$HOME/.local/bin/uv run ansible-playbook $extra_args '$repo/playbook.yml' $ansible_args"
 }
 
 main "$@"
