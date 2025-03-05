@@ -1,0 +1,26 @@
+- name: Create tldr share directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/share/tldr"
+    state: directory
+    mode: "0755"
+
+- name: Check for existing tldr pages
+  ansible.builtin.find:
+    paths: "{{ ansible_env.HOME }}/.local/share/tldr"
+    file_type: any
+  register: tldr_files
+
+- name: Initial tldr pages download
+  ansible.builtin.command: tldr -u
+  changed_when: true
+  when: tldr_files.matched | int == 0
+
+- name: Add tldr update to crontab
+  ansible.builtin.cron:
+    name: "update tldr pages"
+    minute: "0"
+    hour: "0"
+    day: "*"
+    month: "*"
+    weekday: "0"
+    job: "/usr/bin/tldr -u > /dev/null"

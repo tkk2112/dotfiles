@@ -52,6 +52,10 @@
   ansible.builtin.import_tasks:
     file: systemd.yml
 
+- name: Include tldr tasks
+  ansible.builtin.import_tasks:
+    file: tldr.yml
+
 - name: Include miscellaneous utilities tasks
   ansible.builtin.import_tasks:
     file: utils.yml
