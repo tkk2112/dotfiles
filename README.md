@@ -1,5 +1,6 @@
 # dotfiles
-![GitHub branch status](https://img.shields.io/github/checks-status/tkk2112/dotfiles/main)
+![ci status](https://github.com/tkk2112/dotfiles/actions/workflows/ci.yml/badge.svg)
 
 Use curl to download the script and execute it with sh:<br/>
 `curl -LsSf https://link.m04r.space/dotfiles | sh`
+  
