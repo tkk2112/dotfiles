@@ -19,7 +19,7 @@
 
 - name: Check for client_access_token in config
   ansible.builtin.command:
-    cmd: grep -q "client_access_token" {{ ansible_env.HOME }}/.config/rclone/rclone.conf
+    cmd: grep -q "client_access_token = [^ ]" {{ ansible_env.HOME }}/.config/rclone/rclone.conf
   register: token_check
   failed_when: false
   changed_when: false
@@ -32,6 +32,7 @@
       [protondrive]
       type = protondrive
     mode: "0600"
+    force: true
   when: not rclone_config.stat.exists or (token_check.rc != 0)
 
 - name: "Ask for Proton username"
