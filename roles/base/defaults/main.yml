@@ -9,7 +9,6 @@ base_packages:
   - debian-goodies
   - direnv
   - dnsutils
-  - eza
   - fontconfig
   - fzf
   - git
