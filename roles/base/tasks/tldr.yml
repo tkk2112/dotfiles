@@ -24,3 +24,4 @@
     month: "*"
     weekday: "0"
     job: "/usr/bin/tldr -u > /dev/null"
+  when: ansible_distribution == 'Debian'

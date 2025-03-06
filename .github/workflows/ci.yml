@@ -24,7 +24,7 @@ jobs:
           - name: linter
             setup_args: "--only-lint"
           - name: playbook
-            setup_args: "--skip-lint -v"
+            setup_args: "--skip-lint -vv"
     container:
       image: ${{ matrix.os.image }}
       # volumes:

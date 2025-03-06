@@ -8,3 +8,5 @@
   ansible.builtin.service:
     name: ssh
     enabled: true
+    state: reloaded
+  become: true
