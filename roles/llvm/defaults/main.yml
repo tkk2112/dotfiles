@@ -13,4 +13,4 @@ llvm_apt_repo_base: "https://apt.llvm.org"
 llvm_apt_component: "main"
 
 # Codename for the apt repository; use 'unstable' if testing is enabled
-llvm_apt_codename: "{{ 'unstable' if base_enable_testing | default(false) else ansible_distribution_release }}"
+llvm_apt_codename: "{{ 'unstable' if base_debian_enable_testing | default(false) else ansible_distribution_release }}"

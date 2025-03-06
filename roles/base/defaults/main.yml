@@ -1,5 +1,5 @@
 # Enable testing repositories if true
-base_enable_testing: true
+base_debian_enable_testing: true
 
 # List of essential packages for system setup
 base_packages:

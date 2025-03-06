@@ -10,7 +10,7 @@
     name: llvm
     types: deb
     uris: "{{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/"
-    suites: "{{ 'llvm-toolchain' if base_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}"
+    suites: "{{ 'llvm-toolchain' if base_debian_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}"
     components:
       - "{{ llvm_apt_component }}"
     signed_by: /etc/apt/keyrings/apt.llvm.org.asc
@@ -22,7 +22,7 @@
     name: "llvm-{{ item }}"
     types: deb
     uris: "{{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/"
-    suites: "{{ 'llvm-toolchain' if base_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}-{{ item }}"
+    suites: "{{ 'llvm-toolchain' if base_debian_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}-{{ item }}"
     components:
       - "{{ llvm_apt_component }}"
     signed_by: /etc/apt/keyrings/apt.llvm.org.asc
