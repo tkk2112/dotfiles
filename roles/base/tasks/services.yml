@@ -4,19 +4,6 @@
     state: directory
     mode: "0700"
 
-- name: Install systemd-resolved packages
-  ansible.builtin.apt:
-    name: systemd-resolved
-    state: present
-  become: true
-  when: ansible_distribution == 'Debian'
-
-- name: Enable service systemd-resolved
-  ansible.builtin.service:
-    name: systemd-resolved
-    enabled: true
-  when: ansible_distribution == 'Debian'
-
 - name: Enable service ssh
   ansible.builtin.service:
     name: ssh

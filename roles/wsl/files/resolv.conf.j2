@@ -1,0 +1,9 @@
+{% if current_site == 'SWE' %}
+nameserver 10.0.10.101
+nameserver 10.0.0.11
+{% else %}
+nameserver 10.0.0.11
+nameserver 10.0.10.101
+{% endif %}
+search local
+options edns0
