@@ -48,9 +48,9 @@
     mode: "0644"
     force: false # Won't overwrite if exists
 
-- name: Include systemd tasks
+- name: Include services tasks
   ansible.builtin.import_tasks:
-    file: systemd.yml
+    file: services.yml
 
 - name: Include tldr tasks
   ansible.builtin.import_tasks:

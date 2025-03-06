@@ -25,7 +25,6 @@ base_packages:
   - shellcheck
   - shfmt
   - silversearcher-ag
-  - systemd-resolved
   - tio
   - tldr
   - unzip
