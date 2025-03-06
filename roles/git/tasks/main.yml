@@ -50,19 +50,18 @@
     value: "{{ item.value }}"
     scope: global
   loop:
-    - { name: "advice.detachedHead", value: false }
-    - { name: "advice.skippedCherryPicks", value: false }
+    - { name: "advice.detachedHead", value: "false" }
+    - { name: "advice.skippedCherryPicks", value: "false" }
     - { name: "blame.ignoreRevsFile", value: ".git-blame-ignore-revs" }
-    - { name: "blame.markIgnoredLines", value: true }
-    - { name: "blame.markUnblamableLines", value: true }
+    - { name: "blame.markIgnoredLines", value: "true" }
+    - { name: "blame.markUnblamableLines", value: "true" }
     - { name: "branch.autoSetupRebase", value: "remote" }
-    - { name: "core.fsmonitor", value: true }
-    - { name: "fetch.prune", value: true }
-    - { name: "fetch.writeCommitGraph", value: true }
+    - { name: "fetch.prune", value: "true" }
+    - { name: "fetch.writeCommitGraph", value: "true" }
     - { name: "init.defaultBranch", value: "main" }
-    - { name: "pull.rebase", value: true }
+    - { name: "pull.rebase", value: "true" }
     - { name: "push.default", value: "upstream" }
-    - { name: "push.followTags", value: true }
-    - { name: "rebase.autoStash", value: true }
-    - { name: "status.submoduleSummary", value: true }
-    - { name: "user.useConfigOnly", value: true }
+    - { name: "push.followTags", value: "true" }
+    - { name: "rebase.autoStash", value: "true" }
+    - { name: "status.submoduleSummary", value: "true" }
+    - { name: "user.useConfigOnly", value: "true" }
