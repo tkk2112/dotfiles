@@ -1,0 +1,80 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        ":dependencyDashboard",
+        ":configMigration",
+        ":enablePreCommit"
+    ],
+    "repositories": [
+        "tkk2112/dotfiles"
+    ],
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "prCreation": "immediate",
+        "labels": [
+            "renovate"
+        ]
+    },
+    "packageRules": [
+        {
+            "groupName": "Python Dependencies",
+            "description": "Group python packages together",
+            "matchManagers": [
+                "pep621",
+                "pep723"
+            ]
+        },
+        {
+            "groupName": "Python language minors",
+            "description": "Group python minor updates together",
+            "matchDepNames": [
+                "python"
+            ],
+            "matchUpdateTypes": [
+                "minor"
+            ]
+        },
+        {
+            "groupName": "Linter dependencies",
+            "description": "Group linter updates",
+            "matchFileNames": [
+                ".pre-commit-config.yaml"
+            ],
+            "addLabels": [
+                "renovate:automerge"
+            ],
+            "automerge": true
+        },
+        {
+            "groupName": "GitHub Actions dependencies",
+            "description": "Group GitHub Actions updates",
+            "matchFileNames": [
+                ".github/**/*.yaml",
+                ".github/**/*.yml"
+            ],
+            "addLabels": [
+                "renovate:automerge"
+            ],
+            "automerge": true
+        }
+    ],
+    "ansible": {
+        "fileMatch": [
+            "(^|/)defaults/[^/]+\\.ya?ml$",
+            "(^|/)handlers/[^/]+\\.ya?ml$",
+            "(^|/)tasks/[^/]+\\.ya?ml$"
+        ]
+    },
+    "lockFileMaintenance": {
+        "enabled": true
+    },
+    "pep723": {
+        "fileMatch": [
+          "^src/.+\\.py"
+        ]
+      },    "pre-commit": {
+        "enabled": true
+    },
+    "timezone": "Europe/Oslo"
+}
