@@ -13,14 +13,12 @@ unsetopt menu_complete         # don't autoselect the first completion entry
 # Expansion and Globbing
 # http://zsh.sourceforge.net/Doc/Release/Options.html#Expansion-and-Globbing
 setopt extended_glob           # use more awesome globbing features
-setopt glob_dots               # include dotfiles when globbing
 
 # Initialization
 # http://zsh.sourceforge.net/Doc/Release/Options.html#Initialisation
 
 # Input/Output
 # http://zsh.sourceforge.net/Doc/Release/Options.html#Input_002fOutput
-unsetopt clobber               # must use >| to truncate existing files
 unsetopt correct               # don't try to correct the spelling of commands
 unsetopt correct_all           # don't try to correct the spelling of all arguments in a line
 unsetopt flow_control          # disable start/stop characters in shell editor

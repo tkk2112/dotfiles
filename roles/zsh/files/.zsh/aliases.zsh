@@ -23,4 +23,3 @@ alias tmux='tmux -2'
 
 alias hookoff='git config --global core.hooksPath /dev/null'
 alias hookon='git config --global --unset core.hooksPath'
-alias ciam='git ci --amend -a -C HEAD'
