@@ -4,7 +4,7 @@
     value: "{{ item.value }}"
     scope: global
   loop:
-    - { name: "name", value: "{{ git_user_name }}" }
+    - { name: "name", value: "{{ git_user_name | default(git_default_user_name) }}" }
     - { name: "email", value: "{{ git_user_email }}" }
 
 - name: Configure git aliases
