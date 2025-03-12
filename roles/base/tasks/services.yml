@@ -3,10 +3,3 @@
     path: "{{ ansible_env.HOME }}/.config/systemd/user"
     state: directory
     mode: "0700"
-
-- name: Enable service ssh
-  ansible.builtin.service:
-    name: ssh
-    enabled: true
-    state: reloaded
-  become: true
