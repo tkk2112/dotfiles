@@ -97,3 +97,12 @@ fi
 
 # Source additional environment variables or scripts
 [ -f "$HOME/.local/share/../bin/env" ] && source "$HOME/.local/share/../bin/env"
+
+# Load additional work functions from ProtonDrive
+if [[ -d ~/ProtonDrive/work/zsh ]]; then
+  for func_file in ~/ProtonDrive/work/zsh/*.zsh; do
+    if [[ -f "$func_file" ]]; then
+      source "$func_file"
+    fi
+  done
+fi
