@@ -1,4 +1,8 @@
+personal: true
+
+install_roles:
+  llvm: true
+  alacritty: true
+
 alacritty:
   font_size: 12.0
-personal: true
-headless: false

@@ -39,3 +39,14 @@
 - name: "Include additional fact gathering tasks"
   ansible.builtin.import_tasks:
     file: fact_gatherer.yml
+
+- name: "Process conditional role activation"
+  ansible.builtin.set_fact:
+    derived_roles:
+      gpg: "{{ personal | default(false) | bool or install_roles.gpg | default(default_roles.gpg) | bool }}"
+      proton: "{{ personal | default(false) | bool or install_roles.proton | default(default_roles.proton) | bool }}"
+      ssh_profile: "{{ personal | default(false) | bool or install_roles.ssh_profile | default(default_roles.ssh_profile) | bool }}"
+
+- name: "Combine role configurations"
+  ansible.builtin.set_fact:
+    effective_roles: "{{ default_roles | combine(install_roles | default({})) | combine(derived_roles) }}"
