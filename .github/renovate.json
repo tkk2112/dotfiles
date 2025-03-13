@@ -6,9 +6,6 @@
         ":configMigration",
         ":enablePreCommit"
     ],
-    "repositories": [
-        "tkk2112/dotfiles"
-    ],
     "vulnerabilityAlerts": {
         "enabled": true,
         "prCreation": "immediate",
