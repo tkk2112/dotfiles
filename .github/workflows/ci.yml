@@ -6,6 +6,15 @@ on:
   pull_request:
 
 jobs:
+  check:
+      name: check
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: astral-sh/setup-uv@v5
+        - run: uv sync --all-packages
+        - run: uv run tom check
+
   platform-run:
     name: "${{ matrix.task.name }} on ${{ matrix.os.name }}"
     runs-on: ubuntu-latest
@@ -80,6 +89,20 @@ jobs:
           su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
            "curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
           # su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} --command="sh ${SH_ARGS} ${DOTFILES_LOCATION}/setup.sh ${SETUP_ARGS}"
+
+  test:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: test
+    needs: platform-run
+    steps:
+      - shell: python
+        run: |
+          import sys
+          if all(result == "success" for result in ${{ toJSON(needs.*.result) }}):
+            sys.exit(0)
+          else:
+            sys.exit(1)
 
   standard-run:
     runs-on: ubuntu-latest
