@@ -7,4 +7,7 @@ dependencies = [
     "ansible-lint>=25.1.3",
     "pre-commit>=4.1.0",
     "python-debian>=0.1.49",
+    "tomlscript>=0.2.1",
 ]
+[tool.tomlscript]
+check = "uv run pre-commit run --all-files"
