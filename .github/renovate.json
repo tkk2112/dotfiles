@@ -71,10 +71,23 @@
     },
     "pep723": {
         "fileMatch": [
-          "^src/.+\\.py"
+            "^src/.+\\.py"
         ]
-      },    "pre-commit": {
-        "enabled": true
     },
-    "timezone": "Europe/Oslo"
+    "timezone": "Europe/Oslo",
+    "hostRules": [
+        {
+            "matchHost": "github.com",
+            "token": " ${{ secrets.RENOVATE_TOKEN }}"
+        }
+    ],
+    "labels": [
+        "internal"
+    ],
+    "schedule": [
+        "before 4am on Monday"
+    ],
+    "semanticCommits": "disabled",
+    "separateMajorMinor": false,
+    "prHourlyLimit": 10
 }
