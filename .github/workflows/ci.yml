@@ -12,8 +12,7 @@ jobs:
       steps:
         - uses: actions/checkout@v4
         - uses: astral-sh/setup-uv@v5
-        - run: uv sync --all-packages
-        - run: uv run tom check
+        - run: uv run alias check
 
   platform-run:
     name: "${{ matrix.task.name }} on ${{ matrix.os.name }}"
@@ -36,8 +35,6 @@ jobs:
             setup_args: "--skip-lint"
     container:
       image: ${{ matrix.os.image }}
-      # volumes:
-      #   - /home/thomas/git/ansible:/workspace
     steps:
       - name: Install dependencies
         env:
@@ -88,7 +85,6 @@ jobs:
         run: |
           su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
            "curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
-          # su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} --command="sh ${SH_ARGS} ${DOTFILES_LOCATION}/setup.sh ${SETUP_ARGS}"
 
   test:
     if: ${{ always() }}

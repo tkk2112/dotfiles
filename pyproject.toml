@@ -6,8 +6,14 @@ dependencies = [
     "ansible>=11.3.0",
     "ansible-lint>=25.1.3",
     "pre-commit>=4.1.0",
+    "pyproject-aliases",
     "python-debian>=0.1.49",
-    "tomlscript>=0.2.1",
 ]
-[tool.tomlscript]
+
+[tool.uv.sources]
+pyproject-aliases = { git = "https://github.com/tkk2112/pyproject_aliases.git" }
+
+[tool.aliases]
 check = "uv run pre-commit run --all-files"
+lint = "./setup.sh --only-lint"
+run = "./setup.sh --skip-lint"
