@@ -19,7 +19,7 @@
 
 - name: Check for client_access_token in config
   ansible.builtin.command:
-    cmd: grep -q "client_access_token = [^ ]" {{ ansible_env.HOME }}/.config/rclone/rclone.conf
+    cmd: grep -q "client_access_token = [^[:space:]]" {{ ansible_env.HOME }}/.config/rclone/rclone.conf
   register: token_check
   failed_when: false
   changed_when: false
