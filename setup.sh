@@ -170,8 +170,18 @@ main() {
   cd "$repo" || { echo "Error repo: $repo not found" && exit 1; }
 
   git remote -v | grep push | grep -q https && git remote set-url --push origin git@github.com:tkk2112/dotfiles.git
-
-  git pull --ff-only || { echo "Failed to pull updates, repository may be dirty." && git status --porcelain; }
+  [ "$(git config user.email)" = "thomas@sl.m04r.space" ] || git config user.email "thomas@sl.m04r.space"
+  # Check if repository has any changes
+  if [ -z "$(git status --porcelain)" ]; then
+    echo "Repository is clean, pulling updates with rebase..."
+    git pull --rebase || { echo "Failed to pull updates."; exit 1; }
+  else
+    echo "Repository has local changes, cannot pull updates automatically."
+    echo "Changes in repository:"
+    git status --porcelain
+    echo "Press Enter to continue or Ctrl+C to abort..."
+    read -r _
+  fi
   ~/.local/bin/uv sync --link-mode=copy
   ~/.local/bin/uv run pre-commit install
 
