@@ -36,6 +36,7 @@
     - { key: "up", value: "remote update" }
     - { key: "rup", value: "rebase @{u}" }
     - { key: "rank", value: "shortlog -s -n --no-merges" }
+    - { key: "pr", value: '!f() { git checkout -b "$1" && git push --set-upstream origin HEAD:"$1"; }; f'}
     - { key: "desc", value: "describe" }
     - { key: "track", value: '!git branch --set-upstream-to $(git for-each-ref --format="%(refname:short)" $(git symbolic-ref HEAD))' }
     - { key: "fixup", value: "commit --amend -C HEAD" }
