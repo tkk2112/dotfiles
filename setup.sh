@@ -174,7 +174,7 @@ main() {
   # Check if repository has any changes
   if [ -z "$(git status --porcelain)" ]; then
     echo "Repository is clean, pulling updates with rebase..."
-    git pull --rebase || { echo "Failed to pull updates."; exit 1; }
+    git rebase origin/main || { echo "Failed to pull updates."; exit 1; }
   else
     echo "Repository has local changes, cannot pull updates automatically."
     echo "Changes in repository:"
