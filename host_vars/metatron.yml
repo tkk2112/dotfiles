@@ -5,4 +5,4 @@ install_roles:
   alacritty: true
 
 alacritty:
-  font_size: 12.0
+  font_size: 10.0
