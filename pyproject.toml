@@ -9,6 +9,7 @@ dependencies = [
     "pyproject-aliases",
     "python-debian>=0.1.49",
 ]
+classifiers = ["Private :: Do Not Upload"]
 
 [tool.uv.sources]
 pyproject-aliases = { git = "https://github.com/tkk2112/pyproject_aliases.git" }
