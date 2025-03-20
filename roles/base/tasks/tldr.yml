@@ -1,3 +1,4 @@
+---
 - name: Create tldr share directory
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/share/tldr"
@@ -17,11 +18,11 @@
 
 - name: Add tldr update to crontab
   ansible.builtin.cron:
-    name: "update tldr pages"
+    name: update tldr pages
     minute: "0"
     hour: "0"
     day: "*"
     month: "*"
     weekday: "0"
-    job: "/usr/bin/tldr -u > /dev/null"
+    job: /usr/bin/tldr -u > /dev/null
   when: ansible_distribution == 'Debian'

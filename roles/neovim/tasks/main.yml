@@ -1,6 +1,7 @@
+---
 - name: Retrieve installed Neovim version
   ansible.builtin.shell:
-    cmd: "set -o pipefail && nvim --version | head -n1 | cut -d ' ' -f2 | cut -d 'v' -f2"
+    cmd: set -o pipefail && nvim --version | head -n1 | cut -d ' ' -f2 | cut -d 'v' -f2
     executable: /bin/bash
   register: nvim_current_version
   ignore_errors: true
@@ -61,9 +62,9 @@
 
 - name: Clone NvChad starter configuration
   ansible.builtin.git:
-    repo: "https://github.com/NvChad/starter"
+    repo: https://github.com/NvChad/starter
     dest: "{{ ansible_env.HOME }}/.config/nvim"
-    version: "main"
+    version: main
     force: true
   register: neovim_repo
 

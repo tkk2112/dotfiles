@@ -1,3 +1,4 @@
+---
 - name: Install essential desktop packages
   ansible.builtin.apt:
     name: "{{ desktop_packages }}"

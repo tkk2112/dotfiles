@@ -15,7 +15,7 @@ jobs:
         - run: uv run alias check
 
   platform-run:
-    name: "${{ matrix.task.name }} on ${{ matrix.os.name }}"
+    name: ${{ matrix.task.name }} on ${{ matrix.os.name }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

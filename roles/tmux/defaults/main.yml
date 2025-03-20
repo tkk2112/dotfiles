@@ -1,5 +1,6 @@
+---
 # Repository URL for Tmux Plugin Manager
-tmux_plugin_repo: "https://github.com/tmux-plugins/tpm"
+tmux_plugin_repo: https://github.com/tmux-plugins/tpm
 
 # Version (or tag) to checkout for Tmux Plugin Manager
-tmux_plugin_version: "v3.1.0"
+tmux_plugin_version: v3.1.0

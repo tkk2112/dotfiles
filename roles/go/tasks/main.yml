@@ -1,3 +1,4 @@
+---
 - name: Install golang
   ansible.builtin.apt:
     name:
@@ -48,7 +49,7 @@
 
 - name: Trigger gup update
   ansible.builtin.debug:
-    msg: "Triggering gup update"
+    msg: Triggering gup update
   notify:
     - GUP update
   changed_when: true

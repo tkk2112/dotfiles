@@ -1,3 +1,4 @@
+---
 - name: Register LLVM alternatives for version {{ item }}
   ansible.builtin.shell: |
     update-alternatives \

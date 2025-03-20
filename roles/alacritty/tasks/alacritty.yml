@@ -1,6 +1,7 @@
+---
 - name: Get installed Alacritty version
   ansible.builtin.shell:
-    cmd: "set -o pipefail && alacritty --version | cut -d ' ' -f2"
+    cmd: set -o pipefail && alacritty --version | cut -d ' ' -f2
     executable: /bin/bash
   register: alacritty_current_version
   ignore_errors: true

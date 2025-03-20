@@ -1,3 +1,4 @@
+---
 - name: Check for ProtonDrive directory and config
   ansible.builtin.stat:
     path: "{{ item }}"
@@ -11,13 +12,13 @@
     proton_drive_dir_exists: "{{ proton_paths.results[0].stat.exists }}"
     proton_sync_config_exists: "{{ proton_paths.results[1].stat.exists }}"
 
-- name: "Include ProtonDrive tasks"
+- name: Include ProtonDrive tasks
   ansible.builtin.include_tasks: protondrive.yml
   when:
     - not proton_drive_dir_exists or proton_sync_config_exists
     - personal | bool
 
-- name: "Include ProtonPass tasks"
+- name: Include ProtonPass tasks
   ansible.builtin.include_tasks: protonpass.yml
   when:
     - not headless | bool

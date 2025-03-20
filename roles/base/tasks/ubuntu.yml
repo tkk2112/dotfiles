@@ -1,3 +1,4 @@
+---
 - name: Add repositories for {{ ansible_distribution_release }}
   ansible.builtin.deb822_repository:
     name: ubuntu

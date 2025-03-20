@@ -1,5 +1,6 @@
-proton_drive_rclone_run_delay_after_boot: "1min"
-proton_drive_rclone_rerun_delay: "5min"
+---
+proton_drive_rclone_run_delay_after_boot: 1min
+proton_drive_rclone_rerun_delay: 5min
 
 proton_sync_content: |
   # list the folders rclone is supposed to sync

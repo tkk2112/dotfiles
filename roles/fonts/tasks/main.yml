@@ -1,3 +1,4 @@
+---
 - name: Create fonts directory
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.local/share/fonts"

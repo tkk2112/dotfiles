@@ -1,3 +1,4 @@
+---
 - name: Include repository tasks for {{ ansible_distribution }}
   ansible.builtin.include_tasks:
     file: "{{ ansible_distribution | lower }}.yml"

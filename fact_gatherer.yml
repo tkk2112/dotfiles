@@ -1,27 +1,27 @@
-- name: "Ensure traceroute is installed"
+- name: Ensure traceroute is installed
   ansible.builtin.apt:
     name: inetutils-traceroute
     state: present
     update_cache: true
   become: true
 
-- name: "Run traceroute to an external IP (quad9)"
+- name: Run traceroute to an external IP (quad9)
   ansible.builtin.command: traceroute -m 3 9.9.9.9
   register: traceroute_result
   changed_when: true
   ignore_errors: true
 
-- name: "Debug traceroute output"
+- name: Debug traceroute output
   ansible.builtin.debug:
     var: traceroute_result.stdout_lines
 
-- name: "Extract first 10.0.xxx.1 IP hop (assumed to be the gateway)"
+- name: Extract first 10.0.xxx.1 IP hop (assumed to be the gateway)
   ansible.builtin.set_fact:
     detected_gateway: "{{ (traceroute_result.stdout | regex_findall('(10\\.0\\.\\d+\\.1)') | default([])) | first | default('unknown') }}"
   when:
     - traceroute_result.stdout is defined
 
-- name: "Determine current site based on detected gateway"
+- name: Determine current site based on detected gateway
   ansible.builtin.set_fact:
     current_site: >-
       {{
@@ -30,19 +30,19 @@
         else 'unknown'
       }}
 
-- name: "Show current site and gateway"
+- name: Show current site and gateway
   ansible.builtin.debug:
     msg: "Detected gateway: {{ detected_gateway }}, current site: {{ current_site }}"
 
-- name: "Check if ProtonDrive directory exists"
+- name: Check if ProtonDrive directory exists
   ansible.builtin.stat:
     path: "{{ ansible_env.HOME }}/ProtonDrive"
   register: proton_drive_dir
 
-- name: "Set ProtonDrive enabled fact"
+- name: Set ProtonDrive enabled fact
   ansible.builtin.set_fact:
     proton_drive_enabled: "{{ proton_drive_dir.stat.exists }}"
 
-- name: "Show ProtonDrive status"
+- name: Show ProtonDrive status
   ansible.builtin.debug:
     msg: "ProtonDrive is {{ 'enabled' if proton_drive_enabled else 'disabled' }}"

@@ -1,11 +1,12 @@
+---
 # Git tag for Neovim repository
-neovim_git_tag: "v0.10.4"
+neovim_git_tag: v0.10.4
 
 # Minimum required version for Neovim
-neovim_min_version: "0.10.0"
+neovim_min_version: 0.10.0
 
 # Repository URL for Neovim source
-neovim_repo: "https://github.com/neovim/neovim.git"
+neovim_repo: https://github.com/neovim/neovim.git
 
 # Temporary build directory for Neovim
-neovim_build_path: "/tmp/neovim-build"
+neovim_build_path: /tmp/neovim-build

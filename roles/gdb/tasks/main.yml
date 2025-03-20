@@ -1,3 +1,4 @@
+---
 - name: Set architecture specific variables
   ansible.builtin.set_fact:
     pwndbg_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
@@ -12,18 +13,18 @@
 
 - name: Download pwndbg package
   ansible.builtin.get_url:
-    url: "https://github.com/pwndbg/pwndbg/releases/download/{{ gdb_pwndbg_version }}/pwndbg_{{ gdb_pwndbg_version }}_{{ pwndbg_arch }}.deb"
-    dest: "/tmp/pwndbg.deb"
-    mode: '0644'
+    url: https://github.com/pwndbg/pwndbg/releases/download/{{ gdb_pwndbg_version }}/pwndbg_{{ gdb_pwndbg_version }}_{{ pwndbg_arch }}.deb
+    dest: /tmp/pwndbg.deb
+    mode: "0644"
 
 - name: Install pwndbg package
   ansible.builtin.apt:
-    deb: "/tmp/pwndbg.deb"
+    deb: /tmp/pwndbg.deb
     state: present
   become: true
 
 - name: Get PWNDBG Python version
-  ansible.builtin.shell: "set -o pipefail && dpkg -L pwndbg | grep -o 'python3\\.[0-9]\\+' | sort -u | head -n1"
+  ansible.builtin.shell: set -o pipefail && dpkg -L pwndbg | grep -o 'python3\\.[0-9]\\+' | sort -u | head -n1
   register: pwndbg_python_version
   changed_when: false
 

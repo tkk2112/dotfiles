@@ -1,8 +1,7 @@
 ---
 # .ansible-lint
 
-profile: null
-
+profile:
 exclude_paths:
   - .git
   - .github

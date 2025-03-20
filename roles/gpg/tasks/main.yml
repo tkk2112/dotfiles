@@ -1,3 +1,4 @@
+---
 - name: Install GPG tools and utilities
   ansible.builtin.apt:
     name:

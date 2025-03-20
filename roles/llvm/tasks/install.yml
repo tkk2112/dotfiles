@@ -1,3 +1,4 @@
+---
 - name: Fetch LLVM GPG key
   ansible.builtin.get_url:
     url: "{{ llvm_apt_repo_base }}/llvm-snapshot.gpg.key"
@@ -19,7 +20,7 @@
 
 - name: Add LLVM version-specific repositories
   ansible.builtin.deb822_repository:
-    name: "llvm-{{ item }}"
+    name: llvm-{{ item }}
     types: deb
     uris: "{{ llvm_apt_repo_base }}/{{ llvm_apt_codename }}/"
     suites: "{{ 'llvm-toolchain' if base_debian_enable_testing else 'llvm-toolchain-' + ansible_distribution_release }}-{{ item }}"
@@ -39,13 +40,13 @@
 - name: Install LLVM and Clang components
   ansible.builtin.apt:
     name:
-      - "llvm-{{ item }}"
-      - "clang-{{ item }}"
-      - "clang-tools-{{ item }}"
-      - "clangd-{{ item }}"
-      - "clang-format-{{ item }}"
-      - "lld-{{ item }}"
-      - "lldb-{{ item }}"
+      - llvm-{{ item }}
+      - clang-{{ item }}
+      - clang-tools-{{ item }}
+      - clangd-{{ item }}
+      - clang-format-{{ item }}
+      - lld-{{ item }}
+      - lldb-{{ item }}
     state: present
     allow_change_held_packages: true
   loop: "{{ llvm_versions }}"
@@ -54,8 +55,8 @@
 - name: Install libc++ and libc++abi for default LLVM version
   ansible.builtin.apt:
     name:
-      - "libc++-{{ llvm_default_version }}-dev"
-      - "libc++abi-{{ llvm_default_version }}-dev"
+      - libc++-{{ llvm_default_version }}-dev
+      - libc++abi-{{ llvm_default_version }}-dev
     state: present
   when: llvm_versions | length > 0
   become: true

@@ -1,3 +1,4 @@
-- name: "Include desktop tasks"
+---
+- name: Include desktop tasks
   ansible.builtin.include_tasks: desktop.yml
   when: not headless | bool
