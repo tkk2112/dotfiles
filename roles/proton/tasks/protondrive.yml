@@ -1,3 +1,4 @@
+---
 - name: Install rclone
   ansible.builtin.command:
     cmd: go install github.com/rclone/rclone@latest
@@ -35,7 +36,7 @@
     force: true
   when: not rclone_config.stat.exists or (token_check.rc != 0)
 
-- name: "Ask for Proton username"
+- name: Ask for Proton username
   ansible.builtin.pause:
     prompt: "Enter Proton username: "
     echo: true
@@ -43,7 +44,7 @@
   no_log: true
   when: not rclone_config.stat.exists or (token_check.rc != 0)
 
-- name: "Ask for Proton password"
+- name: Ask for Proton password
   ansible.builtin.pause:
     prompt: "Enter Proton password: "
     echo: false
@@ -51,7 +52,7 @@
   no_log: true
   when: not rclone_config.stat.exists or (token_check.rc != 0)
 
-- name: "Ask for Proton 2FA"
+- name: Ask for Proton 2FA
   ansible.builtin.pause:
     prompt: "Enter Proton 2FA: "
     echo: true
@@ -69,7 +70,6 @@
 
 - name: Login to ProtonDrive to store client_access_token
   ansible.builtin.command:
-    # yamllint disable-line rule:line-length
     cmd: "rclone about protondrive: --protondrive-username {{ proton_username.user_input }} --protondrive-password {{ obscured_password.stdout }} --protondrive-2fa={{ proton_2fa.user_input }}"
   no_log: true
   when: not rclone_config.stat.exists or (token_check.rc != 0)

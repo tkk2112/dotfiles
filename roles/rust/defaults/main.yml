@@ -1,2 +1,3 @@
+---
 # Default Rust version for installation
-rust_version: "stable"
+rust_version: stable

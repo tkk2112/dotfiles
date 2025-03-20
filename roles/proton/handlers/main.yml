@@ -1,3 +1,4 @@
+---
 - name: Reload proton-sync services
   ansible.builtin.systemd:
     name: "{{ item }}"

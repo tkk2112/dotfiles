@@ -4,3 +4,5 @@ fileignoreconfig:
   - filecontent
 - filename: setup.sh
   checksum: 1c631cf3b74902a295993f6a59a20b6fb766e1384f6197e559caa591d112ddcc
+- filename: roles/git/tasks/main.yml
+  checksum: 3880e20bf18b9ef675c29dc6c48967f209cb47ea54fe8b90abc01ecb5d708a8c

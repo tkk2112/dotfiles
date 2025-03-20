@@ -1,3 +1,4 @@
+---
 - name: Ensure ~/.ssh directory exists with mode 0700
   ansible.builtin.file:
     path: "{{ ssh_profile_target_dir }}"
@@ -25,7 +26,7 @@
 
 - name: Debug - Found protondrive SSH profile folder
   ansible.builtin.debug:
-    msg: "Found protondrive SSH profile at {{ ssh_profile_protondrive_ssh_dir }}"
+    msg: Found protondrive SSH profile at {{ ssh_profile_protondrive_ssh_dir }}
   when: protondrive_dir.stat.exists and protondrive_ssh_dir.stat.exists
 
 - name: Find all files in the protondrive SSH profile directory
