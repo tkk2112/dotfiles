@@ -1,3 +1,4 @@
+---
 wsl_conf_content: |
   [boot]
   systemd = true

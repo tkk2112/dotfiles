@@ -1,3 +1,4 @@
+---
 - name: Add testing repository
   ansible.builtin.deb822_repository:
     name: testing

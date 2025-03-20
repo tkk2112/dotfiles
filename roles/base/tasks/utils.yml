@@ -1,3 +1,4 @@
+---
 - name: Symlink .direnvrc configuration
   ansible.builtin.file:
     src: "{{ role_path }}/files/.direnvrc"

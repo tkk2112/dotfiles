@@ -1,6 +1,7 @@
+---
 - name: Download rustup installer script
   ansible.builtin.get_url:
-    url: "https://sh.rustup.rs"
+    url: https://sh.rustup.rs
     dest: /tmp/rustup-init.sh
     mode: "0755"
 

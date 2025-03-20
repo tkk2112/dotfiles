@@ -1,6 +1,7 @@
+---
 - name: Download FiraCode Nerd Font archive
   ansible.builtin.get_url:
-    url: "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/FiraCode.zip"
+    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/FiraCode.zip
     dest: "{{ ansible_env.HOME }}/.local/share/fonts/FiraCode.zip"
     mode: "0644"
 

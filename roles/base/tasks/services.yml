@@ -1,3 +1,4 @@
+---
 - name: Ensure systemd user directory exists
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.config/systemd/user"

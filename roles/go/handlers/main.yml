@@ -1,3 +1,4 @@
+---
 - name: GUP update
   ansible.builtin.command:
     cmd: "{{ gopath }}/bin/gup update"

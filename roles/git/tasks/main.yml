@@ -1,49 +1,52 @@
+---
 - name: Configure git user info
   community.general.git_config:
-    name: "user.{{ item.name }}"
+    name: user.{{ item.name }}
     value: "{{ item.value }}"
     scope: global
   loop:
-    - { name: "name", value: "{{ git_user_name | default(git_default_user_name) }}" }
-    - { name: "email", value: "{{ git_user_email }}" }
+    - { name: name, value: "{{ git_user_name | default(git_default_user_name) }}" }
+    - { name: email, value: "{{ git_user_email }}" }
 
 - name: Configure git aliases
   community.general.git_config:
-    name: "alias.{{ item.key }}"
+    name: alias.{{ item.key }}
     value: "{{ item.value }}"
     scope: global
   loop:
-    - { key: "ap", value: "add -p" }
-    - { key: "au", value: "add -u" }
-    - { key: "dfs", value: "diff --stat" }
-    - { key: "dh", value: "diff HEAD" }
-    - { key: "dhs", value: "diff HEAD --stat" }
-    - { key: "ds", value: "diff --staged" }
-    - { key: "dss", value: "diff --staged --stat" }
-    - { key: "co", value: "checkout" }
-    - { key: "ci", value: "commit -v" }
-    - { key: "cia", value: "commit -v --amend" }
-    - { key: "st", value: "status" }
-    - { key: "sm", value: "submodule" }
-    - { key: "ss", value: "show --stat" }
-    - { key: "br", value: "branch -vv" }
-    - { key: "bra", value: "branch -avv" }
-    - { key: "ls", value: '!git --no-pager log --pretty=format:"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset" --graph -20' }
-    - { key: "lsa", value: 'log --pretty=format:"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset" --graph -20 --all' }
-    - { key: "lg", value: 'log --pretty=format:"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset" --graph --date=short' }
-    - { key: "lga", value: 'log --pretty=format:"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset" --graph --date=short --all' }
-    - { key: "ff", value: "merge --ff-only @{u}" }
-    - { key: "up", value: "remote update" }
-    - { key: "rup", value: "rebase @{u}" }
-    - { key: "rank", value: "shortlog -s -n --no-merges" }
-    - { key: "pr", value: '!f() { git checkout -b "$1" && git push --set-upstream origin HEAD:"$1"; }; f'}
-    - { key: "desc", value: "describe" }
-    - { key: "track", value: '!git branch --set-upstream-to $(git for-each-ref --format="%(refname:short)" $(git symbolic-ref HEAD))' }
-    - { key: "fixup", value: "commit --amend -C HEAD" }
-    - { key: "save", value: '!git add -u && git commit -m "WIP: $(git show -q --oneline HEAD)"' }
-    - { key: "lease", value: "push --force-with-lease" }
-    # yamllint disable-line rule:line-length
-    - { key: "sync", value: '!git pull --prune --quiet && git -P branch --format "%(refname:short) %(upstream:track)" | grep -F "[gone]" | sed "s/\[gone\]//g" | xargs -r git branch -D' }
+    - { key: ap, value: add -p }
+    - { key: au, value: add -u }
+    - { key: br, value: branch -vv }
+    - { key: bra, value: branch -avv }
+    - { key: ci, value: commit -v }
+    - { key: cia, value: commit -v --amend }
+    - { key: co, value: checkout }
+    - { key: desc, value: describe }
+    - { key: dfs, value: diff --stat }
+    - { key: dh, value: diff HEAD }
+    - { key: dhs, value: diff HEAD --stat }
+    - { key: ds, value: diff --staged }
+    - { key: dss, value: diff --staged --stat }
+    - { key: ff, value: "merge --ff-only @{u}" }
+    - { key: fixup, value: commit --amend -C HEAD }
+    - { key: lease, value: push --force-with-lease }
+    # yamllint disable-line rule:quoted-strings
+    - { key: lg, value: "log --pretty=format:\"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset\" --graph --date=short" }
+    # yamllint disable-line rule:quoted-strings
+    - { key: lga, value: "log --pretty=format:\"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset\" --graph --date=short --all" }
+    - { key: ls, value: "!git --no-pager log --pretty=format:\"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset\" --graph -20" }
+    # yamllint disable-line rule:quoted-strings
+    - { key: lsa, value: "log --pretty=format:\"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset\" --graph -20 --all" }
+    - { key: pr, value: "!f() { git checkout -b \"$1\" && git push --set-upstream origin HEAD:\"$1\"; }; f" }
+    - { key: rank, value: shortlog -s -n --no-merges }
+    - { key: rup, value: "rebase @{u}" }
+    - { key: save, value: "!git add -u && git commit -m \"WIP: $(git show -q --oneline HEAD)\"" }
+    - { key: sm, value: submodule }
+    - { key: ss, value: show --stat }
+    - { key: st, value: status }
+    - { key: sync, value: "!git pull --prune --quiet && git -P branch --format \"%(refname:short) %(upstream:track)\" | grep -F \"[gone]\" | sed \"s/\\[gone\\]//g\" | xargs -r git branch -D" }
+    - { key: track, value: "!git branch --set-upstream-to $(git for-each-ref --format=\"%(refname:short)\" $(git symbolic-ref HEAD))" }
+    - { key: up, value: remote update }
 
 - name: Configure git settings
   community.general.git_config:
@@ -51,18 +54,18 @@
     value: "{{ item.value }}"
     scope: global
   loop:
-    - { name: "advice.detachedHead", value: "false" }
-    - { name: "advice.skippedCherryPicks", value: "false" }
-    - { name: "blame.ignoreRevsFile", value: ".git-blame-ignore-revs" }
-    - { name: "blame.markIgnoredLines", value: "true" }
-    - { name: "blame.markUnblamableLines", value: "true" }
-    - { name: "branch.autoSetupRebase", value: "remote" }
-    - { name: "fetch.prune", value: "true" }
-    - { name: "fetch.writeCommitGraph", value: "true" }
-    - { name: "init.defaultBranch", value: "main" }
-    - { name: "pull.rebase", value: "true" }
-    - { name: "push.default", value: "upstream" }
-    - { name: "push.followTags", value: "true" }
-    - { name: "rebase.autoStash", value: "true" }
-    - { name: "status.submoduleSummary", value: "true" }
-    - { name: "user.useConfigOnly", value: "true" }
+    - { name: advice.detachedHead, value: "false" }
+    - { name: advice.skippedCherryPicks, value: "false" }
+    - { name: blame.ignoreRevsFile, value: .git-blame-ignore-revs }
+    - { name: blame.markIgnoredLines, value: "true" }
+    - { name: blame.markUnblamableLines, value: "true" }
+    - { name: branch.autoSetupRebase, value: remote }
+    - { name: fetch.prune, value: "true" }
+    - { name: fetch.writeCommitGraph, value: "true" }
+    - { name: init.defaultBranch, value: main }
+    - { name: pull.rebase, value: "true" }
+    - { name: push.default, value: upstream }
+    - { name: push.followTags, value: "true" }
+    - { name: rebase.autoStash, value: "true" }
+    - { name: status.submoduleSummary, value: "true" }
+    - { name: user.useConfigOnly, value: "true" }

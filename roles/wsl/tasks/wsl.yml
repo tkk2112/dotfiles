@@ -1,23 +1,24 @@
-- name: "Create /etc/wsl.conf with WSL configuration"
+---
+- name: Create /etc/wsl.conf with WSL configuration
   ansible.builtin.copy:
-    dest: "/etc/wsl.conf"
+    dest: /etc/wsl.conf
     content: "{{ wsl_conf_content }}"
     mode: "0644"
   become: true
 
-- name: "Create custom resolv.conf with DNS settings"
+- name: Create custom resolv.conf with DNS settings
   ansible.builtin.template:
     src: "{{ role_path }}/files/resolv.conf.j2"
-    dest: "/etc/resolv.conf"
+    dest: /etc/resolv.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   become: true
   when: internal | bool
 
-- name: "Create initial env file with PATH case structure"
+- name: Create initial env file with PATH case structure
   ansible.builtin.copy:
-    dest: "/etc/hosts"
+    dest: /etc/hosts
     content: |
       127.0.0.1       localhost
       127.0.0.1       wsl.local wsl
@@ -27,9 +28,9 @@
     mode: "0644"
   become: true
 
-- name: "Set DISPLAY environment variable"
+- name: Set DISPLAY environment variable
   ansible.builtin.blockinfile:
-    path: "/etc/zsh/zprofile"
+    path: /etc/zsh/zprofile
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR DISPLAY"
     block: |
       {% if current_site == 'SWE' %}
