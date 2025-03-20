@@ -160,6 +160,30 @@ update_git_repo() {
   fi
 }
 
+determine_repo() {
+  if [ -n "${DOTFILES_LOCATION}" ]; then
+    if [ -f "${DOTFILES_LOCATION}/setup.sh" ]; then
+      repo="${DOTFILES_LOCATION}"
+    else
+      echo "Error: ${DOTFILES_LOCATION}/setup.sh does not exist"
+      exit 1
+    fi
+  elif ! cd "$script_dir" >/dev/null 2>&1 || ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    target_dir="${HOME}/.dotfiles"
+    target_repo="https://github.com/tkk2112/dotfiles.git"
+    echo "Not in a git repository. Cloning $target_repo to $target_dir..."
+    if [ ! -d "$target_dir" ]; then
+      git clone "$target_repo" "$target_dir"
+    fi
+    repo="$target_dir"
+    set_flag $is_git_repo
+  else
+    repo="$script_dir"
+    set_flag $is_git_repo
+  fi
+  echo "$repo"
+}
+
 main() {
   install_package "apt-utils"
   install_bin_package "git"
@@ -167,31 +191,7 @@ main() {
   install_or_update_uv
 
   script_dir="$(cd "$(dirname "$0")" && pwd)"
-
-  if ! cd "$script_dir" >/dev/null 2>&1 || ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    # We're not in a git repo, check if DOTFILES_LOCATION is set
-    if [ -n "${DOTFILES_LOCATION}" ]; then
-      if [ ! -f "${DOTFILES_LOCATION}/setup.sh" ]; then
-        echo "Error: ${DOTFILES_LOCATION}/setup.sh does not exist"
-        exit 1
-      fi
-      repo="${DOTFILES_LOCATION}"
-
-    else
-      target_dir="${HOME}/.dotfiles"
-      target_repo="https://github.com/tkk2112/dotfiles.git"
-      echo "Not in a git repository. Cloning $target_repo to $target_dir..."
-      if [ ! -d "$target_dir" ]; then
-        git clone "$target_repo" "$target_dir"
-      fi
-      repo="$target_dir"
-      set_flag $is_git_repo
-
-    fi
-  else
-    repo="$script_dir"
-    set_flag $is_git_repo
-  fi
+  repo="$(determine_repo)"
 
   cd "$repo" || { echo "Error repo: $repo not found" && exit 1; }
 
