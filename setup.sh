@@ -11,12 +11,13 @@ Before running the playbook, it will also install 'ansible-lint' and validate al
 Options passed to this script are forwarded to the 'ansible-playbook' command.
 
 Common OPTIONS:
-  --help              Show this help message and exit.
-  --list-tasks        List all tasks in the playbook without executing anything.
-  --list-hosts        List all hosts that the playbook will target.
-  --only-lint         Will only run the linting process and exit.
-  --skip-lint         Skip linting before running playbook
-  -v                  Enable verbose mode (can use -vvv for more verbosity).
+  --help                Show this help message and exit.
+  --list-tasks          List all tasks in the playbook without executing anything.
+  --list-hosts          List all hosts that the playbook will target.
+  --only-lint           Will only run the linting process and exit.
+  --skip-lint           Skip linting before running playbook
+  --skip-dirty-prompt   Skip prompt about dirty git repository
+  -v                    Enable verbose mode (can use -vvv for more verbosity).
 
 Examples:
   Run the playbook normally:
@@ -31,7 +32,7 @@ EOF
 apt_updated=3
 skip_lint=4
 only_lint=5
-is_git_repo=6
+skip_dirty=6
 
 set_flag() {
   [ -n "$1" ] && eval "exec $1>&1"
@@ -63,6 +64,9 @@ process_arguments() {
       ;;
     --only-lint)
       set_flag $only_lint
+      ;;
+    --skip-dirty-prompt)
+      set_flag $skip_dirty
       ;;
     *)
       ansible_args="$ansible_args $1"
@@ -154,8 +158,12 @@ update_git_repo() {
       echo "Repository has local changes, cannot pull updates automatically."
       echo "Changes in repository:"
       git status --porcelain
-      echo "Press Enter to continue or Ctrl+C to abort..."
-      read -r _
+      if ! has_flag $skip_dirty; then
+        echo "Press Enter to continue or Ctrl+C to abort..."
+        read -r _
+      else
+        echo "Skipping prompt due to --skip-dirty-prompt flag."
+      fi
     fi
   fi
 }
@@ -185,6 +193,9 @@ determine_repo() {
 }
 
 main() {
+  ansible_args=""
+  process_arguments "$@"
+
   install_package "apt-utils"
   install_bin_package "git"
 
@@ -203,9 +214,6 @@ main() {
   ~/.local/bin/uv run pre-commit install
 
   extra_args="$(check_sudo_access)"
-  ansible_args=""
-  process_arguments "$@"
-
   create_ansible_directories
 
   collections="community.general"

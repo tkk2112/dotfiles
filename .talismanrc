@@ -2,3 +2,5 @@ fileignoreconfig:
 - filename: uv.lock
   ignore_detectors:
   - filecontent
+- filename: setup.sh
+  checksum: 7c14a75e3b95da55812f7a5d4a459f1c2eb2ff7d8c9f3fbc1d7f2893c0730703
