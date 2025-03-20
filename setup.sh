@@ -31,6 +31,7 @@ EOF
 apt_updated=3
 skip_lint=4
 only_lint=5
+is_git_repo=6
 
 set_flag() {
   [ -n "$1" ] && eval "exec $1>&1"
@@ -136,6 +137,29 @@ apply_extra_vars() {
   fi
 }
 
+update_git_repo() {
+  # Only run in if DOTFILES_LOCATION is not set
+  if [ -z "${DOTFILES_LOCATION}" ]; then
+    git remote -v | grep push | grep -q https && git remote set-url --push origin git@github.com:tkk2112/dotfiles.git
+    [ "$(git config user.email)" = "thomas@sl.m04r.space" ] || git config user.email "thomas@sl.m04r.space"
+
+    # Check if repository has any changes
+    if [ -z "$(git status --porcelain)" ]; then
+      echo "Repository is clean, pulling updates with rebase..."
+      git rebase origin/main || {
+        echo "Failed to pull updates."
+        exit 1
+      }
+    else
+      echo "Repository has local changes, cannot pull updates automatically."
+      echo "Changes in repository:"
+      git status --porcelain
+      echo "Press Enter to continue or Ctrl+C to abort..."
+      read -r _
+    fi
+  fi
+}
+
 main() {
   install_package "apt-utils"
   install_bin_package "git"
@@ -161,27 +185,20 @@ main() {
         git clone "$target_repo" "$target_dir"
       fi
       repo="$target_dir"
+      set_flag $is_git_repo
 
     fi
   else
     repo="$script_dir"
+    set_flag $is_git_repo
   fi
 
   cd "$repo" || { echo "Error repo: $repo not found" && exit 1; }
 
-  git remote -v | grep push | grep -q https && git remote set-url --push origin git@github.com:tkk2112/dotfiles.git
-  [ "$(git config user.email)" = "thomas@sl.m04r.space" ] || git config user.email "thomas@sl.m04r.space"
-  # Check if repository has any changes
-  if [ -z "$(git status --porcelain)" ]; then
-    echo "Repository is clean, pulling updates with rebase..."
-    git rebase origin/main || { echo "Failed to pull updates."; exit 1; }
-  else
-    echo "Repository has local changes, cannot pull updates automatically."
-    echo "Changes in repository:"
-    git status --porcelain
-    echo "Press Enter to continue or Ctrl+C to abort..."
-    read -r _
+  if has_flag $is_git_repo; then
+    update_git_repo
   fi
+
   ~/.local/bin/uv sync --link-mode=copy
   ~/.local/bin/uv run pre-commit install
 
