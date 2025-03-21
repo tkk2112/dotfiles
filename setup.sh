@@ -199,13 +199,13 @@ determine_repo() {
     if [ -f "${DOTFILES_LOCATION}/setup.sh" ]; then
       repo="${DOTFILES_LOCATION}"
     else
-      echo "Error: ${DOTFILES_LOCATION}/setup.sh does not exist"
+      echo "Error: ${DOTFILES_LOCATION}/setup.sh does not exist" 1>&2
       exit 1
     fi
   elif ! cd "$script_dir" >/dev/null 2>&1 || ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     target_dir="${HOME}/.dotfiles"
     target_repo="https://github.com/tkk2112/dotfiles.git"
-    echo "Not in a git repository. Cloning $target_repo to $target_dir..."
+    echo "Not in a git repository. Cloning $target_repo to $target_dir..." 1>&2
     if [ ! -d "$target_dir" ]; then
       git clone "$target_repo" "$target_dir"
     fi
