@@ -68,6 +68,14 @@ process_arguments() {
     --skip-dirty-prompt)
       set_flag $skip_dirty
       ;;
+    -v|-vv*)
+      ansible_args="$ansible_args $1"
+      linter_args="$linter_args $1"
+      ;;
+
+    --fix|--fix=*)
+      linter_args="$linter_args $1"
+      ;;
     *)
       ansible_args="$ansible_args $1"
       ;;
@@ -119,8 +127,17 @@ create_ansible_directories() {
 }
 
 run_ansible_linter() {
+  repo="$1"
+  shift
+  lint_args="$*"
   echo "Validating Ansible playbooks and roles with ansible-lint..."
-  if ! ~/.local/bin/uv run ansible-lint --nocolor --config-file ./.ansible-lint ./playbook.yml; then
+  cd "$repo" || {
+    echo "Failed to change directory to $repo"
+    exit 1
+  }
+
+  # shellcheck disable=SC2086
+  if ! ~/.local/bin/uv run ansible-lint --nocolor --project-dir="$repo" ${lint_args} playbook.yml; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -201,6 +218,7 @@ determine_repo() {
 
 main() {
   ansible_args=""
+  linter_args=""
   process_arguments "$@"
 
   install_package "apt-utils"
@@ -230,7 +248,7 @@ main() {
   done
 
   if ! has_flag $skip_lint; then
-    run_ansible_linter
+    run_ansible_linter "$repo" "$linter_args"
 
     if has_flag $only_lint; then
       exit 0
