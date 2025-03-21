@@ -193,10 +193,8 @@ determine_repo() {
       git clone "$target_repo" "$target_dir"
     fi
     repo="$target_dir"
-    set_flag $is_git_repo
   else
     repo="$script_dir"
-    set_flag $is_git_repo
   fi
   echo "$repo"
 }
@@ -215,7 +213,7 @@ main() {
 
   cd "$repo" || { echo "Error repo: $repo not found" && exit 1; }
 
-  if has_flag $is_git_repo; then
+  if [ -z "${DOTFILES_LOCATION}" ]; then
     update_git_repo
   fi
 
