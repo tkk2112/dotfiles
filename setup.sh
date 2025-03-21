@@ -127,17 +127,26 @@ run_ansible_linter() {
 }
 
 add_extra_var() {
-  key="$1"
-  value="$2"
+  extra_vars="$1"
+  key="$2"
+  value="$3"
+
   if [ -n "$value" ]; then
     [ -n "$extra_vars" ] && extra_vars="$extra_vars,"
-    extra_vars="${extra_vars}\"${key}\":\"${value}\""
+    echo "${extra_vars}\"${key}\":\"${value}\""
+  else
+    echo "$extra_vars"
   fi
 }
 
 apply_extra_vars() {
+  extra_args="$1"
+  extra_vars="$2"
+
   if [ -n "$extra_vars" ]; then
-    extra_args="$extra_args --extra-vars '{${extra_vars}}'"
+    echo "$extra_args --extra-vars '{${extra_vars}}'"
+  else
+    echo "$extra_args"
   fi
 }
 
@@ -213,7 +222,6 @@ main() {
   ~/.local/bin/uv sync --link-mode=copy
   ~/.local/bin/uv run pre-commit install
 
-  extra_args="$(check_sudo_access)"
   create_ansible_directories
 
   collections="community.general"
@@ -231,12 +239,15 @@ main() {
     fi
   fi
 
-  git_name=$(git config --global user.name)
-  add_extra_var "git_user_name" "$git_name"
-  git_email=$(git config --global user.email)
-  add_extra_var "git_user_email" "$git_email"
+  extra_args="$(check_sudo_access)"
 
-  apply_extra_vars
+  extra_vars=""
+  git_name="$(git config --global user.name)"
+  extra_vars="$(add_extra_var "$extra_vars" "git_user_name" "$git_name")"
+  git_email="$(git config --global user.email)"
+  extra_vars="$(add_extra_var "$extra_vars" "git_user_email" "$git_email")"
+
+  extra_args="$(apply_extra_vars "$extra_args" "$extra_vars")"
 
   ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args ./playbook.yml $ansible_args"
 }
