@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.8
+    rev: 0.6.9
     hooks:
       - id: uv-sync
         stages: [pre-commit, post-checkout, post-merge, post-rewrite]
