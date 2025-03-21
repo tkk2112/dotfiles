@@ -89,16 +89,10 @@ jobs:
   test:
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    name: test
     needs: platform-run
     steps:
-      - shell: python
-        run: |
-          import sys
-          if all(result == "success" for result in ${{ toJSON(needs.*.result) }}):
-            sys.exit(0)
-          else:
-            sys.exit(1)
+      - run: exit 1
+        if: ${{ contains(toJSON(needs.*.result), 'failure') || contains(toJSON(needs.*.result), 'cancelled') }}
 
   standard-run:
     runs-on: ubuntu-latest
