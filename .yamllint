@@ -1,0 +1,20 @@
+---
+extends: default
+rules:
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  document-start: disable
+  line-length:
+    max: 200
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  key-duplicates:
+    forbid-duplicated-merge-keys: true
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  quoted-strings:
+    quote-type: double
+    required: only-when-needed
