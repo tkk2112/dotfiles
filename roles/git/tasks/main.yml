@@ -19,7 +19,6 @@
     - { key: br, value: branch -vv }
     - { key: bra, value: branch -avv }
     - { key: ci, value: commit -v }
-    - { key: cia, value: commit -v --amend }
     - { key: co, value: checkout }
     - { key: desc, value: describe }
     - { key: dfs, value: diff --stat }
@@ -28,7 +27,7 @@
     - { key: ds, value: diff --staged }
     - { key: dss, value: diff --staged --stat }
     - { key: ff, value: "merge --ff-only @{u}" }
-    - { key: fixup, value: commit --amend -C HEAD }
+    - { key: fixup, value: commit --amend -a -C HEAD }
     - { key: lease, value: push --force-with-lease }
     # yamllint disable-line rule:quoted-strings
     - { key: lg, value: "log --pretty=format:\"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset\" --graph --date=short" }
