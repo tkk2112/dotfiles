@@ -8,7 +8,7 @@ default_install_hook_types:
 
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.9
+    rev: 0.6.10
     hooks:
       - id: uv-sync
         stages: [pre-commit, post-checkout, post-merge, post-rewrite]
