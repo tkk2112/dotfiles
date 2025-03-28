@@ -1,7 +1,7 @@
 ---
 # Git tag for Neovim repository
 # renovate: datasource=github-releases depName=neovim/neovim
-neovim_git_version: v0.10.4
+neovim_git_version: v0.11.0
 
 # Minimum required version for Neovim
 neovim_min_version: 0.10.0
