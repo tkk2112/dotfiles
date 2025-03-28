@@ -3,4 +3,5 @@
 tmux_plugin_repo: https://github.com/tmux-plugins/tpm
 
 # Version (or tag) to checkout for Tmux Plugin Manager
+# renovate: datasource=github-releases depName=tmux-plugins/tpm
 tmux_plugin_version: v3.1.0
