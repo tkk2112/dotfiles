@@ -31,7 +31,7 @@
   ansible.builtin.git:
     repo: "{{ neovim_repo }}"
     dest: "{{ neovim_build_path }}"
-    version: "{{ neovim_git_tag }}"
+    version: "{{ neovim_git_version }}"
     single_branch: true
   when: nvim_current is version(nvim_required, '<')
 
