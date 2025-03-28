@@ -3,9 +3,10 @@
 llvm_versions:
   - 18
   - 19
+  - 20
 
 # Default LLVM version used for additional components
-llvm_default_version: 19
+llvm_default_version: 20
 
 # Base URL for the LLVM apt repository
 llvm_apt_repo_base: https://apt.llvm.org
