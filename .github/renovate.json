@@ -10,10 +10,19 @@
             "(^|/)tasks/[^/]+\\.ya?ml$"
         ]
     },
-    "hostRules": [
+    "customManagers": [
         {
-            "matchHost": "github.com",
-            "token": " ${{ secrets.RENOVATE_TOKEN }}"
+            "customType": "regex",
+            "fileMatch": [
+                "(^|/)defaults/[^/]+\\.ya?ml$",
+                "(^|/)tasks/[^/]+\\.ya?ml$"
+            ],
+            "matchStrings": [
+                "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)[^\\n]*\\n(?<variableName>[^:]+):\\s*[\"']?(?<currentValue>v?[0-9][^'\"\\s]*)(?:[\"'])?"
+            ],
+            "datasourceTemplate": "{{datasource}}",
+            "depNameTemplate": "{{depName}}",
+            "versioningTemplate": "semver"
         }
     ]
 }
