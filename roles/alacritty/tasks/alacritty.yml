@@ -11,7 +11,7 @@
 - name: Define version comparison facts
   ansible.builtin.set_fact:
     alacritty_current: "{{ alacritty_current_version.stdout | default('0.0.0', true) }}"
-    alacritty_required: "{{ alacritty_min_version }}"
+    alacritty_required: "{{ alacritty_version | regex_replace('^v', '') }}"
 
 - name: Create build directory
   ansible.builtin.file:
@@ -46,7 +46,7 @@
   ansible.builtin.git:
     repo: "{{ alacritty_repo }}"
     dest: "{{ alacritty_build_path }}"
-    version: "{{ alacritty_git_tag }}"
+    version: "{{ alacritty_version }}"
     single_branch: true
   register: alacritty_repo
   when: alacritty_current is version(alacritty_required, '<')

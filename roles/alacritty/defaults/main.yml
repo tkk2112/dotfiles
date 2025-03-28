@@ -1,11 +1,7 @@
 ---
 alacritty_repo: https://github.com/alacritty/alacritty.git
 
-# Minimum required version of Alacritty
-alacritty_min_version: 0.15.1
+# renovate: datasource=github-releases depName=alacritty/alacritty
+alacritty_version: v0.15.1
 
-# Git tag for the desired Alacritty release
-alacritty_git_tag: v{{ alacritty_min_version }}
-
-# Temporary build directory for compiling Alacritty
 alacritty_build_path: /tmp/alacritty
