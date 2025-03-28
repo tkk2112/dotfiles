@@ -2,7 +2,7 @@
 - name: Register LLVM alternatives for version {{ item }}
   ansible.builtin.shell: |
     update-alternatives \
-        --install /usr/bin/clang                 clang                 /usr/bin/clang-{{ item }} 100 \
+        --install /usr/bin/clang                 clang                 /usr/bin/clang-{{ item }} {{ item_priority }} \
         --slave   /usr/bin/clang++               clang++               /usr/bin/clang++-{{ item }}  \
         --slave   /usr/bin/clangd                clangd                /usr/bin/clangd-{{ item }}  \
         --slave   /usr/bin/asan_symbolize        asan_symbolize        /usr/bin/asan_symbolize-{{ item }} \
@@ -43,6 +43,39 @@
         --slave   /usr/bin/llvm-stress           llvm-stress           /usr/bin/llvm-stress-{{ item }} \
         --slave   /usr/bin/llvm-symbolizer       llvm-symbolizer       /usr/bin/llvm-symbolizer-{{ item }} \
         --slave   /usr/bin/llvm-tblgen           llvm-tblgen           /usr/bin/llvm-tblgen-{{ item }}
+  vars:
+    item_priority: "{{ item | int * 10 }}"
   loop: "{{ llvm_versions }}"
+  changed_when: false
+  become: true
+
+- name: Check clang alternative mode
+  ansible.builtin.command: update-alternatives --display clang
+  register: clang_status
+  changed_when: false
+  become: true
+
+- name: Set clang default to a specific version if in auto mode
+  ansible.builtin.command: update-alternatives --set clang /usr/bin/clang-{{ llvm_default_version }}
+  become: true
+  when: "'auto mode' in clang_status.stdout"
+  register: set_clang_default
+  changed_when: set_clang_default.rc == 0
+
+- name: Get list of current clang alternatives
+  ansible.builtin.command: update-alternatives --list clang
+  register: clang_list
+  changed_when: false
+
+- name: Check if each clang alternative exists
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ clang_list.stdout_lines }}"
+  register: clang_alternatives
+
+- name: Remove non-existent clang alternatives
+  ansible.builtin.command: update-alternatives --remove clang {{ item.item }}
+  loop: "{{ clang_alternatives.results }}"
+  when: not item.stat.exists
   changed_when: false
   become: true
