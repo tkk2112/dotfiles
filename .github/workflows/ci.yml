@@ -12,6 +12,13 @@ jobs:
       steps:
         - uses: actions/checkout@v4
         - uses: astral-sh/setup-uv@v5
+          with:
+            enable-cache: true
+            cache-dependency-glob: "uv.lock"
+        - uses: actions/cache@v4
+          with:
+            path: ~/.cache/pre-commit
+            key: pre-commit-5|${{ hashFiles('uv.lock') }}|${{ hashFiles('.pre-commit-config.yaml') }}
         - run: uv run alias check
         - run: uv run alias test
 

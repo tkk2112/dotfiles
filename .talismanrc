@@ -5,6 +5,9 @@ fileignoreconfig:
 - filename: .git-blame-ignore-revs
   ignore_detectors:
   - filecontent
+- filename: .github/workflows/ci.yml
+  ignore_detectors:
+  - filecontent
 - filename: setup.sh
   checksum: 1c631cf3b74902a295993f6a59a20b6fb766e1384f6197e559caa591d112ddcc
 - filename: roles/git/tasks/main.yml
