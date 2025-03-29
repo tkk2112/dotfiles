@@ -3,6 +3,12 @@
     "extends": [
         "github>tkk2112/renovate"
     ],
+    "hostRules": [
+        {
+            "matchHost": "github.com",
+            "token": " ${{ secrets.RENOVATE_TOKEN }}"
+        }
+    ],
     "ansible": {
         "fileMatch": [
             "(^|/)defaults/[^/]+\\.ya?ml$",
