@@ -2,3 +2,5 @@
 .venv
 .vscode
 .ansible
+__pycache__
+.coverage
