@@ -118,6 +118,7 @@ only_builtins_allow_modules:
   - community.general.alternatives
   - community.general.git_config
   - community.general.sudoers
+  - systemd_timer
 
 # Limit the depth of the nested blocks:
 max_block_depth: 20
