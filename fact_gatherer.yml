@@ -3,6 +3,7 @@
     name: inetutils-traceroute
     state: present
     update_cache: true
+  when: ansible_distribution in ['Debian', 'Ubuntu']
   become: true
 
 - name: Run traceroute to an external IP (quad9)
