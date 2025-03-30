@@ -29,7 +29,7 @@ EOF
 }
 
 # "flags"
-apt_updated=3
+pkgsys_updated=3
 skip_lint=4
 only_lint=5
 skip_dirty=6
@@ -84,19 +84,57 @@ process_arguments() {
   done
 }
 
-ensure_apt_updated() {
-  if ! has_flag $apt_updated; then
+detect_platform() {
+  platform="unknown"
+  case "$(uname -s)" in
+    Darwin)
+      platform="macos"
+      ;;
+    Linux)
+      if command -v apt >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1; then
+        platform="debian"
+      else
+        platform="linux"
+      fi
+      ;;
+  esac
+  echo "$platform"
+}
+
+PLATFORM=$(detect_platform)
+
+ensure_pkgsys_updated() {
+  if ! has_flag $pkgsys_updated; then
+    if [ "$PLATFORM" = "debian" ]; then
       sudo DEBIAN_FRONTEND=noninteractive apt -qq update </dev/null >/dev/null
-    set_flag $apt_updated
+    elif [ "$PLATFORM" = "macos" ]; then
+      # Homebrew typically auto-updates during install
+      :
+    elif [ "$PLATFORM" = "linux" ]; then
+      echo "Warning: Package repository update not implemented for generic Linux"
+    fi
+    set_flag $pkgsys_updated
   fi
 }
 
 install_package() {
   package="$1"
+  if [ "$PLATFORM" = "debian" ]; then
     if ! dpkg -s "$package" >/dev/null 2>&1; then
-    echo "Installing $package..."
-    ensure_apt_updated
+      echo "Installing $package on Debian/Ubuntu..."
+      ensure_pkgsys_updated
       sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y "$package" </dev/null >/dev/null
+    fi
+  elif [ "$PLATFORM" = "macos" ]; then
+    if ! brew list "$package" >/dev/null 2>&1; then
+      echo "Installing $package on macOS..."
+      brew install "$package"
+    fi
+  elif [ "$PLATFORM" = "linux" ]; then
+    echo "Warning: Generic Linux package installation for $package not implemented. Please install manually."
+  else
+    echo "Error: Unsupported platform."
+    exit 1
   fi
 }
 
@@ -197,7 +235,9 @@ main() {
   linter_args=""
   process_arguments "$@"
 
+  if [ "$PLATFORM" = "debian" ]; then
     install_package "apt-utils"
+  fi
   install_bin_package "git"
 
   install_or_update_uv
