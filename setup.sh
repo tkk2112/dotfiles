@@ -86,17 +86,17 @@ process_arguments() {
 
 ensure_apt_updated() {
   if ! has_flag $apt_updated; then
-    sudo DEBIAN_FRONTEND=noninteractive apt -qq update </dev/null >/dev/null
+      sudo DEBIAN_FRONTEND=noninteractive apt -qq update </dev/null >/dev/null
     set_flag $apt_updated
   fi
 }
 
 install_package() {
   package="$1"
-  if ! dpkg -s "$package" >/dev/null 2>&1; then
+    if ! dpkg -s "$package" >/dev/null 2>&1; then
     echo "Installing $package..."
     ensure_apt_updated
-    sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y "$package" </dev/null >/dev/null
+      sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y "$package" </dev/null >/dev/null
   fi
 }
 
@@ -140,30 +140,6 @@ run_ansible_linter() {
   if ! ~/.local/bin/uv run ansible-lint --nocolor --project-dir="$repo" ${lint_args} playbook.yml; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
-  fi
-}
-
-add_extra_var() {
-  extra_vars="$1"
-  key="$2"
-  value="$3"
-
-  if [ -n "$value" ]; then
-    [ -n "$extra_vars" ] && extra_vars="$extra_vars,"
-    echo "${extra_vars}\"${key}\":\"${value}\""
-  else
-    echo "$extra_vars"
-  fi
-}
-
-apply_extra_vars() {
-  extra_args="$1"
-  extra_vars="$2"
-
-  if [ -n "$extra_vars" ]; then
-    echo "$extra_args --extra-vars '{${extra_vars}}'"
-  else
-    echo "$extra_args"
   fi
 }
 
@@ -221,7 +197,7 @@ main() {
   linter_args=""
   process_arguments "$@"
 
-  install_package "apt-utils"
+    install_package "apt-utils"
   install_bin_package "git"
 
   install_or_update_uv
@@ -256,14 +232,6 @@ main() {
   fi
 
   extra_args="$(check_sudo_access)"
-
-  extra_vars=""
-  git_name="$(git config --global user.name)"
-  extra_vars="$(add_extra_var "$extra_vars" "git_user_name" "$git_name")"
-  git_email="$(git config --global user.email)"
-  extra_vars="$(add_extra_var "$extra_vars" "git_user_email" "$git_email")"
-
-  extra_args="$(apply_extra_vars "$extra_args" "$extra_vars")"
 
   ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args ./playbook.yml $ansible_args"
 }

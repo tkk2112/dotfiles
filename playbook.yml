@@ -6,13 +6,6 @@
       ansible.builtin.include_tasks:
         file: pre_tasks.yml
   any_errors_fatal: true
-  vars_prompt:
-    - name: git_user_name
-      prompt: Enter git config --global user.name
-      private: false
-    - name: git_user_email
-      prompt: Enter git config --global user.email
-      private: false
   roles:
     - { role: base, when: effective_roles.base }
     - { role: zsh, when: effective_roles.zsh }
