@@ -1,9 +1,21 @@
 ---
-- name: Check distro
-  ansible.builtin.assert:
-    that:
-      - ansible_distribution in ['Debian', 'Ubuntu']
-    fail_msg: This playbook is only for Debian-based systems
+- name: Determine hostvar defaults based on OS
+  ansible.builtin.set_fact:
+    hostvars_defaults: "{{ ('debian' if ansible_distribution in ['Debian', 'Ubuntu'] else ('macos' if ansible_distribution == 'MacOSX' else 'unknown')) | trim }}"
+
+- name: Fail for unsupported distributions
+  ansible.builtin.fail:
+    msg: "Unsupported distribution: {{ ansible_distribution }}"
+  when: hostvars_defaults == "unknown"
+
+- name: Check if host_vars/distributions/<distribution>.yml file exists
+  ansible.builtin.stat:
+    path: host_vars/distributions/{{ hostvars_defaults }}.yml
+  register: hostvars_distributionfile
+
+- name: Load os specific variables if available
+  ansible.builtin.include_vars: host_vars/distributions/{{ hostvars_defaults }}.yml
+  when: hostvars_distributionfile.stat.exists
 
 - name: Get system hostname
   ansible.builtin.command: hostname
@@ -14,19 +26,19 @@
   ansible.builtin.set_fact:
     ansible_hostname: "{{ system_hostname.stdout }}"
 
-- name: Check if host_vars/<hostname>.yml file exists
+- name: Check if host_vars/hosts/<hostname>.yml file exists
   ansible.builtin.stat:
-    path: host_vars/{{ ansible_hostname }}.yml
-  register: host_vars_file
+    path: host_vars/hosts/{{ ansible_hostname }}.yml
+  register: hostvars_hostfile
 
 - name: Prompt for continuation if file doesn't exist
   ansible.builtin.pause:
-    prompt: host_vars/{{ ansible_hostname }}.yml doesn't exist. Press ENTER to continue or Ctrl+C to abort
-  when: not host_vars_file.stat.exists
+    prompt: host_vars/hosts/{{ ansible_hostname }}.yml doesn't exist. Press ENTER to continue or Ctrl+C to abort
+  when: not hostvars_hostfile.stat.exists
 
 - name: Load host-specific variables if available
-  ansible.builtin.include_vars: host_vars/{{ ansible_hostname }}.yml
-  when: host_vars_file.stat.exists
+  ansible.builtin.include_vars: host_vars/hosts/{{ ansible_hostname }}.yml
+  when: hostvars_hostfile.stat.exists
 
 - name: Add NOPASSWD Entry for User
   community.general.sudoers:

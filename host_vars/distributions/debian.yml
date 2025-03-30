@@ -1,14 +1,26 @@
-all:
+default_roles:
+  base: true
+  zsh: true
+  git: true
+  go: true
+  fonts: true
+  neovim: true
+  tmux: true
+  llvm: false
+  rust: false
+  gpg: false
+  gdb: false
+  wsl: false
+  proton: false
+  desktop: false
+  alacritty: false
+  ssh_profile: false
+macos:
   vars:
-    headless: false
-    internal: false
-    personal: false
-    ansible_connection: local
-    ansible_python_interpreter: auto_silent
     default_roles:
       base: false
-      zsh: false
-      git: false
+      zsh: true
+      git: true
       go: false
       fonts: false
       neovim: false
@@ -22,5 +34,3 @@ all:
       desktop: false
       alacritty: false
       ssh_profile: false
-  hosts:
-    localhost:
