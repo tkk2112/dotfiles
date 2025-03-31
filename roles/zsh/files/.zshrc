@@ -4,6 +4,7 @@ source ~/.zsh/functions/darwin.zsh
 export DISABLE_UPDATE_PROMPT=true
 ZSH_CUSTOM_AUTOUPDATE_QUIET=true
 ZSH_CUSTOM_AUTOUPDATE_NUM_WORKERS=8
+ZSH_THEME="powerlevel10k/powerlevel10k"
 
 zstyle :omz:plugins:ssh-agent agent-forwarding yes
 zstyle :omz:plugins:ssh-agent quiet yes:
