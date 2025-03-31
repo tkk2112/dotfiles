@@ -54,9 +54,14 @@
     path: "{{ ansible_env.HOME }}/.zshrc"
     mode: "0600"
 
+- name: Get zsh path
+  ansible.builtin.command: which zsh
+  register: zsh_path
+  changed_when: false
+
 - name: Set zsh as the default shell for the user
   ansible.builtin.user:
     name: "{{ ansible_user_id }}"
-    shell: /usr/bin/zsh
+    shell: "{{ zsh_path.stdout }}"
   when: ansible_user_id != 'root'
   become: true
