@@ -21,3 +21,15 @@
     name: tldr-update
     job: /usr/bin/tldr -u
     schedule: Sun, 03:48
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Add tldr update to crontab
+  ansible.builtin.cron:
+    name: update tldr pages
+    minute: "0"
+    hour: "0"
+    day: "*"
+    month: "*"
+    weekday: "0"
+    job: /usr/bin/tldr -u > /dev/null
+  when: ansible_distribution == 'MacOSX'
