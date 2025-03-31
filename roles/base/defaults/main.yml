@@ -25,6 +25,7 @@ base_packages:
   - rsync
   - shellcheck
   - shfmt
+  - tmux
   - silversearcher-ag
   - tio
   - tldr
