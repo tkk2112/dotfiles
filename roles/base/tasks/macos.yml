@@ -1,0 +1,25 @@
+---
+- name: Ensuring Homebrew Is Installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/brew
+  register: homebrew_check
+
+- name: Installing Homebrew
+  ansible.builtin.shell: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+  when: not homebrew_check.stat.exists
+  changed_when: true
+
+- name: Upgrade homebrew and all packages
+  community.general.homebrew:
+    update_homebrew: true
+    upgrade_all: true
+
+- name: Install essential packages
+  community.general.homebrew:
+    name: "{{ base_packages }}"
+    state: present
+
+- name: Install essential macos packages
+  community.general.homebrew:
+    name: "{{ base_macos_packages }}"
+    state: present

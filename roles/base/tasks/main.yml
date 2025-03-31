@@ -1,26 +1,13 @@
 ---
-- name: Include repository tasks for {{ ansible_distribution }}
+- name: Include tasks for debian-based systems
   ansible.builtin.include_tasks:
-    file: "{{ ansible_distribution | lower }}.yml"
+    file: debian_based.yml
+  when: ansible_distribution in ['Debian', 'Ubuntu']
 
-- name: Update and upgrade system packages
-  ansible.builtin.apt:
-    update_cache: true
-    upgrade: dist
-  become: true
-
-- name: Install essential system packages
-  ansible.builtin.apt:
-    name: "{{ base_packages }}"
-    state: present
-  become: true
-
-- name: Ensure APT keyrings directory exists
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: "0755"
-  become: true
+- name: Include tasks for macos
+  ansible.builtin.include_tasks:
+    file: macos.yml
+  when: ansible_distribution == 'MacOSX'
 
 - name: Ensure .local/bin directory exists
   ansible.builtin.file:
@@ -48,10 +35,6 @@
       esac
     mode: "0644"
     force: false # Won't overwrite if exists
-
-- name: Include services tasks
-  ansible.builtin.import_tasks:
-    file: services.yml
 
 - name: Include tldr tasks
   ansible.builtin.import_tasks:
