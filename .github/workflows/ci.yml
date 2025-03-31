@@ -7,20 +7,20 @@ on:
 
 jobs:
   check:
-      name: check'n'test
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - uses: astral-sh/setup-uv@v5
-          with:
-            enable-cache: true
-            cache-dependency-glob: "uv.lock"
-        - uses: actions/cache@v4
-          with:
-            path: ~/.cache/pre-commit
-            key: pre-commit-5|${{ hashFiles('uv.lock') }}|${{ hashFiles('.pre-commit-config.yaml') }}
-        - run: uv run alias check
-        - run: uv run alias test
+    name: check'n'test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-5|${{ hashFiles('uv.lock') }}|${{ hashFiles('.pre-commit-config.yaml') }}
+      - run: uv run alias check
+      - run: uv run alias test
 
   platform-run:
     name: ${{ matrix.task.name }} on ${{ matrix.os.name }}
@@ -70,7 +70,7 @@ jobs:
           echo "USERNAME=${USERNAME}" >> "$GITHUB_ENV"
 
           if [ -d /workspace ]; then
-            echo "DOTFILES_LOCATION=/worspace" >> "$GITHUB_ENV"
+            echo "DOTFILES_LOCATION=/workspace" >> "$GITHUB_ENV"
             chown -R 1000:1000 /workspace
           else
             echo "DOTFILES_LOCATION=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
@@ -114,6 +114,7 @@ jobs:
           else
             echo "COMMIT=${{ github.sha }}" >> $GITHUB_ENV
           fi
+          echo "DOTFILES_LOCATION=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
 
       - name: "Exec task (${{ matrix.task.name }}): $ setup.sh ${{ matrix.task.setup_args }}"
         env:
