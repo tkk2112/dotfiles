@@ -94,10 +94,39 @@ jobs:
           su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
            "curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
 
+  macos-run:
+    name: ${{ matrix.task.name }} on macos-latest
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        task:
+          - name: linter
+            setup_args: "--only-lint"
+          - name: playbook
+            setup_args: "--skip-lint"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set commit variable
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "COMMIT=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          else
+            echo "COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+          fi
+
+      - name: "Exec task (${{ matrix.task.name }}): $ setup.sh ${{ matrix.task.setup_args }}"
+        env:
+          SETUP_ARGS: ${{ matrix.task.setup_args }}
+          SH_ARGS: ${{ matrix.task.sh_args || '' }}
+
+        run: |
+          curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}
+
   test:
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    needs: platform-run
+    needs: [platform-run, macos-run]
     steps:
       - run: exit 1
         if: ${{ contains(toJSON(needs.*.result), 'failure') || contains(toJSON(needs.*.result), 'cancelled') }}
