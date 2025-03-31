@@ -117,6 +117,7 @@ kinds:
 only_builtins_allow_modules:
   - community.general.alternatives
   - community.general.git_config
+  - community.general.homebrew
   - community.general.sudoers
   - systemd_timer
 
