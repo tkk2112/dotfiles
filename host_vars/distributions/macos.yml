@@ -1,11 +1,11 @@
 default_roles:
-  base: false
-  zsh: false
-  git: false
+  base: true
+  zsh: true
+  git: true
   go: false
   fonts: false
   neovim: false
-  tmux: false
+  tmux: true
   llvm: false
   rust: false
   gpg: false
