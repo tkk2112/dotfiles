@@ -1,10 +1,4 @@
 ---
-- name: Install zsh package
-  ansible.builtin.apt:
-    name: zsh
-    state: present
-  become: true
-
 - name: Install Oh My Zsh # noqa: latest
   ansible.builtin.git:
     repo: https://github.com/ohmyzsh/ohmyzsh.git
