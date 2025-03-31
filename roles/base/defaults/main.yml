@@ -2,14 +2,11 @@
 # Enable testing repositories if true
 base_debian_enable_testing: true
 
-# List of essential packages for system setup
 base_packages:
   - bat
   - btop
   - cmake
-  - debian-goodies
   - direnv
-  - dnsutils
   - fontconfig
   - fzf
   - git
@@ -20,14 +17,23 @@ base_packages:
   - jq
   - nmap
   - nvtop
-  - openssh-server
-  - python3-argcomplete
   - rsync
   - shellcheck
   - shfmt
   - tmux
-  - silversearcher-ag
   - tio
   - tldr
   - unzip
   - yamllint
+
+base_debian_packages:
+  - debian-goodies
+  - dnsutils
+  - openssh-server
+  - python3-argcomplete
+  - silversearcher-ag
+  - zsh
+
+base_macos_packages:
+  - ag
+  - python-argcomplete
