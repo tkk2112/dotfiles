@@ -29,6 +29,7 @@ base_packages:
 base_debian_packages:
   - debian-goodies
   - dnsutils
+  - moreutils
   - openssh-server
   - python3-argcomplete
   - silversearcher-ag
