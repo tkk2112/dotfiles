@@ -13,4 +13,4 @@ fileignoreconfig:
 - filename: roles/git/tasks/main.yml
   checksum: 0f2aab269d2bac6888a2608b505f6f846b29c6ea4f99fa42b41ecb9372f97deb
 - filename: roles/zsh/files/.zshrc
-  checksum: 8f23f0885160381648c1b2130b7fb822662b8b66c6d1b78dbfb6d72dfc54207e
+  checksum: 5cf142c21d51f1bcb6273bb30b2c10ce727e420c689ac617b7b0136b0476195e
