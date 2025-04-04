@@ -16,22 +16,3 @@ default_roles:
   desktop: false
   alacritty: false
   ssh_profile: false
-macos:
-  vars:
-    default_roles:
-      base: false
-      zsh: true
-      git: true
-      go: false
-      fonts: false
-      neovim: false
-      tmux: false
-      llvm: false
-      rust: false
-      gpg: false
-      gdb: false
-      wsl: false
-      proton: false
-      desktop: false
-      alacritty: false
-      ssh_profile: false
