@@ -15,6 +15,7 @@
     - { role: go, when: effective_roles.go }
     - { role: neovim, when: effective_roles.neovim }
     - { role: tmux, when: effective_roles.tmux }
+    - { role: zellij, when: effective_roles.zellij }
     - { role: devel, when: effective_roles.devel }
     - { role: gpg, when: effective_roles.gpg }
     - { role: fonts, when: effective_roles.fonts }
