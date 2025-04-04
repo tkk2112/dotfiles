@@ -1,0 +1,5 @@
+---
+- name: Install latest version of zellij
+  community.general.cargo:
+    name: zellij
+    state: latest
