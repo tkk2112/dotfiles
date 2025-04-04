@@ -116,6 +116,7 @@ kinds:
 # List of additions modules to allow in only-builtins rule.
 only_builtins_allow_modules:
   - community.general.alternatives
+  - community.general.cargo
   - community.general.git_config
   - community.general.homebrew
   - community.general.sudoers
