@@ -1,21 +1,10 @@
 ---
-- name: Download rustup installer script
-  ansible.builtin.get_url:
-    url: https://sh.rustup.rs
-    dest: /tmp/rustup-init.sh
-    mode: "0755"
+- name: Include debain rust tasks
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_distribution in ['Debian', 'Ubuntu']
 
-- name: Install rustup
-  ansible.builtin.shell: /tmp/rustup-init.sh -y --no-modify-path --profile minimal
-  args:
-    creates: "{{ ansible_env.HOME }}/.cargo/bin/rustup"
-    executable: /bin/bash
-
-- name: Update Rust toolchain to stable
-  ansible.builtin.shell: |
-    source "{{ ansible_env.HOME }}/.cargo/env"
-    rustup update stable
-  args:
-    executable: /bin/bash
-  register: rustup_result
-  changed_when: "'info: downloading' in rustup_result.stdout"
+- name: Install rust
+  community.general.homebrew:
+    name: rust
+    state: present
+  when: ansible_distribution == 'MacOSX'
