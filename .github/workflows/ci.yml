@@ -10,12 +10,12 @@ jobs:
     name: check'n'test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-      - uses: actions/cache@v4
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-5|${{ hashFiles('uv.lock') }}|${{ hashFiles('.pre-commit-config.yaml') }}
@@ -52,7 +52,7 @@ jobs:
           apt -qq update </dev/null >/dev/null
           apt -qq install -y ${APT_PKGS} </dev/null >/dev/null
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Add user if needed
         run: |
@@ -105,7 +105,7 @@ jobs:
           - name: playbook
             setup_args: "--skip-lint"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Set commit variable
         run: |
