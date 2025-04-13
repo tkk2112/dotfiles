@@ -1,0 +1,10 @@
+---
+- name: Include tasks for debian-based systems
+  ansible.builtin.include_tasks:
+    file: debian_based.yml
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Include tasks for macos
+  ansible.builtin.include_tasks:
+    file: macos.yml
+  when: ansible_distribution == 'MacOSX'

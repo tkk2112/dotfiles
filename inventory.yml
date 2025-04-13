@@ -13,6 +13,7 @@ all:
       fonts: false
       neovim: false
       tmux: false
+      devel: false
       llvm: false
       rust: false
       gpg: false
