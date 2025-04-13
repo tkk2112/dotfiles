@@ -1,0 +1,12 @@
+---
+- name: Install development packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+  become: true
+
+- name: Install development debian-based packages
+  ansible.builtin.apt:
+    name: "{{ base_debian_packages }}"
+    state: present
+  become: true
