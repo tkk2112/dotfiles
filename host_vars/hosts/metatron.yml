@@ -1,6 +1,7 @@
 personal: true
 
 install_roles:
+  devel: true
   llvm: true
   alacritty: true
 

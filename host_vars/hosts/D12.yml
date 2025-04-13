@@ -2,5 +2,6 @@ personal: true
 headless: false
 
 install_roles:
+  devel: true
   llvm: true
   alacritty: true

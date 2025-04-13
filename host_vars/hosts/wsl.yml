@@ -3,5 +3,6 @@ personal: true
 headless: true
 
 install_roles:
+  devel: true
   llvm: true
   wsl: true
