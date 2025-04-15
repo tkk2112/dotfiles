@@ -50,6 +50,7 @@
     - { key: sync, value: "!git pull --prune --quiet && git -P branch --format \"%(refname:short) %(upstream:track)\" | grep -F \"[gone]\" | sed \"s/\\[gone\\]//g\" | xargs -r git branch -D" }
     - { key: track, value: "!git branch --set-upstream-to $(git for-each-ref --format=\"%(refname:short)\" $(git symbolic-ref HEAD))" }
     - { key: up, value: remote update }
+    - { key: backup, value: "!git push --force-with-lease backup HEAD:$(git symbolic-ref --short HEAD)" }
 
 - name: Configure git settings
   community.general.git_config:
