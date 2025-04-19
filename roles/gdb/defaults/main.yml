@@ -1,6 +1,6 @@
 ---
 # renovate: datasource=github-releases depName=pwndbg/pwndbg versioning=loose
-gdb_pwndbg_version: 2025.04.13
+gdb_pwndbg_version: 2025.04.18
 
 gdb_r2pm_packages:
   - r2frida
