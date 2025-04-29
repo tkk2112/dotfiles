@@ -50,11 +50,11 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 39.262.1
+    rev: 39.263.1
     hooks:
       - id: renovate-config-validator
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.3
+    rev: v8.25.0
     hooks:
       - id: gitleaks
   - repo: https://github.com/thoughtworks/talisman
