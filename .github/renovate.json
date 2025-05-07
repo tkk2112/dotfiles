@@ -10,18 +10,18 @@
         }
     ],
     "ansible": {
-        "fileMatch": [
-            "(^|/)defaults/[^/]+\\.ya?ml$",
-            "(^|/)handlers/[^/]+\\.ya?ml$",
-            "(^|/)tasks/[^/]+\\.ya?ml$"
+        "managerFilePatterns": [
+            "/(^|/)defaults/[^/]+\\.ya?ml$/",
+            "/(^|/)handlers/[^/]+\\.ya?ml$/",
+            "/(^|/)tasks/[^/]+\\.ya?ml$/"
         ]
     },
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": [
-                "(^|/)defaults/[^/]+\\.ya?ml$",
-                "(^|/)tasks/[^/]+\\.ya?ml$"
+            "managerFilePatterns": [
+                "/(^|/)defaults/[^/]+\\.ya?ml$/",
+                "/(^|/)tasks/[^/]+\\.ya?ml$/"
             ],
             "matchStrings": [
                 "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)(?:\\s+versioning=(?<versioning>[a-z-]+))?[^\\n]*\\n(?<variableName>[^:]+):\\s*[\"']?(?<currentValue>[^'\"\\s]*)(?:[\"'])?"
