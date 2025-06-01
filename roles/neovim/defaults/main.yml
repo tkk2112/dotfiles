@@ -10,4 +10,4 @@ neovim_min_version: 0.10.0
 neovim_repo: https://github.com/neovim/neovim.git
 
 # Temporary build directory for Neovim
-neovim_build_path: /tmp/neovim-build
+neovim_build_path: "{{ ansible_tmp }}/neovim"

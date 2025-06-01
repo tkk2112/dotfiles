@@ -13,28 +13,38 @@ base_packages:
   - git-gui
   - git-lfs
   - htop
-  - icdiff
   - jq
   - nmap
   - nvtop
   - rsync
   - shellcheck
   - shfmt
-  - tmux
   - tio
   - tldr
+  - tmux
   - unzip
   - yamllint
 
 base_debian_packages:
   - debian-goodies
   - dnsutils
+  - icdiff
   - moreutils
   - openssh-server
   - python3-argcomplete
   - silversearcher-ag
   - zsh
 
+base_fedora_packages:
+  - bind-utils
+  - dnf-utils
+  - moreutils
+  - perl
+  - python3-argcomplete
+  - the_silver_searcher
+  - zsh
+
 base_macos_packages:
   - ag
+  - icdiff
   - python-argcomplete

@@ -1,7 +1,9 @@
 ---
 - name: Determine hostvar defaults based on OS
   ansible.builtin.set_fact:
-    hostvars_defaults: "{{ ('debian' if ansible_distribution in ['Debian', 'Ubuntu'] else ('macos' if ansible_distribution == 'MacOSX' else 'unknown')) | trim }}"
+    hostvars_defaults: "{{ ('debian' if ansible_distribution in ['Debian', 'Ubuntu']
+                            else ('fedora' if ansible_distribution == 'Fedora'
+                            else ('macos' if ansible_distribution == 'MacOSX' else 'unknown'))) | trim }}"
 
 - name: Fail for unsupported distributions
   ansible.builtin.fail:

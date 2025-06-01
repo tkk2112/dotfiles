@@ -1,9 +1,8 @@
-name: Standard Run
+name: Standard
 
 on:
   push:
     branches: [main]
-  pull_request:
 
 jobs:
   check:

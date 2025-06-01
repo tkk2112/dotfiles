@@ -1,6 +1,6 @@
 ---
 - name: Install golang
-  ansible.builtin.apt:
+  ansible.builtin.package:
     name:
       - golang
     state: present

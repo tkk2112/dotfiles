@@ -1,7 +1,7 @@
 ---
-- name: Include debain rust tasks
-  ansible.builtin.include_tasks: debian.yml
-  when: ansible_distribution in ['Debian', 'Ubuntu']
+- name: Include linux rust tasks
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_distribution in ['Debian', 'Ubuntu', 'Fedora']
 
 - name: Install rust
   community.general.homebrew:

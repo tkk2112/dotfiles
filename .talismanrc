@@ -5,7 +5,10 @@ fileignoreconfig:
 - filename: .git-blame-ignore-revs
   ignore_detectors:
   - filecontent
-- filename: .github/workflows/ci.yml
+- filename: .github/workflows/*.yml
+  ignore_detectors:
+  - filecontent
+- filename: .github/distros/Dockerfile.*
   ignore_detectors:
   - filecontent
 - filename: setup.sh
@@ -13,4 +16,8 @@ fileignoreconfig:
 - filename: roles/git/tasks/main.yml
   checksum: 656db091dbe87bb2379c81314b4200affa579451d610f1776b5d20b36b7af676
 - filename: roles/zsh/files/.zshrc
-  checksum: 5cf142c21d51f1bcb6273bb30b2c10ce727e420c689ac617b7b0136b0476195e
+  checksum: 2ac3eca371dd2ef54e3040f291a87f8b1fff8f6353dccc907f33ce648af99f49
+- filename: roles/zsh/files/.zshenv
+  checksum: 2f94f92985cac0b737d17a83af8cc17d9d89d8a5c0cc799da948d36c94e66cad
+- filename: roles/base/tasks/fedora.yml
+  checksum: 7701d78a60d1e8de1c47791f685793e336f09bb54bd5a011ef19d8454dd980d9
