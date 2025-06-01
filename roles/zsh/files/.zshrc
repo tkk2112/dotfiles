@@ -1,4 +1,4 @@
-source ~/.zsh/functions/darwin.zsh
+source ~/.zsh/functions/indentify.zsh
 
 # Disable update prompt (Oh-My-Zsh setting)
 export DISABLE_UPDATE_PROMPT=true

@@ -1,9 +1,9 @@
-source ~/.zsh/functions/darwin.zsh
+source ~/.zsh/functions/indentify.zsh
 # Platform-specific alias for 'bat'
-if darwin; then
-  alias bat='bat --theme=Coldark-Dark'
-else
+if debian; then
   alias bat='batcat --theme=Coldark-Dark'
+else
+  alias bat='bat --theme=Coldark-Dark'
 fi
 alias less='bat'
 alias more='bat'

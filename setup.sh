@@ -93,6 +93,8 @@ detect_platform() {
     Linux)
       if command -v apt >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1; then
         platform="debian"
+      elif command -v dnf >/dev/null 2>&1; then
+        platform="fedora"
       else
         platform="linux"
       fi
@@ -107,6 +109,8 @@ ensure_pkgsys_updated() {
   if ! has_flag $pkgsys_updated; then
     if [ "$PLATFORM" = "debian" ]; then
       sudo DEBIAN_FRONTEND=noninteractive apt -qq update </dev/null >/dev/null
+    elif [ "$PLATFORM" = "fedora" ]; then
+      sudo dnf check-update -q >/dev/null 2>&1 || true
     elif [ "$PLATFORM" = "macos" ]; then
       # Homebrew typically auto-updates during install
       :
@@ -124,6 +128,12 @@ install_package() {
       echo "Installing $package on Debian/Ubuntu..."
       ensure_pkgsys_updated
       sudo DEBIAN_FRONTEND=noninteractive apt -qq install -y "$package" </dev/null >/dev/null
+    fi
+  elif [ "$PLATFORM" = "fedora" ]; then
+    if ! rpm -q "$package" >/dev/null 2>&1; then
+      echo "Installing $package on Fedora..."
+      ensure_pkgsys_updated
+      sudo dnf install -y -q "$package" >/dev/null 2>&1
     fi
   elif [ "$PLATFORM" = "macos" ]; then
     if ! brew list "$package" >/dev/null 2>&1; then
@@ -238,6 +248,8 @@ main() {
 
   if [ "$PLATFORM" = "debian" ]; then
     install_package "apt-utils"
+  elif [ "$PLATFORM" = "fedora" ]; then
+    install_package "python3-libdnf5"
   fi
   install_bin_package "git"
 

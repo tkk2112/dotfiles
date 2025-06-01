@@ -5,5 +5,10 @@ devel_packages:
 devel_debian_packages:
   - ninja-build
 
+devel_fedora_packages:
+  - ninja-build
+  - gcc-c++
+  - make
+
 devel_macos_packages:
   - ninja

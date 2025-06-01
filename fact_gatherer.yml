@@ -1,9 +1,13 @@
-- name: Ensure traceroute is installed
-  ansible.builtin.apt:
-    name: inetutils-traceroute
+- name: Ensure traceroute is installed on Linux
+  ansible.builtin.package:
+    name: >-
+      {{
+        'inetutils-traceroute'
+          if ansible_facts['os_family'] == 'Debian'
+          else 'traceroute'
+      }}
     state: present
-    update_cache: true
-  when: ansible_distribution in ['Debian', 'Ubuntu']
+  when: ansible_facts['os_family'] in ['Debian', 'RedHat']
   become: true
 
 - name: Run traceroute to an external IP (quad9)
