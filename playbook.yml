@@ -2,6 +2,14 @@
 - name: Dotfiles playbook
   hosts: all
   pre_tasks:
+    - name: Set ansible_tmp
+      ansible.builtin.set_fact:
+        ansible_tmp: "{{ ansible_env.HOME }}/.cache/ansible_tmp"
+    - name: Create ansible_tmp directory
+      ansible.builtin.file:
+        path: "{{ ansible_tmp }}"
+        state: directory
+        mode: "0755"
     - name: Include pre_tasks
       ansible.builtin.include_tasks:
         file: pre_tasks.yml

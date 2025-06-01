@@ -4,6 +4,11 @@
     file: debian_based.yml
   when: ansible_distribution in ['Debian', 'Ubuntu']
 
+- name: Include tasks for fedora
+  ansible.builtin.include_tasks:
+    file: fedora.yml
+  when: ansible_distribution == 'Fedora'
+
 - name: Include tasks for macos
   ansible.builtin.include_tasks:
     file: macos.yml

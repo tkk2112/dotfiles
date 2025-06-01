@@ -1,0 +1,19 @@
+default_roles:
+  base: true
+  zsh: true
+  git: true
+  go: true
+  fonts: true
+  neovim: true
+  tmux: true
+  zellij: true
+  devel: false
+  llvm: false
+  rust: false
+  gpg: false
+  gdb: false
+  wsl: false
+  proton: false
+  desktop: false
+  alacritty: false
+  ssh_profile: false

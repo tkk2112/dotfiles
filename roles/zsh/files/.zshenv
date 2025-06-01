@@ -1,3 +1,5 @@
+source ~/.zsh/functions/indentify.zsh
+
 export EDITOR="nvim"
 export VISUAL="vim"
 
@@ -10,10 +12,10 @@ export PATH="$HOME/bin:$PATH"
 
 export MANROFFOPT="-c"
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
-else
+if debian; then
   export MANPAGER="sh -c 'col -bx | batcat -l man -p'"
+else
+  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 fi
 
 export ZSH_CACHE_DIR="$HOME/.cache/oh-my-zsh"

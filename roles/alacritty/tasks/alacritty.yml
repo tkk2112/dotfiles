@@ -27,7 +27,7 @@
   become: true
   when: alacritty_current is version(alacritty_required, '<')
 
-- name: Install build dependencies
+- name: Install build dependencies (Debian/Ubuntu)
   ansible.builtin.apt:
     name:
       - cmake
@@ -40,7 +40,26 @@
       - python3
     state: present
   become: true
-  when: alacritty_current is version(alacritty_required, '<')
+  when:
+    - alacritty_current is version(alacritty_required, '<')
+    - ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Install build dependencies (Fedora)
+  ansible.builtin.dnf:
+    name:
+      - cmake
+      - gcc-c++
+      - pkgconfig
+      - freetype-devel
+      - fontconfig-devel
+      - libxcb-devel
+      - libxkbcommon-devel
+      - python3
+    state: present
+  become: true
+  when:
+    - alacritty_current is version(alacritty_required, '<')
+    - ansible_distribution == 'Fedora'
 
 - name: Clone source repository
   ansible.builtin.git:

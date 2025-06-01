@@ -1,9 +1,7 @@
-name: CI
+name: TestDistros
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_call:
 
 jobs:
   check:
@@ -36,6 +34,10 @@ jobs:
           - name: ubuntu:24.04
             image: ubuntu:24.04
             continue-on-error: true
+          - name: tkk2112/fedora-42-cosmic-spin:latest
+            image: tkk2112/fedora-42-cosmic-spin:latest
+            continue-on-error: true
+            options: "--privileged --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro --entrypoint /usr/lib/systemd/systemd"
         task:
           - name: linter
             setup_args: "--only-lint"
@@ -43,19 +45,28 @@ jobs:
             setup_args: "--skip-lint"
     container:
       image: ${{ matrix.os.image }}
+      options: ${{ matrix.os.options || '--privileged' }}
     steps:
       - name: Install dependencies
         env:
-          APT_PKGS: ${{ matrix.os.apt_pkgs || 'git curl sudo' }}
+          PKGS: ${{ matrix.os.pkgs || 'git curl sudo' }}
           DEBIAN_FRONTEND: "noninteractive"
         run: |
-          apt -qq update </dev/null >/dev/null
-          apt -qq install -y ${APT_PKGS} </dev/null >/dev/null
+          if command -v apt &> /dev/null; then
+            apt -qq update </dev/null >/dev/null
+            apt -qq install -y ${PKGS} </dev/null >/dev/null
+          elif command -v dnf &> /dev/null; then
+            dnf -y install ${PKGS} </dev/null >/dev/null
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Add user if needed
         run: |
+          set -e
           USERNAME="newuser"
           if getent passwd 1000 >/dev/null; then
             echo "User with UID 1000 already exists"
@@ -63,12 +74,33 @@ jobs:
           else
             echo "Creating user ${USERNAME} with UID/GID 1000"
             groupadd --gid 1000 ${USERNAME} || true
-            useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash ${USERNAME}
+            useradd --uid 1000 --gid 1000 --create-home --shell $(which bash) ${USERNAME}
+
+            # Add to wheel/sudo group based on distro
+            if grep -q wheel /etc/group; then
+              usermod -aG wheel ${USERNAME} || true
+              echo "Added ${USERNAME} to wheel group"
+            elif grep -q sudo /etc/group; then
+              usermod -aG sudo ${USERNAME} || true
+              echo "Added ${USERNAME} to sudo group"
+            fi
           fi
 
+          # Configure sudo access without password
+          # Backup sudoers file
+          cp /etc/sudoers /etc/sudoers.bak
+          # Append to sudoers file
           echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          echo "USERNAME=${USERNAME}" >> "$GITHUB_ENV"
 
+          echo "USERNAME=${USERNAME}" >> "$GITHUB_ENV"
+          # Verify sudoers config
+          visudo -c || exit 1
+
+          # Check group membership
+          groups ${USERNAME}
+          passwd ${USERNAME} --status
+
+          # Set directory permissions
           if [ -d /workspace ]; then
             echo "DOTFILES_LOCATION=/workspace" >> "$GITHUB_ENV"
             chown -R 1000:1000 /workspace
@@ -92,7 +124,7 @@ jobs:
 
         run: |
           su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
-           "curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
+           "sudo visudo -c && curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
 
   macos-run:
     name: ${{ matrix.task.name }} on macos-latest
