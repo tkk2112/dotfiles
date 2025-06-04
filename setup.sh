@@ -162,7 +162,7 @@ install_or_update_uv() {
   if ! command -v ~/.local/bin/uv >/dev/null 2>&1; then
     echo "Installing 'uv'..."
     curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh
-     ~/.local/bin/uv install python 3.11
+     ~/.local/bin/uv python install 3.11
   else
     echo "Updating 'uv'..."
     ~/.local/bin/uv self update
