@@ -5,6 +5,9 @@ fileignoreconfig:
 - filename: .git-blame-ignore-revs
   ignore_detectors:
   - filecontent
+- filename: .github/actions/**/*.yml
+  ignore_detectors:
+  - filecontent
 - filename: .github/workflows/*.yml
   ignore_detectors:
   - filecontent
