@@ -4,3 +4,12 @@
     path: "{{ ansible_env.HOME }}/.config/systemd/user"
     state: directory
     mode: "0700"
+
+- name: Enable Linger for user
+  ansible.builtin.command:
+    cmd: env loginctl enable-linger {{ ansible_user_id }}
+    creates: /var/lib/systemd/linger/{{ ansible_user_id }}
+  become: true
+  when:
+    - ansible_service_mgr == 'systemd'
+    - ansible_virtualization_type != 'docker' or ansible_pid1_name == 'systemd'
