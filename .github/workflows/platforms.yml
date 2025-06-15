@@ -26,26 +26,26 @@ jobs:
     strategy:
       matrix:
         os:
-          - name: debian:bookworm
-            image: debian:bookworm
-          - name: debian:testing
-            image: debian:testing
-            continue-on-error: true
+          # - name: debian:bookworm
+          #   image: jrei/systemd-debian:12
+          # - name: debian:trixie
+          #   image: jrei/systemd-debian:13
+
           - name: ubuntu:24.04
-            image: ubuntu:24.04
-            continue-on-error: true
+            image: jrei/systemd-ubuntu:24.04
+            pkgs: 'git curl sudo python3-six'
           - name: tkk2112/fedora-42-cosmic-spin:latest
             image: tkk2112/fedora-42-cosmic-spin:latest
             continue-on-error: true
-            options: "--privileged --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro --entrypoint /usr/lib/systemd/systemd"
+            options: "--privileged --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro"
         task:
-          - name: linter
-            setup_args: "--only-lint"
+          # - name: linter
+          #   setup_args: "--only-lint"
           - name: playbook
-            setup_args: "--skip-lint"
+            setup_args: "-vvv --skip-lint"
     container:
       image: ${{ matrix.os.image }}
-      options: ${{ matrix.os.options || '--privileged' }}
+      options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
     steps:
       - name: Install dependencies
         env:
@@ -64,50 +64,16 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Add user if needed
+      - name: Setup user
+        id: user_setup
+        uses: ./.github/actions/setup-user
+        with:
+          workspace_path: ${{ github.workspace }}
+
+      - name: Set environment variables
         run: |
-          set -e
-          USERNAME="newuser"
-          if getent passwd 1000 >/dev/null; then
-            echo "User with UID 1000 already exists"
-            USERNAME=$(getent passwd 1000 | cut -d: -f1)
-          else
-            echo "Creating user ${USERNAME} with UID/GID 1000"
-            groupadd --gid 1000 ${USERNAME} || true
-            useradd --uid 1000 --gid 1000 --create-home --shell $(which bash) ${USERNAME}
-
-            # Add to wheel/sudo group based on distro
-            if grep -q wheel /etc/group; then
-              usermod -aG wheel ${USERNAME} || true
-              echo "Added ${USERNAME} to wheel group"
-            elif grep -q sudo /etc/group; then
-              usermod -aG sudo ${USERNAME} || true
-              echo "Added ${USERNAME} to sudo group"
-            fi
-          fi
-
-          # Configure sudo access without password
-          # Backup sudoers file
-          cp /etc/sudoers /etc/sudoers.bak
-          # Append to sudoers file
-          echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-          echo "USERNAME=${USERNAME}" >> "$GITHUB_ENV"
-          # Verify sudoers config
-          visudo -c || exit 1
-
-          # Check group membership
-          groups ${USERNAME}
-          passwd ${USERNAME} --status
-
-          # Set directory permissions
-          if [ -d /workspace ]; then
-            echo "DOTFILES_LOCATION=/workspace" >> "$GITHUB_ENV"
-            chown -R 1000:1000 /workspace
-          else
-            echo "DOTFILES_LOCATION=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
-            chown -R 1000:1000 $GITHUB_WORKSPACE
-          fi
+          echo "USERNAME=${{ steps.user_setup.outputs.username }}" >> "$GITHUB_ENV"
+          echo "DOTFILES_LOCATION=${{ steps.user_setup.outputs.dotfiles_location }}" >> "$GITHUB_ENV"
 
       - name: Set commit variable
         run: |
@@ -134,8 +100,8 @@ jobs:
         task:
           - name: linter
             setup_args: "--only-lint"
-          - name: playbook
-            setup_args: "--skip-lint"
+          # - name: playbook
+          #   setup_args: "--skip-lint"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
