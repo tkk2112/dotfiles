@@ -185,7 +185,7 @@ run_ansible_linter() {
   }
 
   # shellcheck disable=SC2086
-  if ! ANSIBLE_CONFIG=ansible.cfg ANSIBLE_PYTHON_INTERPRETER=$(which python3) ansible-lint --nocolor --project-dir="$repo" ${lint_args} playbook.yml; then
+  if ! ANSIBLE_CONFIG=ansible.cfg ansible-lint --nocolor --project-dir="$repo" ${lint_args} playbook.yml; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -247,6 +247,8 @@ main() {
 
   if [ "$PLATFORM" = "debian" ]; then
     install_package "apt-utils"
+  elif [ "$PLATFORM" = "fedora" ]; then
+    install_package "python3-libdnf5"
   fi
   install_bin_package "git"
 
@@ -278,7 +280,7 @@ main() {
   echo "Installing Ansible collections..."
   for collection in $collections; do
     echo "  - $collection"
-    ANSIBLE_CONFIG=ansible.cfg ANSIBLE_PYTHON_INTERPRETER=$(which python3) ansible-galaxy collection install "$collection" --upgrade -vvv
+    ANSIBLE_CONFIG=ansible.cfg ansible-galaxy collection install "$collection" --upgrade
   done
 
   if ! has_flag $skip_lint; then
@@ -288,12 +290,8 @@ main() {
       exit 0
     fi
   fi
-  set -x
   extra_args="$(check_sudo_access)"
-  python3.11 -c "import libdnf5;print(libdnf5.conf)"
-  $(which python3) -c "import libdnf5;print(libdnf5.conf)"
-  set +x
-  #ANSIBLE_CONFIG=ansible.cfg ANSIBLE_PYTHON_INTERPRETER=$(which python3) ansible-playbook $extra_args ./playbook.yml $ansible_args
+  ANSIBLE_CONFIG=ansible.cfg ansible-playbook $extra_args ./playbook.yml $ansible_args
 }
 
 main "$@"
