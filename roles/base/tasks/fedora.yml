@@ -60,10 +60,6 @@
     state: present
   become: true
 
-- name: Include services tasks
-  ansible.builtin.import_tasks:
-    file: services.yml
-
 - name: Autoremove unneeded packages installed as dependencies
   ansible.builtin.dnf:
     autoremove: true

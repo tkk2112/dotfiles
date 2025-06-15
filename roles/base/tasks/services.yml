@@ -13,3 +13,4 @@
   when:
     - ansible_service_mgr == 'systemd'
     - ansible_virtualization_type != 'docker' or ansible_pid1_name == 'systemd'
+    - not justauser | bool
