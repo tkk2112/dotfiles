@@ -162,7 +162,6 @@ install_or_update_uv() {
   if ! command -v ~/.local/bin/uv >/dev/null 2>&1; then
     echo "Installing 'uv'..."
     curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh
-     ~/.local/bin/uv python install 3.11
   else
     echo "Updating 'uv'..."
     ~/.local/bin/uv self update
@@ -186,7 +185,7 @@ run_ansible_linter() {
   }
 
   # shellcheck disable=SC2086
-  if ! ~/.local/bin/uv run ansible-lint --nocolor --project-dir="$repo" ${lint_args} playbook.yml; then
+  if ! ANSIBLE_CONFIG=ansible.cfg ANSIBLE_PYTHON_INTERPRETER=$(which python3) ansible-lint --nocolor --project-dir="$repo" ${lint_args} playbook.yml; then
     echo "Ansible linting failed. Please fix the errors above and try again."
     exit 1
   fi
@@ -248,8 +247,6 @@ main() {
 
   if [ "$PLATFORM" = "debian" ]; then
     install_package "apt-utils"
-  elif [ "$PLATFORM" = "fedora" ]; then
-    install_package "python3-libdnf5"
   fi
   install_bin_package "git"
 
@@ -267,13 +264,21 @@ main() {
   ~/.local/bin/uv sync --link-mode=copy
   ~/.local/bin/uv run pre-commit install
 
+  . .venv/bin/activate || {
+    echo "Unable to activate virtual environment."
+    exit 1
+  }
+  if [ "$PLATFORM" = "debian" ]; then
+    ~/.local/bin/uv pip install six python-debian
+  fi
+
   create_ansible_directories
 
   collections="community.general"
   echo "Installing Ansible collections..."
   for collection in $collections; do
     echo "  - $collection"
-    ~/.local/bin/uv run ansible-galaxy collection install "$collection" --upgrade
+    ANSIBLE_CONFIG=ansible.cfg ANSIBLE_PYTHON_INTERPRETER=$(which python3) ansible-galaxy collection install "$collection" --upgrade -vvv
   done
 
   if ! has_flag $skip_lint; then
@@ -283,10 +288,12 @@ main() {
       exit 0
     fi
   fi
-
+  set -x
   extra_args="$(check_sudo_access)"
-
-  ANSIBLE_CONFIG=ansible.cfg eval "$HOME/.local/bin/uv run ansible-playbook $extra_args ./playbook.yml $ansible_args"
+  python3.11 -c "import libdnf5;print(libdnf5.conf)"
+  $(which python3) -c "import libdnf5;print(libdnf5.conf)"
+  set +x
+  #ANSIBLE_CONFIG=ansible.cfg ANSIBLE_PYTHON_INTERPRETER=$(which python3) ansible-playbook $extra_args ./playbook.yml $ansible_args
 }
 
 main "$@"
