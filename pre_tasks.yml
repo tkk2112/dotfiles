@@ -42,6 +42,11 @@
   ansible.builtin.include_vars: host_vars/hosts/{{ ansible_hostname }}.yml
   when: hostvars_hostfile.stat.exists
 
+- name: Fail if justauser and personal are both true
+  ansible.builtin.fail:
+    msg: "ERROR: justauser and personal cannot both be set to true simultaneously"
+  when: justauser | default(false) | bool and personal | default(false) | bool
+
 - name: Add NOPASSWD Entry for User
   community.general.sudoers:
     name: NOPASSWD-for-{{ ansible_user_id }}
@@ -50,6 +55,7 @@
     nopassword: true
     state: present
   become: true
+  when: not justauser | bool
 
 - name: Include additional fact gathering tasks
   ansible.builtin.import_tasks:

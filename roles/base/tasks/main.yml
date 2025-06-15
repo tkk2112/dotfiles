@@ -1,18 +1,26 @@
 ---
-- name: Include tasks for debian-based systems
+- name: Include services tasks
   ansible.builtin.include_tasks:
-    file: debian_based.yml
-  when: ansible_distribution in ['Debian', 'Ubuntu']
+    file: services.yml
+  when: ansible_distribution != 'MacOSX'
 
-- name: Include tasks for fedora
-  ansible.builtin.include_tasks:
-    file: fedora.yml
-  when: ansible_distribution == 'Fedora'
+- name: Set up base system configuration (only "owned" systems)
+  when: not justauser | bool
+  block:
+    - name: Include tasks for debian-based systems
+      ansible.builtin.include_tasks:
+        file: debian_based.yml
+      when: ansible_distribution in ['Debian', 'Ubuntu']
 
-- name: Include tasks for macos
-  ansible.builtin.include_tasks:
-    file: macos.yml
-  when: ansible_distribution == 'MacOSX'
+    - name: Include tasks for fedora
+      ansible.builtin.include_tasks:
+        file: fedora.yml
+      when: ansible_distribution == 'Fedora'
+
+    - name: Include tasks for macos
+      ansible.builtin.include_tasks:
+        file: macos.yml
+      when: ansible_distribution == 'MacOSX'
 
 - name: Ensure .local/bin directory exists
   ansible.builtin.file:
