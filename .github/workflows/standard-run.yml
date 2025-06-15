@@ -50,7 +50,7 @@ jobs:
           cat > "script-$GITHUB_RUN_ID.sh" << 'EOF'
           #!/bin/sh
           DEBIAN_FRONTEND=noninteractive apt -qq update </dev/null >/dev/null
-          DEBIAN_FRONTEND=noninteractive apt -qq install -y apt-utils curl sudo curl </dev/null >/dev/null
+          DEBIAN_FRONTEND=noninteractive apt -qq install -y apt-utils curl sudo curl systemd </dev/null >/dev/null
           useradd -m -s /bin/bash newuser
           echo 'newuser ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
           su --login newuser -c 'curl -LsS https://link.m04r.space/dotfiles | sh'

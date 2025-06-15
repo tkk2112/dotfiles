@@ -1,8 +1,9 @@
 all:
   vars:
-    headless: false
-    internal: false
-    personal: false
+    headless: true # headless
+    internal: false # machines on home network
+    personal: false # personal machine (only user)
+    justauser: false # only user, no root access, will set personal to false
     ansible_connection: local
     ansible_python_interpreter: auto_silent
     default_roles:

@@ -7,7 +7,9 @@
           else 'traceroute'
       }}
     state: present
-  when: ansible_facts['os_family'] in ['Debian', 'RedHat']
+  when:
+    - not justauser | bool
+    - ansible_facts['os_family'] in ['Debian', 'RedHat']
   become: true
 
 - name: Run traceroute to an external IP (quad9)
