@@ -32,11 +32,8 @@ jobs:
             image: jrei/systemd-debian:13
           - name: ubuntu:24.04
             image: jrei/systemd-ubuntu:24.04
-            pkgs: 'git curl sudo python3-six'
-          - name: tkk2112/fedora-42-cosmic-spin:latest
-            image: tkk2112/fedora-42-cosmic-spin:latest
-            continue-on-error: true
-            options: "--privileged --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro"
+          - name: fedora:latest
+            image: jrei/systemd-fedora:latest
         task:
           - name: linter
             setup_args: "--only-lint"
@@ -48,7 +45,7 @@ jobs:
     steps:
       - name: Install dependencies
         env:
-          PKGS: ${{ matrix.os.pkgs || 'git curl sudo' }}
+          PKGS: ${{ matrix.os.pkgs || 'git curl sudo which' }}
           DEBIAN_FRONTEND: "noninteractive"
         run: |
           if command -v apt &> /dev/null; then
