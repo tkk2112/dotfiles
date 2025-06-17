@@ -276,7 +276,7 @@ main() {
 
   create_ansible_directories
 
-  collections="community.general"
+  collections="community.general ansible.posix"
   echo "Installing Ansible collections..."
   for collection in $collections; do
     echo "  - $collection"
