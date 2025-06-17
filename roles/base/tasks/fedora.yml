@@ -13,12 +13,17 @@
   become: true
   when: ansible_service_mgr == 'systemd'
 
-- name: Clean and rebuild DNF cache
-  ansible.builtin.shell: |
-    dnf clean all
-    dnf makecache
+- name: Install COPR plugin
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
   become: true
-  changed_when: false
+
+- name: Enable gsauthof/dracut-sshd COPR repository
+  ansible.builtin.command: dnf copr enable -y gsauthof/dracut-sshd
+  become: true
+  register: copr_result
+  changed_when: "'already enabled' not in copr_result.stdout"
 
 - name: Import RPM Fusion keys
   ansible.builtin.rpm_key:
@@ -39,6 +44,13 @@
     - free
     - nonfree
   become: true
+
+- name: Clean and rebuild DNF cache
+  ansible.builtin.shell: |
+    dnf clean all
+    dnf makecache
+  become: true
+  changed_when: false
 
 - name: Upgrade all packages (refresh & allow erasing)
   ansible.builtin.shell: |
