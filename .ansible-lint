@@ -120,7 +120,10 @@ only_builtins_allow_modules:
   - community.general.git_config
   - community.general.homebrew
   - community.general.sudoers
+  - community.general.ini_file
   - systemd_timer
+  - ansible.posix.selinux
+  - ansible.posix.firewalld
 
 # Limit the depth of the nested blocks:
 max_block_depth: 20
