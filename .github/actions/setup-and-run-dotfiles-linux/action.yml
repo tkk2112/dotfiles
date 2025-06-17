@@ -1,0 +1,78 @@
+name: 'Setup and Run Dotfiles'
+description: 'Installs dependencies, sets up environment, and runs the dotfiles setup script'
+inputs:
+  pkgs:
+    description: 'Packages to install'
+    required: false
+    default: 'git curl sudo'
+  setup_args:
+    description: 'Arguments to pass to setup.sh'
+    required: false
+    default: ''
+  sh_args:
+    description: 'Shell arguments for setup.sh'
+    required: false
+    default: ''
+  task_name:
+    description: 'Name of the task being executed'
+    required: false
+    default: ''
+  workspace_path:
+    description: 'Path to the workspace directory'
+    required: false
+    default: ${{ github.workspace }}
+outputs:
+  username:
+    description: 'Username created or found with UID 1000'
+    value: ${{ steps.user_setup.outputs.username }}
+  dotfiles_location:
+    description: 'Location of the dotfiles'
+    value: ${{ steps.user_setup.outputs.dotfiles_location }}
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      shell: bash
+      env:
+        PKGS: ${{ inputs.pkgs }}
+        DEBIAN_FRONTEND: "noninteractive"
+      run: |
+        if command -v apt &> /dev/null; then
+          apt -qq update </dev/null >/dev/null
+          apt -qq install -y ${PKGS} </dev/null >/dev/null
+        elif command -v dnf &> /dev/null; then
+          dnf -y install ${PKGS} </dev/null >/dev/null
+        else
+          echo "Unsupported package manager"
+          exit 1
+        fi
+
+    - name: Setup user
+      id: user_setup
+      uses: ./.github/actions/setup-user
+      with:
+        workspace_path: ${{ inputs.workspace_path }}
+
+    - name: Set environment variables
+      shell: bash
+      run: |
+        echo "USERNAME=${{ steps.user_setup.outputs.username }}" >> "$GITHUB_ENV"
+        echo "DOTFILES_LOCATION=${{ steps.user_setup.outputs.dotfiles_location }}" >> "$GITHUB_ENV"
+
+    - name: Set commit variable
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "COMMIT=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+        else
+          echo "COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+        fi
+
+    - name: "Exec task (${{ inputs.task_name }}): $ setup.sh ${{ inputs.setup_args }}"
+      shell: bash
+      env:
+        SETUP_ARGS: ${{ inputs.setup_args }}
+        SH_ARGS: ${{ inputs.sh_args }}
+      run: |
+        su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
+         "sudo visudo -c && curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"

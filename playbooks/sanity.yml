@@ -1,0 +1,9 @@
+---
+- name: Sanity check for addons functionality
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Test addons functionality
+      debug:
+        msg: "Real user: {{ real_user }}, Real UID: {{ real_uid }}, Real GID: {{ real_gid }}"
