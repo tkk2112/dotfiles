@@ -34,7 +34,6 @@
             enabled: true
             state: started
 
-
     - name: Install required security packages
       ansible.builtin.dnf:
         name:
@@ -94,8 +93,7 @@
           [Service]
           Type=oneshot
           # Run check, save output to a log file, and update database if needed
-          ExecStart=/bin/bash -c 'set -x; \
-                                  AIDE_LOG_DIR=/var/log/aide; \
+          ExecStart=/bin/bash -c 'AIDE_LOG_DIR=/var/log/aide; \
                                   STATUS_FILE=/var/lib/aide/status; \
                                   mkdir -p $AIDE_LOG_DIR; \
                                   LOGFILE=$AIDE_LOG_DIR/aide_$(date +%%Y-%%m-%%d_%%H-%%M-%%S).log; \
@@ -111,8 +109,7 @@
                                   chmod 644 $STATUS_FILE; \
                                   # Update the database regardless of check outcome \
                                   /usr/sbin/aide --update && \
-                                  mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz; \
-                                  set +x'
+                                  mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz'
           Nice=19
           IOSchedulingClass=idle
         owner: root
@@ -352,7 +349,6 @@
           # Remove AuthenticationMethods to allow any auth method
           # AuthenticationMethods publickey,keyboard-interactive
       notify: Restart sshd
-
 
   handlers:
     - name: Reload audit rules
