@@ -1,0 +1,386 @@
+---
+- name: Fedora 42 System Hardening
+  hosts: localhost
+  become: true
+
+  vars:
+    audit_rules_src: files/99-fedora-hardening.rules
+    aide_conf_src: files/aide.conf
+    sshd_config_path: /etc/ssh/sshd_config
+
+  tasks:
+    - name: Ensure SELinux is in enforcing mode
+      ansible.posix.selinux:
+        policy: targeted
+        state: enforcing
+
+    - name: KPatch (x86-64 only)
+      when: ansible_architecture == 'x86_64'
+      block:
+        - name: Enable f0ster/kpatch COPR repository
+          ansible.builtin.command: dnf copr enable -y f0ster/kpatch fedora-42-x86_64
+          register: copr_result
+          changed_when: "'already enabled' not in copr_result.stdout"
+
+        - name: Install required security packages
+          ansible.builtin.dnf:
+            name:
+              - kpatch
+            state: present
+
+        - name: Enable and start kpatch
+          ansible.builtin.systemd:
+            name: kpatch.service
+            enabled: true
+            state: started
+
+
+    - name: Install required security packages
+      ansible.builtin.dnf:
+        name:
+          - aide
+          - audit
+          - dnf-automatic
+          - fapolicyd
+          - firewall-config
+          - firewalld
+          - libu2f-host
+          - pam-u2f
+          - pamu2fcfg
+          - qrencode
+          - yubikey-manager
+        state: present
+
+    - name: Enable and start auditd
+      ansible.builtin.systemd:
+        name: auditd
+        enabled: true
+        state: started
+
+    - name: Deploy custom auditd rules
+      ansible.builtin.copy:
+        src: "{{ audit_rules_src }}"
+        dest: /etc/audit/rules.d/99-fedora-hardening.rules
+        owner: root
+        group: root
+        mode: "0640"
+      notify: Reload audit rules
+
+    - name: Ensure AIDE configuration
+      ansible.builtin.copy:
+        src: "{{ aide_conf_src }}"
+        dest: /etc/aide.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Initialize AIDE database
+
+    - name: Ensure AIDE status directory exists with proper permissions
+      ansible.builtin.file:
+        path: /var/lib/aide
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create AIDE check systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/aide-check.service
+        content: |
+          [Unit]
+          Description=AIDE Check Service
+          Documentation=man:aide(1)
+
+          [Service]
+          Type=oneshot
+          # Run check, save output to a log file, and update database if needed
+          ExecStart=/bin/bash -c 'set -x; \
+                                  AIDE_LOG_DIR=/var/log/aide; \
+                                  STATUS_FILE=/var/lib/aide/status; \
+                                  mkdir -p $AIDE_LOG_DIR; \
+                                  LOGFILE=$AIDE_LOG_DIR/aide_$(date +%%Y-%%m-%%d_%%H-%%M-%%S).log; \
+                                  if /usr/sbin/aide --check | tee $LOGFILE; then \
+                                    echo "No differences found" >> $LOGFILE; \
+                                    echo "OK:$(date +%%s):No differences found" > $STATUS_FILE; \
+                                  else \
+                                    echo "ALERT: Differences found during AIDE check!" >> $LOGFILE; \
+                                    echo "See detailed report above." >> $LOGFILE; \
+                                    echo "ALERT:$(date +%%s):Differences found during AIDE check" > $STATUS_FILE; \
+                                  fi; \
+                                  # Ensure the status file is readable by all users \
+                                  chmod 644 $STATUS_FILE; \
+                                  # Update the database regardless of check outcome \
+                                  /usr/sbin/aide --update && \
+                                  mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz; \
+                                  set +x'
+          Nice=19
+          IOSchedulingClass=idle
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create AIDE check systemd timer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/aide-check.timer
+        content: |
+          [Unit]
+          Description=Nightly AIDE check
+
+          [Timer]
+          # Run between 2-4 AM with randomization
+          OnCalendar=*-*-* 02:00:00
+          RandomizedDelaySec=2h
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable and start AIDE check timer
+      ansible.builtin.systemd:
+        name: aide-check.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Run AIDE check manually for the first time
+      ansible.builtin.command:
+        cmd: systemctl start aide-check.service
+      args:
+        creates: /var/log/aide/aide_*.log
+      register: aide_first_run
+      failed_when: false
+      changed_when: aide_first_run.rc == 0
+
+    - name: Ensure zshrc.d directory exists
+      ansible.builtin.file:
+        path: /etc/zsh/zshrc.d
+        state: directory
+        mode: "0755"
+
+    - name: Create AIDE status for zsh
+      ansible.builtin.copy:
+        dest: /etc/zsh/zshrc.d/99-aide-status.zsh
+        content: |
+          # Display AIDE status for zsh users
+          if [ -f /var/lib/aide/status ] && [ -r /var/lib/aide/status ]; then
+            STATUS_FILE="/var/lib/aide/status"
+            STATUS_INFO=$(cat $STATUS_FILE 2>/dev/null)
+            if [ -n "$STATUS_INFO" ]; then
+              IFS=':' read -r STATUS TIMESTAMP MESSAGE <<< "$STATUS_INFO"
+
+              # Format timestamp
+              if [ -n "$TIMESTAMP" ]; then
+                LAST_RUN=$(date -d "@$TIMESTAMP" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || date -r "$TIMESTAMP" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "Unknown time")
+              else
+                LAST_RUN="Unknown time"
+              fi
+
+              # Colors
+              GREEN="\033[0;32m"
+              RED="\033[0;31m"
+              RESET="\033[0m"
+              BOLD="\033[1m"
+
+              echo -e "\n${BOLD}AIDE Integrity Check Status:${RESET}"
+              echo -e "Last check: $LAST_RUN"
+
+              if [ "$STATUS" = "OK" ]; then
+                echo -e "Status: ${GREEN}OK${RESET} - $MESSAGE"
+              elif [ "$STATUS" = "ALERT" ]; then
+                echo -e "Status: ${RED}ALERT${RESET} - $MESSAGE"
+                echo -e "Check logs in ${BOLD}/var/log/aide/${RESET} for details"
+              else
+                echo -e "Status: Unknown - $MESSAGE"
+              fi
+              echo ""
+            fi
+          fi
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure user's zshrc.d directory exists
+      ansible.builtin.file:
+        path: /home/{{ real_user }}/.zshrc.d
+        state: directory
+        mode: "0755"
+        owner: "{{ real_user }}"
+        group: "{{ real_gid | default(omit) }}"
+      when: real_user is defined
+
+    - name: Create symlink to AIDE status in user's zsh configuration
+      ansible.builtin.file:
+        src: /etc/zsh/zshrc.d/99-aide-status.zsh
+        dest: /home/{{ real_user }}/.zshrc.d/99-aide-status.zsh
+        state: link
+        owner: "{{ real_user }}"
+        group: "{{ real_gid | default(omit) }}"
+        force: yes
+      when: real_user is defined
+
+    - name: Ensure dnf-automatic applies updates
+      community.general.ini_file:
+        path: /etc/dnf/automatic.conf
+        section: commands
+        option: apply_updates
+        value: "yes"
+        mode: "0644"
+      notify: Restart dnf-automatic
+
+    - name: Enable and start dnf-automatic.timer
+      ansible.builtin.systemd:
+        name: dnf-automatic.timer
+        enabled: true
+        state: started
+
+    - name: Enable and start firewalld
+      ansible.builtin.systemd:
+        name: firewalld.service
+        enabled: true
+        state: started
+
+    - name: Set default firewalld zone
+      ansible.posix.firewalld:
+        zone: public
+        state: enabled
+        immediate: true
+
+    - name: Allow SSH in firewall
+      ansible.posix.firewalld:
+        service: ssh
+        zone: public
+        permanent: true
+        state: enabled
+
+    - name: Add fapolicyd exceptions
+      ansible.builtin.copy:
+        dest: /etc/fapolicyd/rules.d/10-harden_fedora.rules
+        content: |
+          allow perm=any uid={{ real_uid }} : dir=/home/{{ real_user }}/.dotfiles
+          allow perm=any uid={{ real_uid }} : dir=/home/{{ real_user }}/.local/bin
+          allow perm=any uid={{ real_uid }} : dir=/home/{{ real_user }}/.local/share/go/bin
+          allow perm=any uid={{ real_uid }} : dir=/home/{{ real_user }}/bin
+          allow perm=any uid={{ real_uid }} : dir=/home/{{ real_user }}/work
+
+          allow perm=any all                : dir=/usr/local/bin
+        owner: root
+        group: fapolicyd
+        mode: "0644"
+
+    - name: Enable and start fapolicyd
+      ansible.builtin.systemd:
+        name: fapolicyd
+        enabled: true
+        state: started
+
+    - name: Ensure user YubiKey directory exists
+      ansible.builtin.file:
+        path: /home/{{ real_user }}/.config/Yubico
+        state: directory
+        owner: "{{ real_user }}"
+        group: "{{ real_gid | default(omit) }}"
+        mode: "0700"
+
+    - name: Check if u2f_keys file exists
+      ansible.builtin.stat:
+        path: /home/{{ real_user }}/.config/Yubico/u2f_keys
+      register: u2f_keys_file
+
+    - name: Prompt for YubiKey touch and register key
+      ansible.builtin.pause:
+        prompt: |
+          Please insert and touch your YubiKey for user {{ real_user }}, then press ENTER to continue.
+      when: not ansible_check_mode and not u2f_keys_file.stat.exists
+
+    - name: Generate U2F key for user
+      ansible.builtin.command:
+        cmd: pamu2fcfg
+        creates: /home/{{ real_user }}/.config/Yubico/u2f_keys
+      become: true
+      become_user: "{{ real_user }}"
+      register: u2f_output
+      when: not ansible_check_mode and not u2f_keys_file.stat.exists
+
+    - name: Write U2F key to user's key file
+      ansible.builtin.copy:
+        dest: /home/{{ real_user }}/.config/Yubico/u2f_keys
+        content: "{{ u2f_output.stdout | default('') }}\n"
+        owner: "{{ real_user }}"
+        group: "{{ real_gid | default(omit) }}"
+        mode: "0600"
+      when: not ansible_check_mode and not u2f_keys_file.stat.exists and u2f_output.changed
+
+    - name: Write PAM u2f-required
+      ansible.builtin.copy:
+        dest: /etc/pam.d/yubikey-required
+        content: |
+          #%PAM-1.0
+          auth required pam_u2f.so
+        mode: "0644"
+
+    - name: Write PAM u2f-sufficient
+      ansible.builtin.copy:
+        dest: /etc/pam.d/yubikey-sufficient
+        content: |
+          #%PAM-1.0
+          auth required pam_u2f.so
+        mode: "0644"
+
+    - name: Configure PAM to require YubiKey U2F for SSH
+      ansible.builtin.lineinfile:
+        path: /etc/pam.d/sshd
+        insertafter: ^#%PAM-1.0
+        line: auth include yubikey-sufficient
+        create: true
+        mode: "0644"
+      notify: Restart sshd
+
+    - name: Deploy SSH daemon hardening
+      ansible.builtin.blockinfile:
+        path: "{{ sshd_config_path }}"
+        marker: "# ANSIBLE FEDORA HARDENING"
+        block: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          ChallengeResponseAuthentication yes
+          # Ensure keyboard-interactive is properly enabled
+          KbdInteractiveAuthentication yes
+          UsePAM yes
+          # Remove AuthenticationMethods to allow any auth method
+          # AuthenticationMethods publickey,keyboard-interactive
+      notify: Restart sshd
+
+
+  handlers:
+    - name: Reload audit rules
+      ansible.builtin.command:
+        cmd: augenrules --load
+      changed_when: false
+
+    - name: Initialize AIDE database
+      ansible.builtin.shell:
+        cmd: >-
+          /usr/sbin/aide --init &&
+          mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz &&
+          echo "OK:$(date +%s):Initial AIDE database created" > /var/lib/aide/status &&
+          chmod 644 /var/lib/aide/status
+      args:
+        creates: /var/lib/aide/aide.db.gz
+
+    - name: Restart dnf-automatic
+      ansible.builtin.systemd:
+        name: dnf-automatic.timer
+        state: restarted
+
+    - name: Restart sshd
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+
+    - name: Reload fapolicyd
+      ansible.builtin.systemd:
+        name: fapolicyd
+        state: restarted
