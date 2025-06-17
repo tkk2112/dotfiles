@@ -24,3 +24,5 @@ fileignoreconfig:
   checksum: 2f94f92985cac0b737d17a83af8cc17d9d89d8a5c0cc799da948d36c94e66cad
 - filename: roles/base/tasks/fedora.yml
   checksum: 7701d78a60d1e8de1c47791f685793e336f09bb54bd5a011ef19d8454dd980d9
+- filename: playbooks/harden_fedora.yml
+  checksum: 2d02346c53fb1ffac8b9b8c06e03c91809717108558fb139429b203ff44d21df
