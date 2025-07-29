@@ -65,7 +65,6 @@
     - { name: blame.markUnblamableLines, value: "true" }
     - { name: branch.autoSetupRebase, value: remote }
     - { name: fetch.prune, value: "true" }
-    - { name: fetch.writeCommitGraph, value: "true" }
     - { name: init.defaultBranch, value: main }
     - { name: pull.rebase, value: "true" }
     - { name: push.default, value: upstream }
