@@ -38,6 +38,7 @@ base_debian_packages:
 base_fedora_packages:
   - bind-utils
   - dnf-utils
+  - dracut-sshd
   - moreutils
   - perl
   - python3-argcomplete
