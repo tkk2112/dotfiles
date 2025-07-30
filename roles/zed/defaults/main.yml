@@ -1,0 +1,3 @@
+zed_version: "latest"
+zed_install_dir: "{{ ansible_env.HOME }}/.local/bin"
+zed_config_dir: "{{ ansible_env.HOME }}/.config/zed"

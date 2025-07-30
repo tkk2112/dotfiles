@@ -1,4 +1,13 @@
 ---
+exclude: |
+  (?x)^(
+      .*\{\{.*\}\}.*|     # Exclude any files with cookiecutter variables
+      docs/site/.*|       # Exclude mkdocs compiled files
+      \.history/.*|       # Exclude history files
+      .*cache.*/.*|       # Exclude cache directories
+      .*venv.*/.*|        # Exclude virtual environment directories
+  )$
+fail_fast: true
 default_install_hook_types:
   - pre-commit
   - pre-push
@@ -13,6 +22,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-json
+        exclude: ^roles/zed/files/settings.json
       - id: check-yaml
       - id: check-toml
       - id: end-of-file-fixer
@@ -62,3 +72,17 @@ repos:
     hooks:
       - id: talisman-push
       - id: talisman-commit
+  - repo: https://github.com/hukkin/mdformat
+    rev: 0.7.21
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm # GitHub-Flavored Markdown support
+          - mdformat-ruff # Python code formatting
+          - mdformat-frontmatter # YAML frontmatter support
+          - ruff # Required for mdformat-ruff
+  # - repo: https://github.com/shellcheck-py/shellcheck-py
+  #   rev: v0.10.0.1
+  #   hooks:
+  #     - id: shellcheck
+  #       exclude: ^roles/zsh/files/p10k.zsh

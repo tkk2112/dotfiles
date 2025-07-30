@@ -1,0 +1,134 @@
+{
+  "agent": {
+    "default_model": {
+      "provider": "copilot_chat",
+      "model": "gpt-4.1"
+    }
+  },
+  "active_pane_modifiers": {
+    "border_size": 0,
+    "inactive_opacity": 1
+  },
+  "auto_install_extensions": {
+    "dockerfile": true,
+    "html": true,
+    "vcode-light-plus": true
+  },
+  "autosave": "on_focus_change",
+  "base_keymap": "VSCode",
+  "buffer_font_fallbacks": ["Consolas NF", "Consolas"],
+  "buffer_font_family": "FiraCode Nerd Font Mono",
+  "buffer_font_size": 14,
+  "experimental.theme_overrides": {
+    "syntax": {
+      "comment": {
+        "font_style": "italic"
+      },
+      "comment.doc": {
+        "font_style": "italic"
+      }
+    },
+    "terminal.ansi.background": "#1D2021",
+    "terminal.ansi.black": "#1D2021",
+    "terminal.ansi.blue": "#0D6678",
+    "terminal.ansi.bright_black": "#665C54",
+    "terminal.ansi.bright_blue": "#0D6678",
+    "terminal.ansi.bright_cyan": "#8BA59B",
+    "terminal.ansi.bright_green": "#95C085",
+    "terminal.ansi.bright_magenta": "#8F4673",
+    "terminal.ansi.bright_red": "#FB543F",
+    "terminal.ansi.bright_white": "#FDF4C1",
+    "terminal.ansi.bright_yellow": "#FAC03B",
+    "terminal.ansi.cyan": "#8BA59B",
+    "terminal.ansi.green": "#95C085",
+    "terminal.ansi.magenta": "#8F4673",
+    "terminal.ansi.red": "#FB543F",
+    "terminal.ansi.white": "#A89984",
+    "terminal.ansi.yellow": "#FAC03B",
+    "terminal.background": "#1D2021",
+    "terminal.foreground": "#bbcccc"
+  },
+  "format_on_save": "off",
+  "icon_theme": "Catppuccin Macchiato",
+  "indent_guides": {
+    "active_line_width": 1,
+    "background_coloring": "disabled",
+    "coloring": "indent_aware",
+    "enabled": true,
+    "line_width": 1
+  },
+  "lsp": {
+    "clangd": {
+      "binary": {
+        "arguments": [
+          // --background-index              - Index project code in the background and persist index on disk.
+          "--background-index",
+          // --clang-tidy                    - Enable clang-tidy diagnostics
+          "--clang-tidy",
+          // --completion-style=<value>      - Granularity of code completion suggestions
+          //   =detailed                     -   One completion item for each semantically distinct completion, with full type information
+          //   =bundled                      -   Similar completion items (e.g. function overloads) are combined. Type information shown where possible          // --experimental-modules-support    Experimental support for standard c++ modules
+          // --fallback-style=<string>         clang-format style to apply by default when no .clang-format file is found
+          "--fallback-style=WebKit",
+          // --header-insertion=<value>      - Add #include directives when accepting code completions
+          //   =iwyu                         -   Include what you use. Insert the owning header for top-level symbols, unless the header is already directly included or the symbol is forward-declared
+          //   =never                        -   Never insert #include directives as part of code completion
+          "-header-insertion=iwyu",
+          // --header-insertion-decorators   - Prepend a circular dot or space before the completion label, depending on whether an include line will be inserted or not
+          "-header-insertion-decorators",
+          // --function-arg-placeholders     - When disabled, completions contain only parentheses for function calls. When enabled, completions also contain placeholders for method parameters
+          "--function-arg-placeholders",
+          // --malloc-trim                   - Release memory periodically via malloc_trim(3).
+          "--malloc-trim",
+          // --pch-storage=<value>           - Storing PCHs in memory increases memory usages, but may improve performance
+          //   =disk                          -   store PCHs on disk
+          //   =memory                        -   store PCHs in memory
+          "--pch-storage=memory",
+          // --query-driver=<string>           Comma separated list of globs for white-listing gcc-compatible drivers that are safe to execute. Drivers matching any of these globs will be used to extract system includes. e.g. /usr/bin/**/clang-*,/path/to/repo/**/g++-*
+          "--query-driver=/etc/profiles/per-user/thomas/bin/gcc/**/*",
+          // --log=<value>                   - Verbosity of log messages written to stderr
+          //   =error                        -   Error messages only
+          //   =info                         -   High level execution tracing
+          //   =verbose                      -   Low level details
+          "-log=verbose"
+        ]
+      }
+    }
+  },
+  "minimap": {
+    "current_line_highlight": "line",
+    "show": "always",
+    "thumb": "always",
+    "thumb_border": "full"
+  },
+  "restore_on_startup": "none",
+  "show_whitespaces": "all",
+  "show_wrap_guides": true,
+  "tabs": {
+    "activate_on_close": "history",
+    "close_position": "right",
+    "file_icons": true,
+    "git_status": true,
+    "show_close_button": "hover",
+    "show_diagnostics": "off"
+  },
+  "telemetry": {
+    "diagnostics": false,
+    "metrics": false
+  },
+  "theme": {
+    "dark": "Catppuccin Mocha",
+    "light": "One Dark",
+    "mode": "system"
+  },
+  "toolbar": {
+    "agent_review": true,
+    "breadcrumbs": true,
+    "code_actions": false,
+    "quick_actions": true,
+    "selections_menu": true
+  },
+  "ui_font_family": "FiraCode Nerd Font Mono",
+  "ui_font_size": 13,
+  "wrap_guides": [80, 120]
+}
