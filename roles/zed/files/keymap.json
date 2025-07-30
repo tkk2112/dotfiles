@@ -1,0 +1,7 @@
+[
+  {
+    "bindings": {
+      "f4": "editor::SwitchSourceHeader"
+    }
+  }
+]
