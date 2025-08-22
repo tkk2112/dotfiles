@@ -18,7 +18,6 @@
     - { role: base, when: effective_roles.base }
     - { role: zsh, when: effective_roles.zsh }
     - { role: git, when: effective_roles.git }
-    - { role: llvm, when: effective_roles.llvm }
     - { role: rust, when: effective_roles.rust }
     - { role: go, when: effective_roles.go }
     - { role: neovim, when: effective_roles.neovim }
