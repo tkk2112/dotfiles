@@ -1,7 +1,4 @@
 ---
-# Enable testing repositories if true
-base_debian_enable_testing: true
-
 base_packages:
   - bat
   - btop
