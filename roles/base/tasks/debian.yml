@@ -1,21 +1,4 @@
 ---
-- name: Add testing repository
-  ansible.builtin.deb822_repository:
-    name: testing
-    types: deb
-    uris: https://deb.debian.org/debian
-    suites:
-      - testing
-      - testing-backports
-      - stable
-    components:
-      - main
-      - contrib
-      - non-free
-    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
-    enabled: "{{ base_debian_enable_testing | bool }}"
-  become: true
-
 - name: Add repositories for {{ ansible_distribution_release }}
   ansible.builtin.deb822_repository:
     name: debian
@@ -27,5 +10,4 @@
       - contrib
       - non-free
     signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
-    enabled: "{{ not base_debian_enable_testing | bool }}"
   become: true
