@@ -16,7 +16,6 @@ all:
       tmux: false
       zellij: false
       devel: false
-      llvm: false
       rust: false
       gpg: false
       gdb: false
