@@ -52,6 +52,7 @@
 - name: Include tldr tasks
   ansible.builtin.import_tasks:
     file: tldr.yml
+  when: ansible_distribution == 'Fedora'
 
 - name: Include miscellaneous utilities tasks
   ansible.builtin.import_tasks:
