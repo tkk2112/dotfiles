@@ -26,8 +26,6 @@ jobs:
     strategy:
       matrix:
         os:
-          - name: debian:bookworm
-            image: jrei/systemd-debian:12
           - name: debian:trixie
             image: jrei/systemd-debian:13
           - name: ubuntu:24.04
