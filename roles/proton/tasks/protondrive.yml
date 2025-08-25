@@ -104,6 +104,7 @@
       [Timer]
       OnBootSec={{ proton_drive_rclone_run_delay_after_boot }}
       OnUnitActiveSec={{ proton_drive_rclone_rerun_delay }}
+      Persistent=true
 
       [Install]
       WantedBy=timers.target
@@ -124,6 +125,10 @@
       ExecStart=%h/.local/bin/proton-sync.sh
       StandardOutput=journal
       StandardError=journal
+      TimeoutStartSec=30m
+      KillSignal=SIGINT
+      SendSIGKILL=yes
+      RemainAfterExit=no
 
       [Install]
       WantedBy=default.target
