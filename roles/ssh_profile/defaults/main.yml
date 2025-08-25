@@ -4,3 +4,4 @@ ssh_profile_protondrive_ssh_dir: "{{ ssh_profile_protondrive_dir }}/unixprofile/
 ssh_profile_target_dir: "{{ ansible_env.HOME }}/.ssh"
 ssh_profile_exclude_files:
   - install.sh
+  - known_hosts
