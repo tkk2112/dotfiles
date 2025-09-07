@@ -19,11 +19,12 @@
     state: present
   become: true
 
-- name: Enable gsauthof/dracut-sshd COPR repository
-  ansible.builtin.command: dnf copr enable -y gsauthof/dracut-sshd
+- name: Enable COPR repositories
+  ansible.builtin.command: dnf copr enable -y {{ item }}
   become: true
   register: copr_result
   changed_when: "'already enabled' not in copr_result.stdout"
+  loop: "{{ base_fedora_copr_repos }}"
 
 - name: Import RPM Fusion keys
   ansible.builtin.rpm_key:
