@@ -35,6 +35,7 @@ base_fedora_packages:
   - bind-utils
   - dnf-utils
   - dracut-sshd
+  - lazygit
   - moreutils
   - perl
   - python3-argcomplete
@@ -42,7 +43,12 @@ base_fedora_packages:
   - tldr
   - zsh
 
+base_fedora_copr_repos:
+  - gsauthof/dracut-sshd
+  - dejan/lazygit
+
 base_macos_packages:
   - ag
   - icdiff
+  - lazygit
   - python-argcomplete
