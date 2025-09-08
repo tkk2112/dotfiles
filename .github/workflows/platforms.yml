@@ -8,7 +8,7 @@ jobs:
     name: check'n'test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v6.6.1
         with:
           enable-cache: true
@@ -40,7 +40,7 @@ jobs:
       image: ${{ matrix.os.image }}
       options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Setup and run dotfiles
         id: setup_run
         uses: ./.github/actions/setup-and-run-dotfiles-linux
@@ -65,7 +65,7 @@ jobs:
       image: tkk2112/fedora-42-cosmic-spin:latest
       options: '--privileged --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro'
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Setup and run dotfiles
         id: setup_run
         uses: ./.github/actions/setup-and-run-dotfiles-linux
@@ -93,7 +93,7 @@ jobs:
           - name: playbook
             setup_args: "--skip-lint"
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Setup and run dotfiles for macOS
         uses: ./.github/actions/setup-and-run-dotfiles-macos
         with:
