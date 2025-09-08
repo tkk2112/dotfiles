@@ -11,6 +11,7 @@ base_packages:
   - git-lfs
   - htop
   - jq
+  - lsd
   - nmap
   - nvtop
   - rsync
