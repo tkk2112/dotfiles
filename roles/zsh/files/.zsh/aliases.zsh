@@ -12,10 +12,10 @@ alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias grep='grep --color=auto'
 
-alias l='ls -CF'
+alias l='ls -1'
 alias la='ls -A'
-alias ll='ls -lah'
-alias ls='ls --color'
+alias ll='ls -lah --git'
+alias ls='lsd'
 
 alias dpigs='dpigs -H'
 alias rot13='tr a-zA-Z n-za-mN-ZA-M'
