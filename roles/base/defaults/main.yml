@@ -12,6 +12,7 @@ base_packages:
   - htop
   - jq
   - lazygit
+  - lsd
   - nmap
   - nvtop
   - rsync
