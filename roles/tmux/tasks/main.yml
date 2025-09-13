@@ -16,7 +16,7 @@
 - name: Check Tmux Plugin Manager installation
   ansible.builtin.stat:
     path: "{{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins"
-  register: tpm_check
+  register: tmux_tpm_check
 
 - name: Install Tmux plugins
   ansible.builtin.shell: |
@@ -24,7 +24,7 @@
     {{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins
   args:
     executable: /bin/bash
-  when: not tpm_check.stat.exists
+  when: not tmux_tpm_check.stat.exists
   changed_when: true
 
 - name: Update Tmux plugins
@@ -32,5 +32,5 @@
     {{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/update_plugins all
   args:
     executable: /bin/bash
-  when: tpm_check.stat.exists
+  when: tmux_tpm_check.stat.exists
   changed_when: true

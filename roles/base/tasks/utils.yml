@@ -1,13 +1,13 @@
 ---
 - name: Check if direnv is installed
   ansible.builtin.command: which direnv
-  register: direnv_check
+  register: base_direnv_check
   ignore_errors: true
   changed_when: false
   check_mode: false
 
 - name: Setup direnv configuration
-  when: direnv_check.rc == 0
+  when: base_direnv_check.rc == 0
   block:
     - name: Symlink .direnvrc §configuration
       ansible.builtin.file:

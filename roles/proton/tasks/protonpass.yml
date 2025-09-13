@@ -3,13 +3,13 @@
   ansible.builtin.uri:
     url: https://proton.me/download/PassDesktop/linux/x64/version.json
     return_content: true
-  register: version_info
+  register: proton_version_info
 
 - name: Download ProtonPass DEB package
   ansible.builtin.get_url:
-    url: "{{ (version_info.content | from_json).Releases[0].File[0].Url }}"
+    url: "{{ (proton_version_info.content | from_json).Releases[0].File[0].Url }}"
     dest: "{{ ansible_tmp }}/ProtonPass.deb"
-    checksum: sha512:{{ (version_info.content | from_json).Releases[0].File[0].Sha512CheckSum }}
+    checksum: sha512:{{ (proton_version_info.content | from_json).Releases[0].File[0].Sha512CheckSum }}
     mode: "0644"
   when: ansible_distribution in ['Debian', 'Ubuntu']
 
@@ -28,9 +28,9 @@
 
 - name: Download ProtonPass rpm package
   ansible.builtin.get_url:
-    url: "{{ (version_info.content | from_json).Releases[0].File[1].Url }}"
+    url: "{{ (proton_version_info.content | from_json).Releases[0].File[1].Url }}"
     dest: "{{ ansible_tmp }}/ProtonPass.rpm"
-    checksum: sha512:{{ (version_info.content | from_json).Releases[0].File[1].Sha512CheckSum }}
+    checksum: sha512:{{ (proton_version_info.content | from_json).Releases[0].File[1].Sha512CheckSum }}
     mode: "0644"
   when: ansible_distribution == 'Fedora'
 

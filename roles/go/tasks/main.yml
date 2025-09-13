@@ -8,11 +8,11 @@
 
 - name: Set GOPATH fact
   ansible.builtin.set_fact:
-    gopath: "{{ ansible_env.HOME }}/.local/share/go"
+    go_path: "{{ ansible_env.HOME }}/.local/share/go"
 
 - name: Ensure GOPATH directory exists
   ansible.builtin.file:
-    path: "{{ gopath }}"
+    path: "{{ go_path }}"
     state: directory
     mode: "0755"
 
@@ -21,7 +21,7 @@
     path: "{{ ansible_env.HOME }}/.local/bin/env"
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR GOPATH/BIN"
     block: |
-      export GOPATH={{ gopath }}
+      export GOPATH={{ go_path }}
 
       case ":${PATH}:" in
           *:"$GOPATH/bin":*)
@@ -35,17 +35,17 @@
   ansible.builtin.command:
     cmd: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
   environment:
-    GOPATH: "{{ gopath }}"
+    GOPATH: "{{ go_path }}"
   args:
-    creates: "{{ gopath }}/bin/yamlfmt"
+    creates: "{{ go_path }}/bin/yamlfmt"
 
 - name: Install gup
   ansible.builtin.command:
     cmd: go install github.com/nao1215/gup@latest
   environment:
-    GOPATH: "{{ gopath }}"
+    GOPATH: "{{ go_path }}"
   args:
-    creates: "{{ gopath }}/bin/gup"
+    creates: "{{ go_path }}/bin/gup"
 
 - name: Trigger gup update
   ansible.builtin.debug:

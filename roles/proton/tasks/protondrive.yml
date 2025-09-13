@@ -16,15 +16,15 @@
 - name: Check if rclone config exists
   ansible.builtin.stat:
     path: "{{ ansible_env.HOME }}/.config/rclone/rclone.conf"
-  register: rclone_config
+  register: proton_rclone_config
 
 - name: Check for client_access_token in config
   ansible.builtin.command:
     cmd: grep -q "client_access_token = [^[:space:]]" {{ ansible_env.HOME }}/.config/rclone/rclone.conf
-  register: token_check
+  register: proton_token_check
   failed_when: false
   changed_when: false
-  when: rclone_config.stat.exists
+  when: proton_rclone_config.stat.exists
 
 - name: Configure rclone for ProtonDrive
   ansible.builtin.copy:
@@ -34,7 +34,7 @@
       type = protondrive
     mode: "0600"
     force: true
-  when: not rclone_config.stat.exists or (token_check.rc != 0)
+  when: not proton_rclone_config.stat.exists or (proton_token_check.rc != 0)
 
 - name: Ask for Proton username
   ansible.builtin.pause:
@@ -42,7 +42,7 @@
     echo: true
   register: proton_username
   no_log: true
-  when: not rclone_config.stat.exists or (token_check.rc != 0)
+  when: not proton_rclone_config.stat.exists or (proton_token_check.rc != 0)
 
 - name: Ask for Proton password
   ansible.builtin.pause:
@@ -50,7 +50,7 @@
     echo: false
   register: proton_password
   no_log: true
-  when: not rclone_config.stat.exists or (token_check.rc != 0)
+  when: not proton_rclone_config.stat.exists or (proton_token_check.rc != 0)
 
 - name: Ask for Proton 2FA
   ansible.builtin.pause:
@@ -58,21 +58,21 @@
     echo: true
   register: proton_2fa
   no_log: true
-  when: not rclone_config.stat.exists or (token_check.rc != 0)
+  when: not proton_rclone_config.stat.exists or (proton_token_check.rc != 0)
 
 - name: Obscure the password using rclone
   ansible.builtin.command:
     cmd: rclone obscure {{ proton_password.user_input }}
-  register: obscured_password
+  register: proton_obscured_password
   no_log: true
-  when: not rclone_config.stat.exists or (token_check.rc != 0)
+  when: not proton_rclone_config.stat.exists or (proton_token_check.rc != 0)
   changed_when: false
 
 - name: Login to ProtonDrive to store client_access_token
   ansible.builtin.command:
-    cmd: "rclone about protondrive: --protondrive-username {{ proton_username.user_input }} --protondrive-password {{ obscured_password.stdout }} --protondrive-2fa={{ proton_2fa.user_input }}"
+    cmd: "rclone about protondrive: --protondrive-username {{ proton_username.user_input }} --protondrive-password {{ proton_obscured_password.stdout }} --protondrive-2fa={{ proton_2fa.user_input }}"
   no_log: true
-  when: not rclone_config.stat.exists or (token_check.rc != 0)
+  when: not proton_rclone_config.stat.exists or (proton_token_check.rc != 0)
   changed_when: false
 
 - name: Ensure rclone config has correct permissions

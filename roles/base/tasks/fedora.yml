@@ -22,8 +22,8 @@
 - name: Enable COPR repositories
   ansible.builtin.command: dnf copr enable -y {{ item }}
   become: true
-  register: copr_result
-  changed_when: "'already enabled' not in copr_result.stdout"
+  register: base_fedora_copr_result
+  changed_when: "'already enabled' not in base_fedora_copr_result.stdout"
   loop: "{{ base_fedora_copr_repos }}"
 
 - name: Import RPM Fusion keys
