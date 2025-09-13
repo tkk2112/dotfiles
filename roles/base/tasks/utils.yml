@@ -1,5 +1,4 @@
 ---
-
 - name: Check if direnv is installed
   ansible.builtin.command: which direnv
   register: direnv_check

@@ -14,9 +14,11 @@ Common OPTIONS:
   --help                Show this help message and exit.
   --list-tasks          List all tasks in the playbook without executing anything.
   --list-hosts          List all hosts that the playbook will target.
+  --list-tags           List all available tags in the playbook.
   --only-lint           Will only run the linting process and exit.
   --skip-lint           Skip linting before running playbook
   --skip-dirty-prompt   Skip prompt about dirty git repository
+  --tags TAGS           Run only tasks with specified tags (e.g. --tags ssh,git)
   -v                    Enable verbose mode (can use -vvv for more verbosity).
 
 Examples:
@@ -25,6 +27,12 @@ Examples:
 
   List all tasks in the playbook:
     $(basename "$0") --list-tasks
+
+  List all tags in the playbook:
+    $(basename "$0") --list-tags
+
+  Run multiple roles using tags:
+    $(basename "$0") --tags ssh,git
 EOF
 }
 
@@ -67,6 +75,18 @@ process_arguments() {
       ;;
     --skip-dirty-prompt)
       set_flag $skip_dirty
+      ;;
+    --tags)
+      shift
+      if [ -z "$1" ]; then
+        echo "Error: --tags requires tag names"
+        exit 1
+      fi
+      export ANSIBLE_SKIP_TAGS="never"
+      ansible_args="$ansible_args --tags always,untagged,$1"
+      ;;
+    --list-tags)
+      ansible_args="$ansible_args --list-tags"
       ;;
     -v|-vv*)
       ansible_args="$ansible_args $1"

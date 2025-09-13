@@ -15,20 +15,20 @@
         file: pre_tasks.yml
   any_errors_fatal: true
   roles:
-    - { role: base, when: effective_roles.base }
-    - { role: zsh, when: effective_roles.zsh }
-    - { role: git, when: effective_roles.git }
-    - { role: rust, when: effective_roles.rust }
-    - { role: go, when: effective_roles.go }
-    - { role: neovim, when: effective_roles.neovim }
-    - { role: tmux, when: effective_roles.tmux }
-    - { role: zellij, when: effective_roles.zellij }
-    - { role: devel, when: effective_roles.devel }
-    - { role: gpg, when: effective_roles.gpg }
-    - { role: fonts, when: effective_roles.fonts }
-    - { role: gdb, when: effective_roles.gdb }
-    - { role: wsl, when: effective_roles.wsl }
-    - { role: proton, when: effective_roles.proton }
-    - { role: desktop, when: effective_roles.desktop }
-    - { role: alacritty, when: effective_roles.alacritty }
-    - { role: ssh_profile, when: effective_roles.ssh_profile }
+    - { role: base, when: effective_roles.base, tags: [base] }
+    - { role: zsh, when: effective_roles.zsh, tags: [zsh] }
+    - { role: git, when: effective_roles.git, tags: [git] }
+    - { role: rust, when: effective_roles.rust, tags: [rust] }
+    - { role: go, when: effective_roles.go, tags: [go] }
+    - { role: neovim, when: effective_roles.neovim, tags: [neovim] }
+    - { role: tmux, when: effective_roles.tmux, tags: [tmux] }
+    - { role: zellij, when: effective_roles.zellij, tags: [zellij] }
+    - { role: devel, when: effective_roles.devel, tags: [devel] }
+    - { role: gpg, when: effective_roles.gpg, tags: [gpg] }
+    - { role: fonts, when: effective_roles.fonts, tags: [fonts] }
+    - { role: gdb, when: effective_roles.gdb, tags: [gdb] }
+    - { role: wsl, when: effective_roles.wsl, tags: [wsl] }
+    - { role: proton, when: effective_roles.proton, tags: [proton] }
+    - { role: desktop, when: effective_roles.desktop, tags: [desktop] }
+    - { role: alacritty, when: effective_roles.alacritty, tags: [alacritty] }
+    - { role: ssh_profile, when: effective_roles.ssh_profile, tags: [ssh] }
