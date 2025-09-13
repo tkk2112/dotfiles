@@ -3,5 +3,10 @@ ssh_profile_protondrive_dir: "{{ ansible_env.HOME }}/ProtonDrive"
 ssh_profile_protondrive_ssh_dir: "{{ ssh_profile_protondrive_dir }}/unixprofile/.ssh"
 ssh_profile_target_dir: "{{ ansible_env.HOME }}/.ssh"
 ssh_profile_exclude_files:
-  - install.sh
   - known_hosts
+  - authorized_keys
+  - config.local
+ssh_profile_symlink_items:
+  - config
+  - conf.d
+  - keys

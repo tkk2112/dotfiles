@@ -29,23 +29,32 @@
     msg: Found protondrive SSH profile at {{ ssh_profile_protondrive_ssh_dir }}
   when: protondrive_dir.stat.exists and protondrive_ssh_dir.stat.exists
 
-- name: Find all files in the protondrive SSH profile directory
+- name: Clean up unwanted files in SSH directory
   ansible.builtin.find:
-    paths: "{{ ssh_profile_protondrive_ssh_dir }}"
-    file_type: file
-  register: protondrive_ssh_files
+    paths: "{{ ssh_profile_target_dir }}"
+    patterns: "*"
+    file_type: any
+  register: existing_ssh_items
   when: protondrive_ssh_dir.stat.exists
 
-- name: Create symlinks for SSH profile files from protondrive
+- name: Remove unwanted files and symlinks
   ansible.builtin.file:
-    src: "{{ item.path }}"
-    dest: "{{ ssh_profile_target_dir }}/{{ item.path | basename }}"
-    state: link
-    force: true
-  loop: "{{ protondrive_ssh_files.files }}"
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ existing_ssh_items.files }}"
   when:
     - protondrive_ssh_dir.stat.exists
     - (item.path | basename) not in ssh_profile_exclude_files
+    - not (item.path | basename).startswith('cm-')
+
+- name: Create symlinks for specific SSH items from protondrive
+  ansible.builtin.file:
+    src: "{{ ssh_profile_protondrive_ssh_dir }}/{{ item }}"
+    dest: "{{ ssh_profile_target_dir }}/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ ssh_profile_symlink_items }}"
+  when: protondrive_ssh_dir.stat.exists
 
 - name: Set permissions on the local SSH directory recursively to 0700
   ansible.builtin.file:
@@ -70,8 +79,8 @@
     path: "{{ ssh_profile_target_dir }}/authorized_keys"
   register: authorized_keys_stat
 
-- name: Ensure authorized_keys has mode 711
+- name: Ensure authorized_keys has mode 0600
   ansible.builtin.file:
     path: "{{ ssh_profile_target_dir }}/authorized_keys"
-    mode: "0711"
+    mode: "0600"
   when: authorized_keys_stat.stat.exists
