@@ -26,3 +26,5 @@ fileignoreconfig:
   checksum: 7701d78a60d1e8de1c47791f685793e336f09bb54bd5a011ef19d8454dd980d9
 - filename: playbooks/harden_fedora.yml
   checksum: 2d02346c53fb1ffac8b9b8c06e03c91809717108558fb139429b203ff44d21df
+- filename: roles/proton/tasks/protondrive.yml
+  checksum: 97f8791cdae2f057bf4fa4a2e36c94a94017774c749e41910baee96094e25c8b

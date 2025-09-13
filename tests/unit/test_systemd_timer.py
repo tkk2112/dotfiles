@@ -1,14 +1,11 @@
 #!/usr/bin/python
 
-import json
 import os
 import sys
 import unittest
-from typing import Any
 from unittest import mock
 
-from ansible.module_utils import basic
-from ansible.module_utils._text import to_bytes
+from ansible.module_utils.testing import patch_module_args
 
 # Add module path to import the systemd_timer module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../library")))
@@ -42,9 +39,9 @@ class TestSystemdTimer(unittest.TestCase):
 
     def test_module_fail_when_required_args_missing(self) -> None:
         """Test module fails when required args are missing"""
-        with self.assertRaises(AnsibleFailJson):
-            set_module_args({})  # Empty args to cause failure
-            systemd_timer.main()
+        with patch_module_args({}):  # Empty args to cause failure
+            with self.assertRaises(AnsibleFailJson):
+                systemd_timer.main()
 
     @mock.patch("systemd_timer.os.path.exists", return_value=False)
     @mock.patch("systemd_timer.os.makedirs")
@@ -60,7 +57,7 @@ class TestSystemdTimer(unittest.TestCase):
         mock_exists: mock.MagicMock,
     ) -> None:
         """Test creating a user timer"""
-        set_module_args(
+        with patch_module_args(
             {
                 "name": "test-timer",
                 "job": '/bin/echo "Hello World"',
@@ -68,10 +65,9 @@ class TestSystemdTimer(unittest.TestCase):
                 "state": "present",
                 "enabled": True,
             },
-        )
-
-        with self.assertRaises(AnsibleExitJson):
-            systemd_timer.main()
+        ):
+            with self.assertRaises(AnsibleExitJson):
+                systemd_timer.main()
 
         # Check if directories were created
         mock_makedirs.assert_called_once_with("/home/user/.config/systemd/user", exist_ok=True)
@@ -97,7 +93,7 @@ class TestSystemdTimer(unittest.TestCase):
         mock_exists: mock.MagicMock,
     ) -> None:
         """Test creating a system timer"""
-        set_module_args(
+        with patch_module_args(
             {
                 "name": "test-system-timer",
                 "job": '/bin/echo "Hello System"',
@@ -106,10 +102,9 @@ class TestSystemdTimer(unittest.TestCase):
                 "system": True,
                 "enabled": True,
             },
-        )
-
-        with self.assertRaises(AnsibleExitJson):
-            systemd_timer.main()
+        ):
+            with self.assertRaises(AnsibleExitJson):
+                systemd_timer.main()
 
         # Check if directories were created
         mock_makedirs.assert_called_once_with("/etc/systemd/system", exist_ok=True)
@@ -135,17 +130,16 @@ class TestSystemdTimer(unittest.TestCase):
         mock_expanduser: mock.MagicMock,
     ) -> None:
         """Test removing a timer"""
-        set_module_args(
+        with patch_module_args(
             {
                 "name": "test-timer",
                 "job": '/bin/echo "Hello"',
                 "schedule": "*-*-* 03:00:00",
                 "state": "absent",
             },
-        )
-
-        with self.assertRaises(AnsibleExitJson):
-            systemd_timer.main()
+        ):
+            with self.assertRaises(AnsibleExitJson):
+                systemd_timer.main()
 
         # Check if files were removed
         mock_remove.assert_any_call("/home/user/.config/systemd/user/test-timer.timer")
@@ -171,7 +165,7 @@ class TestSystemdTimer(unittest.TestCase):
         # Setup the mock to return different content when reading existing files
         mock_open.return_value.__enter__.return_value.read.return_value = "old content"
 
-        set_module_args(
+        with patch_module_args(
             {
                 "name": "test-timer",
                 "job": '/bin/echo "Updated"',
@@ -179,10 +173,9 @@ class TestSystemdTimer(unittest.TestCase):
                 "state": "present",
                 "enabled": True,
             },
-        )
-
-        with self.assertRaises(AnsibleExitJson):
-            systemd_timer.main()
+        ):
+            with self.assertRaises(AnsibleExitJson):
+                systemd_timer.main()
 
         # Check if files were written (should be called because content differs)
         mock_open.assert_any_call("/home/user/.config/systemd/user/test-timer.service", "w")
@@ -199,7 +192,7 @@ class TestSystemdTimer(unittest.TestCase):
         mock_expanduser: mock.MagicMock,
     ) -> None:
         """Test check mode functionality"""
-        set_module_args(
+        with patch_module_args(
             {
                 "name": "test-timer",
                 "job": '/bin/echo "Hello"',
@@ -207,27 +200,16 @@ class TestSystemdTimer(unittest.TestCase):
                 "state": "present",
                 "_ansible_check_mode": True,
             },
-        )
+        ):
+            with mock.patch("builtins.open", mock.mock_open(read_data="old content")) as m:
+                with self.assertRaises(AnsibleExitJson):
+                    systemd_timer.main()
 
-        with mock.patch("builtins.open", mock.mock_open(read_data="old content")) as m:
-            with self.assertRaises(AnsibleExitJson):
-                systemd_timer.main()
-
-            # In check mode, open should be called for reading but not for writing
-            for call in m.mock_calls:
-                if len(call) >= 2 and isinstance(call[1], tuple) and len(call[1]) >= 2:
-                    # Check that no write mode was used
-                    self.assertNotEqual(call[1][1], "w", "open() should not be called with write mode in check mode")
-
-
-def set_module_args(args: dict[str, Any]) -> None:
-    """Prepare arguments so that they will be picked up during module creation.
-
-    Args:
-        args: Dictionary of module arguments
-    """
-    args_json = json.dumps({"ANSIBLE_MODULE_ARGS": args})
-    basic._ANSIBLE_ARGS = to_bytes(args_json)
+                # In check mode, open should be called for reading but not for writing
+                for call in m.mock_calls:
+                    if len(call) >= 2 and isinstance(call[1], tuple) and len(call[1]) >= 2:
+                        # Check that no write mode was used
+                        self.assertNotEqual(call[1][1], "w", "open() should not be called with write mode in check mode")
 
 
 if __name__ == "__main__":

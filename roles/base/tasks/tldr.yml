@@ -1,13 +1,13 @@
 ---
 - name: Check if tldr is installed
   ansible.builtin.command: which tldr
-  register: tldr_check
+  register: base_tldr_check
   ignore_errors: true
   changed_when: false
   check_mode: false
 
 - name: Setup tldr auto update
-  when: tldr_check.rc == 0
+  when: base_tldr_check.rc == 0
   block:
     - name: Create tldr share directory
       ansible.builtin.file:
@@ -19,12 +19,12 @@
       ansible.builtin.find:
         paths: "{{ ansible_env.HOME }}/.local/share/tldr"
         file_type: any
-      register: tldr_files
+      register: base_tldr_files
 
     - name: Initial tldr pages download
       ansible.builtin.command: tldr -u
       changed_when: true
-      when: tldr_files.matched | int == 0
+      when: base_tldr_files.matched | int == 0
 
     - name: Create weekly timer for tldr updates
       systemd_timer:

@@ -17,5 +17,5 @@
     rustup update stable
   args:
     executable: /bin/bash
-  register: rustup_result
-  changed_when: "'info: downloading' in rustup_result.stdout"
+  register: rust_up_result
+  changed_when: "'info: downloading' in rust_up_result.stdout"

@@ -3,29 +3,29 @@
   ansible.builtin.shell:
     cmd: set -o pipefail && nvim --version | head -n1 | cut -d ' ' -f2 | cut -d 'v' -f2
     executable: /bin/bash
-  register: nvim_current_version
+  register: neovim_current_version
   ignore_errors: true
   changed_when: true
   check_mode: false
 
 - name: Define Neovim version facts
   ansible.builtin.set_fact:
-    nvim_current: "{{ nvim_current_version.stdout | default('0.0.0', true) }}"
-    nvim_required: "{{ neovim_min_version }}"
+    neovim_current: "{{ neovim_current_version.stdout | default('0.0.0', true) }}"
+    neovim_required: "{{ neovim_min_version }}"
 
 - name: Create Neovim build directory
   ansible.builtin.file:
     path: "{{ neovim_build_path }}"
     state: directory
     mode: "0755"
-  when: nvim_current is version(nvim_required, '<')
+  when: neovim_current is version(neovim_required, '<')
 
 - name: Remove existing Neovim binary
   ansible.builtin.file:
     path: /usr/local/bin/nvim
     state: absent
   become: true
-  when: nvim_current is version(nvim_required, '<')
+  when: neovim_current is version(neovim_required, '<')
 
 - name: Clone Neovim repository
   ansible.builtin.git:
@@ -33,7 +33,7 @@
     dest: "{{ neovim_build_path }}"
     version: "{{ neovim_git_version }}"
     single_branch: true
-  when: nvim_current is version(nvim_required, '<')
+  when: neovim_current is version(neovim_required, '<')
 
 - name: Build Neovim from source
   ansible.builtin.shell: |
@@ -41,7 +41,7 @@
   args:
     chdir: "{{ neovim_build_path }}"
     creates: "{{ neovim_build_path }}/build/CMakeCache.txt"
-  when: nvim_current is version(nvim_required, '<')
+  when: neovim_current is version(neovim_required, '<')
 
 - name: Install Neovim binary
   ansible.builtin.command: make install
@@ -49,7 +49,7 @@
     chdir: "{{ neovim_build_path }}"
     creates: /usr/local/bin/nvim
   become: true
-  when: nvim_current is version(nvim_required, '<')
+  when: neovim_current is version(neovim_required, '<')
 
 - name: Remove existing Neovim configuration directories
   ansible.builtin.file:

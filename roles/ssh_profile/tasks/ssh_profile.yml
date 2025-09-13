@@ -14,47 +14,47 @@
 
 - name: Check if protondrive directory exists
   ansible.builtin.stat:
-    path: "{{ ssh_profile_protondrive_dir }}"
-  register: protondrive_dir
+    path: "{{ ssh_profile_ssh_profile_dir }}"
+  register: ssh_profile_dir
   ignore_errors: true
 
 - name: Check if protondrive SSH profile directory exists
   ansible.builtin.stat:
-    path: "{{ ssh_profile_protondrive_ssh_dir }}"
-  register: protondrive_ssh_dir
+    path: "{{ ssh_profile_ssh_profile_ssh_dir }}"
+  register: ssh_profile_ssh_dir
   ignore_errors: true
 
 - name: Debug - Found protondrive SSH profile folder
   ansible.builtin.debug:
-    msg: Found protondrive SSH profile at {{ ssh_profile_protondrive_ssh_dir }}
-  when: protondrive_dir.stat.exists and protondrive_ssh_dir.stat.exists
+    msg: Found protondrive SSH profile at {{ ssh_profile_ssh_profile_ssh_dir }}
+  when: ssh_profile_dir.stat.exists and ssh_profile_ssh_dir.stat.exists
 
 - name: Clean up unwanted files in SSH directory
   ansible.builtin.find:
     paths: "{{ ssh_profile_target_dir }}"
     patterns: "*"
     file_type: any
-  register: existing_ssh_items
-  when: protondrive_ssh_dir.stat.exists
+  register: ssh_profile_existing_ssh_items
+  when: ssh_profile_ssh_dir.stat.exists
 
 - name: Remove unwanted files and symlinks
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: absent
-  loop: "{{ existing_ssh_items.files }}"
+  loop: "{{ ssh_profile_existing_ssh_items.files }}"
   when:
-    - protondrive_ssh_dir.stat.exists
+    - ssh_profile_ssh_dir.stat.exists
     - (item.path | basename) not in ssh_profile_exclude_files
     - not (item.path | basename).startswith('cm-')
 
 - name: Create symlinks for specific SSH items from protondrive
   ansible.builtin.file:
-    src: "{{ ssh_profile_protondrive_ssh_dir }}/{{ item }}"
+    src: "{{ ssh_profile_ssh_profile_ssh_dir }}/{{ item }}"
     dest: "{{ ssh_profile_target_dir }}/{{ item }}"
     state: link
     force: true
   loop: "{{ ssh_profile_symlink_items }}"
-  when: protondrive_ssh_dir.stat.exists
+  when: ssh_profile_ssh_dir.stat.exists
 
 - name: Set permissions on the local SSH directory recursively to 0700
   ansible.builtin.file:
@@ -66,21 +66,21 @@
   ansible.builtin.find:
     paths: "{{ ssh_profile_target_dir }}"
     file_type: file
-  register: target_ssh_files
+  register: ssh_profile_target_ssh_files
 
 - name: Set file permissions in the local SSH directory
   ansible.builtin.file:
     path: "{{ item.path }}"
     mode: "{{ '0644' if (item.path | basename).endswith('.pub') else '0600' }}"
-  loop: "{{ target_ssh_files.files }}"
+  loop: "{{ ssh_profile_target_ssh_files.files }}"
 
 - name: Check if authorized_keys exists
   ansible.builtin.stat:
     path: "{{ ssh_profile_target_dir }}/authorized_keys"
-  register: authorized_keys_stat
+  register: ssh_profile_authorized_keys_stat
 
 - name: Ensure authorized_keys has mode 0600
   ansible.builtin.file:
     path: "{{ ssh_profile_target_dir }}/authorized_keys"
     mode: "0600"
-  when: authorized_keys_stat.stat.exists
+  when: ssh_profile_authorized_keys_stat.stat.exists
