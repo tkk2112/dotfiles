@@ -1,7 +1,7 @@
 ---
 - name: Set architecture specific variables
   ansible.builtin.set_fact:
-    pwndbg_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+    gdb_pwndbg_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
 
 - name: Install radare2 and pip
   ansible.builtin.apt:
@@ -13,7 +13,7 @@
 
 - name: Download pwndbg package
   ansible.builtin.get_url:
-    url: https://github.com/pwndbg/pwndbg/releases/download/{{ gdb_pwndbg_version }}/pwndbg_{{ gdb_pwndbg_version }}_{{ pwndbg_arch }}.deb
+    url: https://github.com/pwndbg/pwndbg/releases/download/{{ gdb_pwndbg_version }}/pwndbg_{{ gdb_pwndbg_version }}_{{ gdb_pwndbg_arch }}.deb
     dest: "{{ ansible_tmp }}/pwndbg.deb"
     mode: "0644"
 
@@ -25,20 +25,20 @@
 
 - name: Get PWNDBG Python version
   ansible.builtin.shell: set -o pipefail && dpkg -L pwndbg | grep -o 'python3\\.[0-9]\\+' | sort -u | head -n1
-  register: pwndbg_python_version
+  register: gdb_pwndbg_python_version
   changed_when: false
 
 - name: Install Python packages for pwndbg
   ansible.builtin.command:
-    cmd: /usr/bin/python3 -m pip install --target=/usr/lib/pwndbg/lib/{{ pwndbg_python_version.stdout }}/site-packages r2pipe colorama prompt-toolkit pygments
+    cmd: /usr/bin/python3 -m pip install --target=/usr/lib/pwndbg/lib/{{ gdb_pwndbg_python_version.stdout }}/site-packages r2pipe colorama prompt-toolkit pygments
   become: true
   changed_when: false
   args:
     creates:
-      - /usr/lib/pwndbg/lib/{{ pwndbg_python_version.stdout }}/site-packages/r2pipe
-      - /usr/lib/pwndbg/lib/{{ pwndbg_python_version.stdout }}/site-packages/colorama
-      - /usr/lib/pwndbg/lib/{{ pwndbg_python_version.stdout }}/site-packages/prompt_toolkit
-      - /usr/lib/pwndbg/lib/{{ pwndbg_python_version.stdout }}/site-packages/pygments
+      - /usr/lib/pwndbg/lib/{{ gdb_pwndbg_python_version.stdout }}/site-packages/r2pipe
+      - /usr/lib/pwndbg/lib/{{ gdb_pwndbg_python_version.stdout }}/site-packages/colorama
+      - /usr/lib/pwndbg/lib/{{ gdb_pwndbg_python_version.stdout }}/site-packages/prompt_toolkit
+      - /usr/lib/pwndbg/lib/{{ gdb_pwndbg_python_version.stdout }}/site-packages/pygments
 
 - name: Update r2pm database
   ansible.builtin.command: r2pm -U -f
