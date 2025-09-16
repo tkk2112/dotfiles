@@ -3,9 +3,9 @@
   ansible.builtin.command:
     cmd: go install github.com/rclone/rclone@latest
   environment:
-    GOPATH: "{{ gopath }}"
+    GOPATH: "{{ go_path }}"
   args:
-    creates: "{{ gopath }}/bin/rclone"
+    creates: "{{ go_path }}/bin/rclone"
 
 - name: Ensure rclone config directory exists
   ansible.builtin.file:
