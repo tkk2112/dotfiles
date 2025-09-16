@@ -1,7 +1,7 @@
 ---
 - name: GUP update
   ansible.builtin.command:
-    cmd: "{{ gopath }}/bin/gup update"
+    cmd: "{{ go_path }}/bin/gup update"
   environment:
-    GOPATH: "{{ gopath }}"
+    GOPATH: "{{ go_path }}"
   changed_when: true
