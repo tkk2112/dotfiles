@@ -2,6 +2,6 @@
 alacritty_repo: https://github.com/alacritty/alacritty.git
 
 # renovate: datasource=github-releases depName=alacritty/alacritty
-alacritty_version: v0.15.1
+alacritty_version: v0.16.1
 
 alacritty_build_path: "{{ ansible_tmp }}/alacritty"

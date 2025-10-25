@@ -13,6 +13,7 @@ dependencies = [
     "python-debian>=1.0.1",
     "pytest-random-order>=1.2.0",
     "no-implicit-optional>=1.4",
+    "certifi>=2025.10.5",
 ]
 classifiers = ["Private :: Do Not Upload"]
 
