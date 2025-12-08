@@ -3,27 +3,30 @@
   ansible.builtin.include_tasks:
     file: "{{ ansible_distribution | lower }}.yml"
 
-- name: Update and upgrade system packages
-  ansible.builtin.apt:
-    update_cache: true
-    upgrade: dist
-  become: true
+- name: System package management (requires root)
+  when: not justauser | bool
+  block:
+    - name: Update and upgrade system packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+      become: true
 
-- name: Install essential system packages
-  ansible.builtin.apt:
-    name: "{{ base_packages }}"
-    state: present
-  become: true
+    - name: Install essential system packages
+      ansible.builtin.apt:
+        name: "{{ base_packages }}"
+        state: present
+      become: true
 
-- name: Install essential debian-based system packages
-  ansible.builtin.apt:
-    name: "{{ base_debian_packages }}"
-    state: present
-  become: true
+    - name: Install essential debian-based system packages
+      ansible.builtin.apt:
+        name: "{{ base_debian_packages }}"
+        state: present
+      become: true
 
-- name: Ensure APT keyrings directory exists
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: "0755"
-  become: true
+    - name: Ensure APT keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+      become: true
