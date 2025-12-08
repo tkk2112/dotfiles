@@ -1,6 +1,6 @@
 #!/bin/sh
 # shellcheck shell=dash
-
+set -x
 script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(realpath "$script_dir/..")
 
@@ -9,8 +9,10 @@ cd "$repo_dir" || {
     exit 1
 }
 
-export DOTFILES_UPDATE_UV_QUIET=1
-. "${script_dir}/install_uv.sh"
+if [ -z "${DOTFILES_CI+x}" ]; then
+    export DOTFILES_UPDATE_UV_QUIET=1
+    . "${script_dir}/install_uv.sh"
+fi
 export UV_PROJECT="${repo_dir}"
 export UV_WORKING_DIRECTORY="${repo_dir}"
 export UV_FROZEN=1

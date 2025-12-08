@@ -1,0 +1,130 @@
+---
+name: 'Setup and Run Dotfiles'
+description: 'Sets up environment and runs the dotfiles setup script on Linux or macOS'
+inputs:
+  pkgs:
+    description: 'Packages to install (Linux only)'
+    required: false
+    default: 'git curl sudo'
+  setup_args:
+    description: 'Arguments to pass to setup.sh'
+    required: false
+    default: ''
+  sh_args:
+    description: 'Shell arguments for setup.sh'
+    required: false
+    default: ''
+  task_name:
+    description: 'Name of the task being executed'
+    required: false
+    default: ''
+  workspace_path:
+    description: 'Path to the workspace directory'
+    required: false
+    default: ${{ github.workspace }}
+  username:
+    description: 'Username to create or use (Linux only)'
+    required: false
+    default: 'newuser'
+  uid:
+    description: 'User ID (Linux only)'
+    required: false
+    default: '1000'
+  gid:
+    description: 'Group ID (Linux only)'
+    required: false
+    default: '1000'
+  enable_sudo:
+    description: 'Enable passwordless sudo access (Linux only)'
+    required: false
+    default: 'true'
+outputs:
+  username:
+    description: 'Username created or found (Linux only)'
+    value: ${{ steps.user_setup.outputs.username }}
+  dotfiles_location:
+    description: 'Location of the dotfiles'
+    value: ${{ steps.set_dotfiles_location.outputs.dotfiles_location }}
+runs:
+  using: "composite"
+  steps:
+    - name: Detect OS
+      id: detect_os
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          echo "os=linux" >> $GITHUB_OUTPUT
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          echo "os=macos" >> $GITHUB_OUTPUT
+        else
+          echo "Unsupported OS: $RUNNER_OS"
+          exit 1
+        fi
+
+    - name: Install dependencies (Linux)
+      if: steps.detect_os.outputs.os == 'linux'
+      shell: bash
+      env:
+        PKGS: ${{ inputs.pkgs }}
+        DEBIAN_FRONTEND: "noninteractive"
+      run: |
+        if command -v apt-get &> /dev/null; then
+          apt-get -qq update </dev/null >/dev/null
+          apt-get -qq install -y ${PKGS} </dev/null >/dev/null
+        elif command -v dnf &> /dev/null; then
+          dnf -y install ${PKGS} </dev/null >/dev/null
+        else
+          echo "Unsupported package manager"
+          exit 1
+        fi
+
+    - name: Setup user (Linux)
+      if: steps.detect_os.outputs.os == 'linux'
+      id: user_setup
+      uses: ./.github/actions/setup-user
+      with:
+        workspace_path: ${{ inputs.workspace_path }}
+        username: ${{ inputs.username }}
+        uid: ${{ inputs.uid }}
+        gid: ${{ inputs.gid }}
+        enable_sudo: ${{ inputs.enable_sudo }}
+
+    - name: Set dotfiles location
+      id: set_dotfiles_location
+      shell: bash
+      run: |
+        if [[ "${{ steps.detect_os.outputs.os }}" == "linux" ]]; then
+          echo "dotfiles_location=${{ steps.user_setup.outputs.dotfiles_location }}" >> $GITHUB_OUTPUT
+        else
+          echo "dotfiles_location=$GITHUB_WORKSPACE" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set environment variables
+      shell: bash
+      run: |
+        if [[ "${{ steps.detect_os.outputs.os }}" == "linux" ]]; then
+          echo "USERNAME=${{ steps.user_setup.outputs.username }}" >> "$GITHUB_ENV"
+        fi
+        echo "DOTFILES_LOCATION=${{ steps.set_dotfiles_location.outputs.dotfiles_location }}" >> "$GITHUB_ENV"
+
+    - name: Set commit variable
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "COMMIT=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+        else
+          echo "COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+        fi
+
+    - name: "Exec task (${{ inputs.task_name }}): $ setup.sh ${{ inputs.setup_args }}"
+      shell: bash
+      env:
+        SETUP_ARGS: ${{ inputs.setup_args }}
+        SH_ARGS: ${{ inputs.sh_args }}
+      run: |
+        if [[ "${{ steps.detect_os.outputs.os }}" == "linux" ]]; then
+          su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
+           "sudo visudo -c && curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
+        else
+          curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}
+        fi

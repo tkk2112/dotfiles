@@ -1,0 +1,122 @@
+---
+name: 'Setup User'
+description: 'Sets up a user with specified UID/GID for running containerized workflows'
+inputs:
+  workspace_path:
+    description: 'Path to the workspace directory'
+    required: false
+    default: ${{ github.workspace }}
+  username:
+    description: 'Username to create or use'
+    required: false
+    default: 'newuser'
+  uid:
+    description: 'User ID'
+    required: false
+    default: '1000'
+  gid:
+    description: 'Group ID'
+    required: false
+    default: '1000'
+  enable_sudo:
+    description: 'Enable passwordless sudo access'
+    required: false
+    default: 'true'
+outputs:
+  username:
+    description: 'Username created or found'
+    value: ${{ steps.user_setup.outputs.username }}
+  dotfiles_location:
+    description: 'Location of the dotfiles'
+    value: ${{ steps.user_setup.outputs.dotfiles_location }}
+runs:
+  using: "composite"
+  steps:
+    - name: Add user if needed
+      id: user_setup
+      shell: bash
+      run: |
+        set -e
+        USERNAME="${{ inputs.username }}"
+        UID="${{ inputs.uid }}"
+        GID="${{ inputs.gid }}"
+        ENABLE_SUDO="${{ inputs.enable_sudo }}"
+
+        if getent passwd ${UID} >/dev/null; then
+          echo "User with UID ${UID} already exists"
+          USERNAME=$(getent passwd ${UID} | cut -d: -f1)
+        else
+          echo "Creating user ${USERNAME} with UID/GID ${UID}/${GID}"
+          groupadd --gid ${GID} ${USERNAME} || true
+          useradd --uid ${UID} --gid ${GID} --create-home --shell $(which bash) ${USERNAME}
+
+          # Add to wheel/sudo group based on distro if sudo is enabled
+          if [ "${ENABLE_SUDO}" = "true" ]; then
+            if grep -q wheel /etc/group; then
+              usermod -aG wheel ${USERNAME} || true
+              echo "Added ${USERNAME} to wheel group"
+            elif grep -q sudo /etc/group; then
+              usermod -aG sudo ${USERNAME} || true
+              echo "Added ${USERNAME} to sudo group"
+            fi
+          fi
+        fi
+
+        # Configure sudo access without password if enabled
+        if [ "${ENABLE_SUDO}" = "true" ]; then
+          # Backup sudoers file
+          cp /etc/sudoers /etc/sudoers.bak
+          # Append to sudoers file
+          echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          # Verify sudoers config
+          visudo -c || exit 1
+        fi
+
+        echo "username=${USERNAME}" >> "$GITHUB_OUTPUT"
+
+        # Check group membership
+        groups ${USERNAME}
+        passwd ${USERNAME} --status
+
+        # Set directory permissions
+        if [ -d /workspace ]; then
+          echo "dotfiles_location=/workspace" >> "$GITHUB_OUTPUT"
+          chown -R ${UID}:${GID} /workspace
+        else
+          WORKSPACE_PATH="${{ inputs.workspace_path }}"
+          echo "Checking workspace path: ${WORKSPACE_PATH}"
+
+          # First try the input path
+          if [ -d "${WORKSPACE_PATH}" ]; then
+            echo "Using provided workspace path: ${WORKSPACE_PATH}"
+          # Then try GitHub default workspace
+          elif [ -d "$GITHUB_WORKSPACE" ]; then
+            WORKSPACE_PATH="$GITHUB_WORKSPACE"
+            echo "Using GITHUB_WORKSPACE: ${WORKSPACE_PATH}"
+          # Then try to find the repo in the standard GitHub runner path structure
+          elif [ -d "/home/runner/work" ]; then
+            # Look for the first directory in the work directory
+            for repo_dir in /home/runner/work/*/; do
+              if [ -d "${repo_dir}" ]; then
+                WORKSPACE_PATH="${repo_dir}"
+                echo "Found workspace in runner path: ${WORKSPACE_PATH}"
+                break
+              fi
+            done
+          fi
+
+          # Final check before attempting chown
+          if [ -d "${WORKSPACE_PATH}" ]; then
+            echo "dotfiles_location=${WORKSPACE_PATH}" >> "$GITHUB_OUTPUT"
+            echo "Setting ownership for: ${WORKSPACE_PATH}"
+            chown -R ${UID}:${GID} "${WORKSPACE_PATH}" || echo "Warning: Failed to change ownership of ${WORKSPACE_PATH}"
+          else
+            echo "Warning: Could not find a valid workspace directory"
+            echo "dotfiles_location=${WORKSPACE_PATH}" >> "$GITHUB_OUTPUT"
+            # Don't fail the action, just warn
+            echo "Available directories in /home/runner:"
+            ls -la /home/runner/ || true
+            echo "Available directories in /home/runner/work (if exists):"
+            ls -la /home/runner/work/ || true
+          fi
+        fi
