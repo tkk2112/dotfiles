@@ -35,24 +35,36 @@
     dest: ~/.oh-my-zsh/custom/themes/powerlevel10k
     depth: 1
 
-- name: Copy p10k.zsh
-  ansible.builtin.copy:
-    src: "{{ role_path }}/files/p10k.zsh"
-    dest: ~/.p10k.zsh
-    mode: "0644"
-
-- name: Symlink Zsh configuration files
+- name: Ensure .config directories exist
   ansible.builtin.file:
-    src: "{{ role_path }}/files/.{{ item }}"
+    path: "{{ ansible_env.HOME }}/.config/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - zsh
+
+- name: Symlink zsh dotfiles
+  ansible.builtin.file:
+    src: "{{ role_path }}/files/{{ item }}"
     dest: "{{ ansible_env.HOME }}/.{{ item }}"
     state: link
     force: true
-  loop: "{{ zsh_config_files }}"
+  loop:
+    - zshrc
+    - zshenv
+    - zprofile
+    - zsh
 
 - name: Set secure permissions for .zshrc
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.zshrc"
     mode: "0600"
+
+- name: Copy p10k.zsh
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/p10k.zsh"
+    dest: ~/.p10k.zsh
+    mode: "0644"
 
 - name: Get zsh path
   ansible.builtin.command: which zsh
@@ -63,5 +75,7 @@
   ansible.builtin.user:
     name: "{{ ansible_user_id }}"
     shell: "{{ zsh_path.stdout }}"
-  when: ansible_user_id != 'root'
+  when:
+    - ansible_user_id != 'root'
+    - not justauser | bool
   become: true

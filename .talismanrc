@@ -1,0 +1,5 @@
+threshold: medium
+fileignoreconfig:
+- filename: uv.lock
+  ignore_detectors:
+  - filecontent
