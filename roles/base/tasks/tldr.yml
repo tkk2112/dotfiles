@@ -11,13 +11,13 @@
   block:
     - name: Create tldr share directory
       ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.local/share/tldr"
+        path: "{{ ansible_facts.env.HOME }}/.local/share/tldr"
         state: directory
         mode: "0755"
 
     - name: Check for existing tldr pages
       ansible.builtin.find:
-        paths: "{{ ansible_env.HOME }}/.local/share/tldr"
+        paths: "{{ ansible_facts.env.HOME }}/.local/share/tldr"
         file_type: any
       register: base_tldr_files
 

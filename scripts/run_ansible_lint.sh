@@ -9,10 +9,11 @@ cd "$repo_dir" || {
     exit 1
 }
 
-if [ -z "${DOTFILES_CI+x}" ]; then
+if ! printenv DOTFILES_CI >/dev/null; then
     export DOTFILES_UPDATE_UV_QUIET=1
     . "${script_dir}/install_uv.sh"
 fi
+
 export UV_PROJECT="${repo_dir}"
 export UV_WORKING_DIRECTORY="${repo_dir}"
 export UV_FROZEN=1

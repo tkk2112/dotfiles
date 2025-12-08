@@ -1,14 +1,14 @@
 ---
-- name: Add repositories for {{ ansible_distribution_release }}
+- name: Add repositories for {{ ansible_facts.distribution_release }}
   ansible.builtin.deb822_repository:
     name: ubuntu
     types: deb
     uris: http://archive.ubuntu.com/ubuntu/
     suites:
-      - "{{ ansible_distribution_release }}"
-      - "{{ ansible_distribution_release }}-updates"
-      - "{{ ansible_distribution_release }}-backports"
-      - "{{ ansible_distribution_release }}-security"
+      - "{{ ansible_facts.distribution_release }}"
+      - "{{ ansible_facts.distribution_release }}-updates"
+      - "{{ ansible_facts.distribution_release }}-backports"
+      - "{{ ansible_facts.distribution_release }}-security"
     components:
       - main
       - universe

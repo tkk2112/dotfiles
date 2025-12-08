@@ -10,10 +10,10 @@
   pre_tasks:
     - name: Expand flag defaults
       ansible.builtin.set_fact:
-        headless: "{{ dotfiles_flags.headless | default(false) }}"
-        personal: "{{ dotfiles_flags.personal | default(false) }}"
-        internal: "{{ dotfiles_flags.internal | default(false) }}"
-        justauser: "{{ dotfiles_flags.justauser | default(false) }}"
+        headless: "{{ (dotfiles_flags | default({})).headless | default(false) }}"
+        personal: "{{ (dotfiles_flags | default({})).personal | default(false) }}"
+        internal: "{{ (dotfiles_flags | default({})).internal | default(false) }}"
+        justauser: "{{ (dotfiles_flags | default({})).justauser | default(false) }}"
 
     - name: Detect passwordless sudo (best-effort)
       ansible.builtin.command: sudo -n true
@@ -42,7 +42,7 @@
 
     - name: Load host-specific variables when present
       vars:
-        candidate_host: "{{ ansible_hostname | default(inventory_hostname) }}"
+        candidate_host: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
       block:
         - name: Check host vars file
           ansible.builtin.stat:
@@ -58,9 +58,9 @@
         selected_os: >-
           {{
             os_family | default(
-              'debian' if ansible_distribution in ['Debian', 'Ubuntu']
-              else 'fedora' if ansible_distribution == 'Fedora'
-              else 'macos' if ansible_distribution == 'MacOSX'
+              'debian' if ansible_facts.distribution in ['Debian', 'Ubuntu']
+              else 'fedora' if ansible_facts.distribution == 'Fedora'
+              else 'macos' if ansible_facts.distribution == 'MacOSX'
               else 'unknown'
             )
           }}
@@ -68,7 +68,7 @@
     - name: Ensure OS variables exist
       when: selected_os == 'unknown'
       ansible.builtin.fail:
-        msg: "Unsupported distribution {{ ansible_distribution }} (set os_family to override)."
+        msg: "Unsupported distribution {{ ansible_facts.distribution }} (set os_family to override)."
 
     - name: Load OS variables
       when: selected_os != 'unknown'
@@ -112,6 +112,10 @@
         - name: Include profile vars
           ansible.builtin.include_vars: "{{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
 
+    - name: Default install roles list
+      ansible.builtin.set_fact:
+        install_roles_list: []
+
     - name: Build install roles list
       ansible.builtin.set_fact:
         install_roles_list: "{{ install_roles | default([]) }}"
@@ -152,9 +156,9 @@
           - "╔════════════════════════════════════════════════════════════════════════════╗"
           - "║                    DOTFILES CONFIGURATION DEBUG OUTPUT                     ║"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
-          - "║ Hostname: {{ ansible_hostname | default(inventory_hostname) }}"
-          - "║ Distribution: {{ ansible_distribution }} ({{ selected_os }})"
-          - "║ User: {{ ansible_user_id }}"
+          - "║ Hostname: {{ ansible_facts.hostname | default(inventory_hostname) }}"
+          - "║ Distribution: {{ ansible_facts.distribution }} ({{ selected_os }})"
+          - "║ User: {{ ansible_facts.user_id }}"
           - "║ Machine Type: {{ machine_type | default('not set') }}"
           - "║ Profile Name: {{ profile_name }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
@@ -171,10 +175,15 @@
           - "║ PROFILE ROLES EXTRA:"
           - "║   {{ profile_roles_extra | default([]) | join(', ') }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
-          - "║ INSTALL ROLES (from host_vars/{{ ansible_hostname | default(inventory_hostname) }}.yml):"
-          # yamllint disable-line rule:line-length
-          - "║   {{ install_roles | default([]) if install_roles is not mapping else (install_roles | default({}) | dict2items | selectattr('value') | map(attribute='key')
-            | list | join(', ')) }}"
+          - "║ INSTALL ROLES (from host_vars/{{ ansible_facts.hostname | default(inventory_hostname) }}.yml):"
+          - >-
+            ║   {{
+              (
+                (install_roles | default({}) | dict2items | selectattr('value') | map(attribute='key') | list | join(', '))
+                if (install_roles is defined and install_roles is mapping)
+                else (install_roles | default([]) | join(', '))
+              )
+            }}
           - "╠════════════════════════════════════════════════════════════════════════════╣"
           - "║ INSTALL ROLES LIST (processed):"
           - "║   {{ install_roles_list | default([]) | join(', ') }}"

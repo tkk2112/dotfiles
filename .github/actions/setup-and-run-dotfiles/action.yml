@@ -10,10 +10,6 @@ inputs:
     description: 'Arguments to pass to setup.sh'
     required: false
     default: ''
-  sh_args:
-    description: 'Shell arguments for setup.sh'
-    required: false
-    default: ''
   task_name:
     description: 'Name of the task being executed'
     required: false
@@ -119,12 +115,21 @@ runs:
     - name: "Exec task (${{ inputs.task_name }}): $ setup.sh ${{ inputs.setup_args }}"
       shell: bash
       env:
+        DOTFILES_DEBUG: 1
         SETUP_ARGS: ${{ inputs.setup_args }}
-        SH_ARGS: ${{ inputs.sh_args }}
       run: |
-        if [[ "${{ steps.detect_os.outputs.os }}" == "linux" ]]; then
-          su --login --whitelist-environment=DOTFILES_LOCATION ${USERNAME} -c \
-           "sudo visudo -c && curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}"
+       cd "${DOTFILES_LOCATION}"
+
+        # Check if we're running as root
+        if [[ $EUID -eq 0 ]]; then
+          # Running as root in container, switch to test user
+          SUDO_CHECK=""
+          if [[ "${ENABLE_SUDO}" == "true" ]]; then
+            SUDO_CHECK="sudo visudo -c && "
+          fi
+          su --login --whitelist-environment=DOTFILES_LOCATION,DOTFILES_DEBUG ${USERNAME} -c \
+            "${SUDO_CHECK}cd ${DOTFILES_LOCATION} && ./setup.sh ${SETUP_ARGS}"
         else
-          curl -LsS https://raw.githubusercontent.com/tkk2112/dotfiles/${COMMIT}/setup.sh | sh ${SH_ARGS}-s -- ${SETUP_ARGS}
+          # Running as non-root user
+          ./setup.sh ${SETUP_ARGS}
         fi

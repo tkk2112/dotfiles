@@ -186,6 +186,9 @@ create_ansible_config_dirs() {
     mkdir -p .config/fact_cache >/dev/null 2>&1 || true
     mkdir -p .config/retry_files >/dev/null 2>&1 || true
     mkdir -p .config/plugins >/dev/null 2>&1 || true
+    for plugin in action become cache callback connection doc_fragments filter httpapi inventory lookup module_utils netconf strategy terminal test; do
+        mkdir -p ".config/plugins/$plugin" || true
+    done
 }
 
 case "$0" in
