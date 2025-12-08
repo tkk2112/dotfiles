@@ -1,9 +1,0 @@
-personal: true
-headless: false
-
-install_roles:
-  devel: true
-  alacritty: true
-
-alacritty:
-  font_size: 10.0
