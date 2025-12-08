@@ -1,7 +1,0 @@
----
-# List of Zsh configuration files to symlink
-zsh_config_files:
-  - zshrc
-  - zshenv
-  - zprofile
-  - zsh

@@ -1,6 +1,0 @@
-personal: true
-headless: false
-
-install_roles:
-  devel: true
-  alacritty: true
