@@ -7,14 +7,13 @@ all:
     workstation:
       hosts:
         beastbox:
-        F42:
+        metatron:
     server_root:
       hosts:
-        metatron:
+        gcloud:
     server_useronly:
       hosts:
-        wsl:
-        some_shared_box:
+        lightspeed:
 
 server_root:
   vars:

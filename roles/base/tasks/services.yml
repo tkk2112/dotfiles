@@ -1,16 +1,16 @@
 ---
 - name: Ensure systemd user directory exists
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config/systemd/user"
+    path: "{{ ansible_facts.env.HOME }}/.config/systemd/user"
     state: directory
     mode: "0700"
 
 - name: Enable Linger for user (requires root)
   ansible.builtin.command:
-    cmd: env loginctl enable-linger {{ ansible_user_id }}
-    creates: /var/lib/systemd/linger/{{ ansible_user_id }}
+    cmd: env loginctl enable-linger {{ ansible_facts.user_id }}
+    creates: /var/lib/systemd/linger/{{ ansible_facts.user_id }}
   become: true
   when:
-    - ansible_service_mgr == 'systemd'
-    - ansible_virtualization_type != 'docker' or ansible_pid1_name == 'systemd'
+    - ansible_facts.service_mgr == 'systemd'
+    - ansible_facts.virtualization_type != 'docker' or ansible_facts.pid1_name == 'systemd'
     - not justauser | bool
