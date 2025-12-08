@@ -1,0 +1,11 @@
+---
+personal: true
+headless: false
+
+ansible_host: beastbox
+ansible_user: thomas
+machine_type: workstation
+os_family: fedora
+
+install_roles:
+  alacritty: true
