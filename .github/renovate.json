@@ -1,0 +1,28 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "github>tkk2112/renovate"
+    ],
+    "ansible": {
+        "managerFilePatterns": [
+            "/(^|/)defaults/[^/]+\\.ya?ml$/",
+            "/(^|/)handlers/[^/]+\\.ya?ml$/",
+            "/(^|/)tasks/[^/]+\\.ya?ml$/"
+        ]
+    },
+    "customManagers": [
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/(^|/)defaults/[^/]+\\.ya?ml$/",
+                "/(^|/)tasks/[^/]+\\.ya?ml$/"
+            ],
+            "matchStrings": [
+                "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)(?:\\s+versioning=(?<versioning>[a-z-]+))?[^\\n]*\\n(?<variableName>[^:]+):\\s*[\"']?(?<currentValue>[^'\"\\s]*)(?:[\"'])?"
+            ],
+            "datasourceTemplate": "{{datasource}}",
+            "depNameTemplate": "{{depName}}",
+            "versioningTemplate": "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
+        }
+    ]
+}
