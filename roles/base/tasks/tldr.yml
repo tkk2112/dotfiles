@@ -21,17 +21,20 @@
         file_type: any
       register: base_tldr_files
 
+    - name: Check if tldr cron job exists
+      ansible.builtin.shell:
+        cmd: set -o pipefail && crontab -l 2>/dev/null | grep -q 'tldr -u'
+        executable: /bin/bash
+      register: base_tldr_cron_check
+      changed_when: false
+      failed_when: false
+
     - name: Initial tldr pages download
       ansible.builtin.command: tldr -u
       changed_when: true
-      when: base_tldr_files.matched | int == 0
-
-    - name: Create weekly timer for tldr updates
-      systemd_timer:
-        name: tldr-update
-        job: /usr/bin/tldr -u
-        schedule: Sun, 03:48
-      when: ansible_distribution in ['Debian', 'Ubuntu']
+      when:
+        - base_tldr_files.matched | int == 0
+        - base_tldr_cron_check.rc != 0
 
     - name: Add tldr update to crontab
       ansible.builtin.cron:
@@ -41,5 +44,4 @@
         day: "*"
         month: "*"
         weekday: "0"
-        job: /usr/bin/tldr -u > /dev/null
-      when: ansible_distribution == 'MacOSX'
+        job: "{{ base_tldr_check.stdout }} -u > /dev/null"
