@@ -7,14 +7,24 @@
         name: sshd
         enabled: true
       become: true
-      when: ansible_service_mgr == 'systemd'
+      when: ansible_facts.service_mgr == 'systemd'
+
+    - name: Set sshd config
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/75-dotfiles.conf
+        content: "PubkeyAuthentication yes\n"
+        owner: root
+        group: root
+        mode: "0644"
+      become: true
+      notify: Restart sshd
 
     - name: Start sshd service
       ansible.builtin.systemd:
         name: sshd
         state: started
       become: true
-      when: ansible_service_mgr == 'systemd'
+      when: ansible_facts.service_mgr == 'systemd'
 
     - name: Install COPR plugin
       ansible.builtin.dnf:
@@ -41,7 +51,7 @@
 
     - name: Enable RPM Fusion repositories
       ansible.builtin.command: >
-        dnf install -y https://mirrors.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-{{ ansible_distribution_major_version }}.noarch.rpm
+        dnf install -y https://mirrors.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-{{ ansible_facts.distribution_major_version }}.noarch.rpm
 
       args:
         creates: /etc/yum.repos.d/rpmfusion-{{ 'free' if 'free' in item else 'nonfree' }}.repo

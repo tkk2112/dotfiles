@@ -12,6 +12,6 @@
     - name: Symlink .direnvrc §configuration
       ansible.builtin.file:
         src: "{{ role_path }}/files/.direnvrc"
-        dest: "{{ ansible_env.HOME }}/.direnvrc"
+        dest: "{{ ansible_facts.env.HOME }}/.direnvrc"
         state: link
         force: true

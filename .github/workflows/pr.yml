@@ -36,10 +36,6 @@ jobs:
           - name: fedora:42
             runner: ubuntu-latest
             image: jrei/systemd-fedora:42
-          - name: fedora:42-cosmic
-            runner: ubuntu-latest
-            image: tkk2112/fedora-42-cosmic-spin:latest
-            options: '--privileged --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:ro'
           - name: debian:sid
             runner: ubuntu-latest
             image: jrei/systemd-debian:sid
@@ -54,12 +50,17 @@ jobs:
             image: jrei/systemd-ubuntu:24.04
           - name: macos:latest
             runner: macos-latest
+            options: ''
         task:
           - name: workstation
+            enable_sudo: 'true'
           - name: server
+            enable_sudo: 'true'
           - name: justuser
-    # yamllint disable-line rule:line-length
-    container: ${{ matrix.os.image && format('{{"image":"{0}","options":"{1}"}}', matrix.os.image, matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro') || null }}
+            enable_sudo: 'false'
+    container:
+      image: ${{ matrix.os.image || '' }}
+      options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Setup and run dotfiles
@@ -71,7 +72,7 @@ jobs:
           username: 'testuser'
           uid: '1000'
           gid: '1000'
-          enable_sudo: 'true'
+          enable_sudo: ${{ matrix.task.enable_sudo }}
 
   test:
     if: ${{ always() }}

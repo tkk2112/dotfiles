@@ -2,7 +2,7 @@
 - name: Include services tasks
   ansible.builtin.include_tasks:
     file: services.yml
-  when: ansible_distribution != 'MacOSX'
+  when: ansible_facts.distribution != 'MacOSX'
 
 - name: Set up base system configuration (only "owned" systems)
   when: not justauser | bool
@@ -10,27 +10,27 @@
     - name: Include tasks for debian-based systems
       ansible.builtin.include_tasks:
         file: debian_based.yml
-      when: ansible_distribution in ['Debian', 'Ubuntu']
+      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
 
     - name: Include tasks for fedora
       ansible.builtin.include_tasks:
         file: fedora.yml
-      when: ansible_distribution == 'Fedora'
+      when: ansible_facts.distribution == 'Fedora'
 
     - name: Include tasks for macos
       ansible.builtin.include_tasks:
         file: macos.yml
-      when: ansible_distribution == 'MacOSX'
+      when: ansible_facts.distribution == 'MacOSX'
 
 - name: Ensure .local/bin directory exists
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.local/bin"
+    path: "{{ ansible_facts.env.HOME }}/.local/bin"
     state: directory
     mode: "0755"
 
 - name: Create initial env file with PATH case structure
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/.local/bin/env"
+    dest: "{{ ansible_facts.env.HOME }}/.local/bin/env"
     content: |
       #!/bin/sh
 
@@ -52,7 +52,7 @@
 - name: Include tldr tasks
   ansible.builtin.import_tasks:
     file: tldr.yml
-  when: ansible_distribution == 'Fedora'
+  when: ansible_facts.distribution == 'Fedora'
 
 - name: Include miscellaneous utilities tasks
   ansible.builtin.import_tasks:
