@@ -100,8 +100,8 @@ warn_list:
 # By default it will run all transforms (effectively `write_list: ["all"]`).
 # You can disable running transforms by setting `write_list: ["none"]`.
 # Or only enable a subset of rule transforms by listing rules/tags here.
-# write_list:
-#   - all
+write_list:
+  - all
 
 offline: false
 
@@ -121,7 +121,6 @@ only_builtins_allow_modules:
   - community.general.homebrew
   - community.general.sudoers
   - community.general.ini_file
-  - systemd_timer
   - ansible.posix.selinux
   - ansible.posix.firewalld
 

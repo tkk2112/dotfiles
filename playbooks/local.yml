@@ -1,0 +1,205 @@
+---
+- name: Configure local system
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    dotfiles_dir: "{{ dotfiles_dir | default(ansible_env.HOME + '/.dotfiles') }}"
+
+  pre_tasks:
+    - name: Expand flag defaults
+      ansible.builtin.set_fact:
+        headless: "{{ dotfiles_flags.headless | default(false) }}"
+        personal: "{{ dotfiles_flags.personal | default(false) }}"
+        internal: "{{ dotfiles_flags.internal | default(false) }}"
+        justauser: "{{ dotfiles_flags.justauser | default(false) }}"
+
+    - name: Detect passwordless sudo (best-effort)
+      ansible.builtin.command: sudo -n true
+      register: local_pwless_sudo_check
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when: ansible_facts.user_id != 'root'
+
+    - name: Set allow_root default based on sudo capability
+      ansible.builtin.set_fact:
+        allow_root: >-
+          {{
+            allow_root
+            if (allow_root is defined)
+            else (
+              true
+              if ansible_facts.user_id == 'root'
+              else (local_pwless_sudo_check.rc | default(1) == 0)
+            )
+          }}
+
+    - name: Force justauser when root access is not allowed
+      ansible.builtin.set_fact:
+        justauser: "{{ (justauser | default(false) | bool) or (not allow_root | bool) }}"
+
+    - name: Load host-specific variables when present
+      vars:
+        candidate_host: "{{ ansible_hostname | default(inventory_hostname) }}"
+      block:
+        - name: Check host vars file
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../host_vars/{{ candidate_host }}.yml"
+          register: host_vars_file
+
+        - name: Include host vars
+          ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ candidate_host }}.yml"
+          when: host_vars_file.stat.exists
+
+    - name: Determine OS key
+      ansible.builtin.set_fact:
+        selected_os: >-
+          {{
+            os_family | default(
+              'debian' if ansible_distribution in ['Debian', 'Ubuntu']
+              else 'fedora' if ansible_distribution == 'Fedora'
+              else 'macos' if ansible_distribution == 'MacOSX'
+              else 'unknown'
+            )
+          }}
+
+    - name: Ensure OS variables exist
+      when: selected_os == 'unknown'
+      ansible.builtin.fail:
+        msg: "Unsupported distribution {{ ansible_distribution }} (set os_family to override)."
+
+    - name: Load OS variables
+      when: selected_os != 'unknown'
+      block:
+        - name: Check OS vars file
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../group_vars/os/{{ selected_os }}.yml"
+          register: os_vars_file
+
+        - name: Fail if OS vars file missing
+          ansible.builtin.fail:
+            msg: "Missing OS vars file {{ playbook_dir }}/../group_vars/os/{{ selected_os }}.yml"
+          when: not os_vars_file.stat.exists
+
+        - name: Include OS vars
+          ansible.builtin.include_vars: "{{ playbook_dir }}/../group_vars/os/{{ selected_os }}.yml"
+
+    - name: Determine profile name
+      ansible.builtin.set_fact:
+        profile_name: >-
+          {{
+            profile | default(
+              'user' if (not allow_root | bool)
+              else 'personal' if machine_type | default('') == 'workstation'
+              else 'server'
+            )
+          }}
+
+    - name: Load profile variables
+      block:
+        - name: Check profile vars file
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
+          register: profile_vars_file
+
+        - name: Fail if profile vars file missing
+          ansible.builtin.fail:
+            msg: "Missing profile vars file {{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
+          when: not profile_vars_file.stat.exists
+
+        - name: Include profile vars
+          ansible.builtin.include_vars: "{{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
+
+    - name: Build install roles list
+      ansible.builtin.set_fact:
+        install_roles_list: "{{ install_roles | default([]) }}"
+      when: install_roles is defined and install_roles is not mapping
+
+    - name: Build install roles list from mapping
+      ansible.builtin.set_fact:
+        install_roles_list: >-
+          {{
+            install_roles | default({}) | dict2items
+            | selectattr('value', 'equalto', true)
+            | map(attribute='key') | list
+          }}
+      when: install_roles is defined and install_roles is mapping
+
+    - name: Build final role list
+      ansible.builtin.set_fact:
+        profile_roles_final: >-
+          {{
+            (
+              (profile_roles | default([]))
+              + (profile_roles_extra | default([]))
+              + (install_roles_list | default([]))
+            ) | unique
+          }}
+
+    - name: Decide allowed roles (root vs non-root)
+      ansible.builtin.set_fact:
+        roles_to_run: >-
+          {{
+            profile_roles_final
+            | difference(disallow_root_roles | default([]))
+          }}
+
+    - name: Debug - Print configuration overview
+      ansible.builtin.debug:
+        msg:
+          - "╔════════════════════════════════════════════════════════════════════════════╗"
+          - "║                    DOTFILES CONFIGURATION DEBUG OUTPUT                     ║"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ Hostname: {{ ansible_hostname | default(inventory_hostname) }}"
+          - "║ Distribution: {{ ansible_distribution }} ({{ selected_os }})"
+          - "║ User: {{ ansible_user_id }}"
+          - "║ Machine Type: {{ machine_type | default('not set') }}"
+          - "║ Profile Name: {{ profile_name }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ FLAGS:"
+          - "║   Headless: {{ headless | default(false) }}"
+          - "║   Personal: {{ personal | default(false) }}"
+          - "║   Internal: {{ internal | default(false) }}"
+          - "║   Just a User: {{ justauser | default(false) }}"
+          - "║   Allow Root: {{ allow_root | default(true) }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ PROFILE ROLES (from group_vars/profile/{{ profile_name }}.yml):"
+          - "║   {{ profile_roles | default([]) | join(', ') }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ PROFILE ROLES EXTRA:"
+          - "║   {{ profile_roles_extra | default([]) | join(', ') }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ INSTALL ROLES (from host_vars/{{ ansible_hostname | default(inventory_hostname) }}.yml):"
+          # yamllint disable-line rule:line-length
+          - "║   {{ install_roles | default([]) if install_roles is not mapping else (install_roles | default({}) | dict2items | selectattr('value') | map(attribute='key')
+            | list | join(', ')) }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ INSTALL ROLES LIST (processed):"
+          - "║   {{ install_roles_list | default([]) | join(', ') }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ PROFILE ROLES FINAL (merged):"
+          - "║   {{ profile_roles_final | default([]) | join(', ') }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ DISALLOW ROOT ROLES:"
+          - "║   {{ disallow_root_roles | default([]) | join(', ') if disallow_root_roles | default([]) | length > 0 else '(none)' }}"
+          - "╠════════════════════════════════════════════════════════════════════════════╣"
+          - "║ ROLES TO RUN (final list after filtering):"
+          - "║   {{ roles_to_run | default([]) | join(', ') }}"
+          - "╚════════════════════════════════════════════════════════════════════════════╝"
+      when: lookup('env', 'DOTFILES_DEBUG') | length > 0
+      tags: skip_ansible_lint
+
+  roles:
+    - role: base
+      when: "'base' in roles_to_run"
+
+    # - role: zsh
+    #   when: "'zsh' in roles_to_run"
+
+    # - role: git
+    #   when: "'git' in roles_to_run"
+
+    # - role: tmux
+    #   when: "'tmux' in roles_to_run"

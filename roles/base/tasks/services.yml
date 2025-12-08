@@ -5,7 +5,7 @@
     state: directory
     mode: "0700"
 
-- name: Enable Linger for user
+- name: Enable Linger for user (requires root)
   ansible.builtin.command:
     cmd: env loginctl enable-linger {{ ansible_user_id }}
     creates: /var/lib/systemd/linger/{{ ansible_user_id }}

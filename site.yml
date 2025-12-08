@@ -1,0 +1,3 @@
+---
+- name: Import local playbook
+  import_playbook: playbooks/local.yml

@@ -1,79 +1,85 @@
 ---
-- name: Enable sshd at boot
-  ansible.builtin.systemd:
-    name: sshd
-    enabled: true
-  become: true
-  when: ansible_service_mgr == 'systemd'
+- name: System configuration and package management (requires root)
+  when: not justauser | bool
+  block:
+    - name: Enable sshd at boot
+      ansible.builtin.systemd:
+        name: sshd
+        enabled: true
+      become: true
+      when: ansible_service_mgr == 'systemd'
 
-- name: Start sshd service
-  ansible.builtin.systemd:
-    name: sshd
-    state: started
-  become: true
-  when: ansible_service_mgr == 'systemd'
+    - name: Start sshd service
+      ansible.builtin.systemd:
+        name: sshd
+        state: started
+      become: true
+      when: ansible_service_mgr == 'systemd'
 
-- name: Install COPR plugin
-  ansible.builtin.dnf:
-    name: dnf-plugins-core
-    state: present
-  become: true
+    - name: Install COPR plugin
+      ansible.builtin.dnf:
+        name: dnf-plugins-core
+        state: present
+      become: true
 
-- name: Enable COPR repositories
-  ansible.builtin.command: dnf copr enable -y {{ item }}
-  become: true
-  register: base_fedora_copr_result
-  changed_when: "'already enabled' not in base_fedora_copr_result.stdout"
-  loop: "{{ base_fedora_copr_repos }}"
+    - name: Enable COPR repositories
+      ansible.builtin.command: dnf copr enable -y {{ item }}
+      become: true
+      loop: "{{ base_fedora_copr_repos }}"
+      register: base_fedora_copr_result
+      args:
+        creates: /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:{{ item | replace('/', ':') }}.repo
 
-- name: Import RPM Fusion keys
-  ansible.builtin.rpm_key:
-    state: present
-    key: https://rpmfusion.org/keys?action=AttachFile&do=get&target=RPM-GPG-KEY-rpmfusion-{{ item }}-fedora-2020
-  loop:
-    - free
-    - nonfree
-  become: true
+    - name: Import RPM Fusion keys
+      ansible.builtin.rpm_key:
+        state: present
+        key: https://rpmfusion.org/keys?action=AttachFile&do=get&target=RPM-GPG-KEY-rpmfusion-{{ item }}-fedora-2020
+      loop:
+        - free
+        - nonfree
+      become: true
 
-- name: Enable RPM Fusion repositories
-  ansible.builtin.command: >
-    dnf install -y https://mirrors.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-{{ ansible_distribution_major_version }}.noarch.rpm
+    - name: Enable RPM Fusion repositories
+      ansible.builtin.command: >
+        dnf install -y https://mirrors.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-{{ ansible_distribution_major_version }}.noarch.rpm
 
-  args:
-    creates: /etc/yum.repos.d/rpmfusion-{{ 'free' if 'free' in item else 'nonfree' }}.repo
-  loop:
-    - free
-    - nonfree
-  become: true
+      args:
+        creates: /etc/yum.repos.d/rpmfusion-{{ 'free' if 'free' in item else 'nonfree' }}.repo
+      loop:
+        - free
+        - nonfree
+      become: true
+      register: base_fedora_rpmfusion_result
 
-- name: Clean and rebuild DNF cache
-  ansible.builtin.shell: |
-    dnf clean all
-    dnf makecache
-  become: true
-  changed_when: false
+    - name: Clean and rebuild DNF cache
+      ansible.builtin.shell: |
+        dnf clean all
+        dnf makecache
+      become: true
+      changed_when: false
+      when: base_fedora_copr_result.changed or base_fedora_rpmfusion_result.changed
 
-- name: Upgrade all packages (refresh & allow erasing)
-  ansible.builtin.shell: |
-    dnf upgrade -y --refresh --allowerasing
-  become: true
-  changed_when: false
-  tags:
-    - skip_ansible_lint
+    - name: Upgrade all packages (refresh & allow erasing)
+      ansible.builtin.shell: |
+        dnf upgrade -y --refresh --allowerasing
+      become: true
+      changed_when: false
+      tags:
+        - skip_ansible_lint
 
-- name: Install system packages
-  ansible.builtin.dnf:
-    name: "{{ base_packages }}"
-    state: present
-  become: true
+    - name: Install system packages
+      ansible.builtin.dnf:
+        name: "{{ base_packages }}"
+        state: present
+      become: true
 
-- name: Install fedora system packages
-  ansible.builtin.dnf:
-    name: "{{ base_fedora_packages }}"
-    state: present
-  become: true
+    - name: Install fedora system packages
+      ansible.builtin.dnf:
+        name: "{{ base_fedora_packages }}"
+        state: present
+      become: true
 
-- name: Autoremove unneeded packages installed as dependencies
-  ansible.builtin.dnf:
-    autoremove: true
-  become: true
+    - name: Autoremove unneeded packages installed as dependencies
+      ansible.builtin.dnf:
+        autoremove: true
+      become: true

@@ -1,0 +1,23 @@
+---
+dotfiles_profiles:
+  - base
+
+dotfiles_flags:
+  headless: true
+  personal: false
+  internal: false
+  justauser: false
+
+role_defaults:
+  base: true
+  zsh: true
+  git: true
+  fonts: true
+  tmux: true
+  zellij: false
+  neovim: false
+  go: false
+  rust: false
+  gpg: false
+  desktop: false
+  ssh_profile: false
