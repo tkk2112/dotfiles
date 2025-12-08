@@ -2,26 +2,26 @@
 - name: Clone Tmux Plugin Manager repository
   ansible.builtin.git:
     repo: "{{ tmux_plugin_repo }}"
-    dest: "{{ ansible_env.HOME }}/.config/tmux/plugins/tpm"
+    dest: "{{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm"
     version: "{{ tmux_plugin_version }}"
     force: true
 
 - name: Symlink Tmux configuration file
   ansible.builtin.file:
     src: "{{ role_path }}/files/tmux.conf"
-    dest: "{{ ansible_env.HOME }}/.config/tmux/tmux.conf"
+    dest: "{{ ansible_facts.env.HOME }}/.config/tmux/tmux.conf"
     state: link
     force: true
 
 - name: Check Tmux Plugin Manager installation
   ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins"
+    path: "{{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins"
   register: tmux_tpm_check
 
 - name: Install Tmux plugins
   ansible.builtin.shell: |
-    tmux source {{ ansible_env.HOME }}/.config/tmux/tmux.conf
-    {{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins
+    tmux source {{ ansible_facts.env.HOME }}/.config/tmux/tmux.conf
+    {{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins
   args:
     executable: /bin/bash
   when: not tmux_tpm_check.stat.exists
@@ -29,7 +29,7 @@
 
 - name: Update Tmux plugins
   ansible.builtin.shell: |
-    {{ ansible_env.HOME }}/.config/tmux/plugins/tpm/bin/update_plugins all
+    {{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm/bin/update_plugins all
   args:
     executable: /bin/bash
   when: tmux_tpm_check.stat.exists

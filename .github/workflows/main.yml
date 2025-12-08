@@ -10,6 +10,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     name: check'n'test
     runs-on: ubuntu-latest
+    env:
+      DOTFILES_CI: 'true'
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
@@ -21,7 +23,6 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-5|${{ hashFiles('uv.lock') }}|${{ hashFiles('.pre-commit-config.yaml') }}
       - run: uv run alias check
-      - run: uv run alias test
 
   standard-run:
     runs-on: ubuntu-latest

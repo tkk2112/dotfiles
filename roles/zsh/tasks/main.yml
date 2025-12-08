@@ -37,7 +37,7 @@
 
 - name: Ensure .config directories exist
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config/{{ item }}"
+    path: "{{ ansible_facts.env.HOME }}/.config/{{ item }}"
     state: directory
     mode: "0755"
   loop:
@@ -46,7 +46,7 @@
 - name: Symlink zsh dotfiles
   ansible.builtin.file:
     src: "{{ role_path }}/files/{{ item }}"
-    dest: "{{ ansible_env.HOME }}/.{{ item }}"
+    dest: "{{ ansible_facts.env.HOME }}/.{{ item }}"
     state: link
     force: true
   loop:
@@ -57,7 +57,7 @@
 
 - name: Set secure permissions for .zshrc
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.zshrc"
+    path: "{{ ansible_facts.env.HOME }}/.zshrc"
     mode: "0600"
 
 - name: Copy p10k.zsh
@@ -73,9 +73,9 @@
 
 - name: Set zsh as the default shell for the user
   ansible.builtin.user:
-    name: "{{ ansible_user_id }}"
+    name: "{{ ansible_facts.user_id }}"
     shell: "{{ zsh_path.stdout }}"
   when:
-    - ansible_user_id != 'root'
+    - ansible_facts.user_id != 'root'
     - not justauser | bool
   become: true

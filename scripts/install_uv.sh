@@ -12,7 +12,11 @@ install_uv() {
 }
 
 update_uv() {
-  if [ -n "${DOTFILES_UPDATE_UV_QUIET:-}" ]; then
+  if printenv DOTFILES_UV_NO_UPDATE >/dev/null; then
+    return
+  fi
+
+  if printenv DOTFILES_UV_UPDATE_QUIET >/dev/null; then
     "${1}" self update >/dev/null 2>&1
   else
     echo "Updating uv at ${1}..."

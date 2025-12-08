@@ -24,7 +24,7 @@
         state: present
       become: true
 
-    - name: Ensure APT keyrings directory exists
+    - name: Ensure apt-get keyrings directory exists
       ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
