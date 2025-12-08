@@ -2,13 +2,21 @@
 default_install_hook_types:
   - pre-commit
   - pre-push
+  - post-checkout
+  - post-merge
+  - post-rewrite
 
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.9.26
     hooks:
       - id: uv-sync
-        args: ["--locked", "--all-packages"]
+      - id: uv-lock
+      - id: uv-lock
+        name: "deps: upgrade via uv sync --upgrade"
+        alias: deps
+        args: [--upgrade]
+        stages: [manual]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -25,30 +33,6 @@ repos:
     hooks:
       - id: check-github-workflows
       - id: check-renovate
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
-    hooks:
-      - id: mypy
-        args: [--strict]
-  - repo: https://github.com/asottile/add-trailing-comma
-    rev: v4.0.0
-    hooks:
-    - id: add-trailing-comma
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-    - id: pyupgrade
-      args: [--py313-plus]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.13
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
-  - repo: https://github.com/PyCQA/isort
-    rev: 7.0.0
-    hooks:
-      - id: isort
   - repo: https://github.com/renovatebot/pre-commit-hooks
     rev: 41.173.1
     hooks:
@@ -62,3 +46,17 @@ repos:
     hooks:
       - id: talisman-push
       - id: talisman-commit
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        files: \.(yaml|yml)$
+        types: [file, yaml]
+        args: [-c, .yamllint, --strict]
+  - repo: local
+    hooks:
+      - id: ansible-lint
+        name: ansible-lint
+        language: unsupported
+        entry: ./scripts/run_ansible_lint.sh
+        pass_filenames: false

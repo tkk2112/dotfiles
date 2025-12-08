@@ -1,4 +1,0 @@
----
-- name: Include WSL tasks
-  ansible.builtin.include_tasks: wsl.yml
-  when: ansible_virtualization_type == 'wsl'

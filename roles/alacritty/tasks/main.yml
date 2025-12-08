@@ -1,4 +1,0 @@
----
-- name: Include Alacritty tasks
-  ansible.builtin.include_tasks: alacritty.yml
-  when: not headless | bool

@@ -1,7 +1,0 @@
-internal: true
-personal: true
-headless: true
-
-install_roles:
-  devel: true
-  wsl: true
