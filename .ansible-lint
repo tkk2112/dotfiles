@@ -123,6 +123,7 @@ only_builtins_allow_modules:
   - community.general.ini_file
   - ansible.posix.selinux
   - ansible.posix.firewalld
+  - dnf_config_manager
 
 # Limit the depth of the nested blocks:
 max_block_depth: 20
