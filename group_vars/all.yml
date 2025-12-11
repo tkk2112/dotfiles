@@ -14,9 +14,9 @@ role_defaults:
   git: true
   fonts: true
   tmux: true
+  go: true
   zellij: false
   neovim: false
-  go: false
   rust: false
   gpg: false
   desktop: false
