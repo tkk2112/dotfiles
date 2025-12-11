@@ -26,15 +26,18 @@ ret() {
 }
 
 set_flag() {
-    [ -n "$1" ] && eval "exec $1>&1"
+    [ -n "$1" ] || return 0
+    eval "__DOTFILES_FLAG_$1=1"
 }
 
 unset_flag() {
-    [ -n "$1" ] && eval "exec $1>&-"
+    [ -n "$1" ] || return 0
+    eval "unset __DOTFILES_FLAG_$1"
 }
 
 has_flag() {
-    [ -n "$1" ] && [ -e "/dev/fd/$1" ]
+    [ -n "$1" ] || return 1
+    eval "[ \"\${__DOTFILES_FLAG_$1:-}\" = 1 ]"
 }
 
 has_pwless_sudo() {
@@ -61,11 +64,11 @@ detect_platform() {
     ret "$_platform"
 }
 
-PKGSYS_UPDATED_FLAG=100
 ensure_pkg_repo_is_uptodate() {
+    local _pkgsys_updated_flag=200
     local _platform
     _platform="$(detect_platform)"
-    if ! has_flag "$PKGSYS_UPDATED_FLAG"; then
+    if ! has_flag "$_pkgsys_updated_flag"; then
         case "$_platform" in
         debian)
             sudo DEBIAN_FRONTEND=noninteractive apt-get -qq update </dev/null >/dev/null
@@ -83,7 +86,7 @@ ensure_pkg_repo_is_uptodate() {
             err "Unknown platform: $_platform"
             ;;
         esac
-        set_flag $PKGSYS_UPDATED_FLAG
+        set_flag $_pkgsys_updated_flag
     fi
 }
 
@@ -148,12 +151,47 @@ update_dotfiles_repo() {
     local _origin_push_url="${2}"
     local _user_email="${3}"
     local _repo_dir="${4}"
+    local _pull_url="${5}"
+    local _target_branch="main"
+
+    if [ -n "${DOTFILES_CI:-}" ]; then
+        if [ -n "${GITHUB_HEAD_REF:-}" ]; then
+            _target_branch="$GITHUB_HEAD_REF"
+            [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Using PR branch: %s\n' "$_target_branch" >&2
+        elif [ -n "${GITHUB_REF_NAME:-}" ]; then
+            _target_branch="$GITHUB_REF_NAME"
+            [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Using ref: %s\n' "$_target_branch" >&2
+        fi
+    fi
+
+    if [ ! -d "$_repo_dir/.git" ]; then
+        [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: No .git directory found, initializing from %s\n' "$_pull_url" >&2
+        info "Converting file copy to git repository..."
+
+        (
+            cd "$_repo_dir" || err "Failed to change directory to $_repo_dir"
+
+            git init >/dev/null 2>&1 || err "Failed to initialize git repository in $_repo_dir"
+            git remote add origin "$_pull_url" >/dev/null 2>&1 || err "Failed to add remote origin"
+
+            if ! git fetch origin >/dev/null 2>&1; then
+                err "Could not fetch from origin; keeping as file copy."
+            fi
+
+            git branch -M "$_target_branch" >/dev/null 2>&1 || warn "Could not rename branch to $_target_branch"
+            git branch --set-upstream-to="origin/$_target_branch" "$_target_branch" >/dev/null 2>&1 || warn "Could not set upstream tracking"
+            git reset "origin/$_target_branch" >/dev/null 2>&1 || warn "Could not reset to origin/$_target_branch"
+
+            info "Converted to git repository successfully."
+        )
+    fi
 
     [ -d "$_repo_dir/.git" ] || return 0
+
     (
-        cd "$_repo_dir" || return 0
-        git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
-        git remote get-url origin >/dev/null 2>&1 || return 0
+        cd "$_repo_dir" || err "Failed to change directory to $_repo_dir"
+        git rev-parse --is-inside-work-tree >/dev/null 2>&1 || err "$_repo_dir is not a valid git repository"
+        git remote get-url origin >/dev/null 2>&1 || err "Git repository has no remote 'origin' configured"
 
         git remote -v | grep -qE '^origin\s+https:.*\(push\)$' &&
             git remote set-url --push origin "${_origin_push_url}"
@@ -161,11 +199,11 @@ update_dotfiles_repo() {
         [ "$(git config user.email)" = "${_user_email}" ] || git config user.email "${_user_email}"
 
         if ! git fetch --prune origin >/dev/null 2>&1; then
-            warn "Could not reach origin; skipping update."
+            err "Could not reach origin; skipping update."
         fi
 
-        info "Updating to latest..."
-        if git rebase --autostash --rebase-merges origin/main; then
+        info "Updating to latest from origin/$_target_branch..."
+        if git rebase --autostash --rebase-merges "origin/$_target_branch"; then
             return 0
         fi
 
