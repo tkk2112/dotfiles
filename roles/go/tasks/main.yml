@@ -1,0 +1,75 @@
+---
+- name: Check if go is installed
+  ansible.builtin.command: which go
+  register: go_go_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Install golang
+  ansible.builtin.package:
+    name:
+      - golang
+    state: present
+  become: true
+  when:
+    - not justauser | bool
+    - go_go_check.rc != 0
+
+- name: Re-check if go is installed
+  ansible.builtin.command: which go
+  register: go_go_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Set GOPATH fact
+  ansible.builtin.set_fact:
+    go_path: "{{ ansible_facts.env.HOME }}/.local/share/go"
+
+- name: Ensure GOPATH directory exists
+  ansible.builtin.file:
+    path: "{{ go_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Add GOPATH and its bin to PATH in env file
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_facts.env.HOME }}/.local/bin/env"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR GOPATH/BIN"
+    block: |
+      export GOPATH={{ go_path }}
+
+      case ":${PATH}:" in
+          *:"$GOPATH/bin":*)
+              ;;
+          *)
+              export PATH="$PATH:$GOPATH/bin"
+              ;;
+      esac
+
+- name: Install yamlfmt
+  ansible.builtin.command:
+    cmd: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+  environment:
+    GOPATH: "{{ go_path }}"
+  args:
+    creates: "{{ go_path }}/bin/yamlfmt"
+  when: go_go_check.rc == 0
+
+- name: Install gup
+  ansible.builtin.command:
+    cmd: go install github.com/nao1215/gup@latest
+  environment:
+    GOPATH: "{{ go_path }}"
+  args:
+    creates: "{{ go_path }}/bin/gup"
+  when: go_go_check.rc == 0
+
+- name: Trigger gup update
+  ansible.builtin.debug:
+    msg: Triggering gup update
+  notify:
+    - GUP update
+  changed_when: true
+  when: go_go_check.rc == 0
