@@ -1,0 +1,110 @@
+---
+- name: Enable RPM Fusion nonfree Steam repository
+  dnf_config_manager:
+    name: rpmfusion-nonfree-steam
+    state: enabled
+  become: true
+
+- name: Install gaming packages
+  ansible.builtin.package:
+    name:
+      - steam
+      - mangohud
+      - goverlay
+      - gamemode
+    state: present
+  become: true
+
+- name: Detect GPU vendor
+  ansible.builtin.shell:
+    cmd: set -o pipefail && lspci | grep -i vga | grep -i -E 'nvidia|amd'
+  args:
+    executable: /bin/bash
+  register: gaming_gpu_detection
+  failed_when: false
+  changed_when: false
+
+- name: Install NVIDIA drivers
+  ansible.builtin.package:
+    name:
+      - akmod-nvidia
+    state: present
+  become: true
+  when: "'nvidia' in gaming_gpu_detection.stdout | lower"
+
+- name: Install AMD GPU packages
+  ansible.builtin.package:
+    name:
+      - amd-gpu-firmware
+      - amdsmi
+      - rocm
+    state: present
+  become: true
+  when: "'amd' in gaming_gpu_detection.stdout | lower"
+
+- name: Install asdf - The Multiple Runtime Version Manager
+  ansible.builtin.command:
+    cmd: go install github.com/asdf-vm/asdf/cmd/asdf@latest
+  environment:
+    GOPATH: "{{ go_path }}"
+  args:
+    creates: "{{ go_path }}/bin/asdf"
+
+- name: Install asdf protonge plugin
+  ansible.builtin.command:
+    cmd: "{{ go_path }}/bin/asdf plugin add protonge https://github.com/augustobmoura/asdf-protonge.git"
+  environment:
+    ASDF_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+    ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+  args:
+    creates: "{{ ansible_facts.env.HOME }}/.asdf/plugins/protonge"
+  register: gaming_asdf_plugin_result
+  failed_when:
+    - gaming_asdf_plugin_result.rc != 0
+    - "'already added' not in gaming_asdf_plugin_result.stderr"
+  changed_when: gaming_asdf_plugin_result.rc == 0
+
+- name: Get installed ProtonGE versions
+  ansible.builtin.shell:
+    cmd: "{{ go_path }}/bin/asdf list protonge 2>/dev/null || echo ''"
+  environment:
+    ASDF_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+    ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+  register: gaming_installed_protonge_versions
+  changed_when: false
+
+- name: Install latest ProtonGE version
+  ansible.builtin.command:
+    cmd: "{{ go_path }}/bin/asdf install protonge latest"
+  environment:
+    ASDF_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+    ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+  when: gaming_installed_protonge_versions.stdout | length == 0
+  register: gaming_protonge_install
+  changed_when: gaming_protonge_install.rc == 0
+
+- name: Check if Steam is running
+  ansible.builtin.command:
+    cmd: pgrep -x steam
+  register: gaming_steam_running
+  failed_when: false
+  changed_when: false
+
+- name: Stop Steam if running
+  ansible.builtin.command:
+    cmd: pkill -x steam
+  when:
+    - gaming_steam_running.rc == 0
+    - gaming_protonge_install.changed | default(false)
+  register: gaming_steam_stopped
+  changed_when: gaming_steam_stopped.rc == 0
+
+- name: Remove old ProtonGE versions
+  ansible.builtin.command:
+    cmd: "{{ go_path }}/bin/asdf uninstall protonge {{ item }}"
+  environment:
+    ASDF_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+    ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
+  loop: "{{ gaming_installed_protonge_versions.stdout_lines[:-1] }}"
+  when: gaming_installed_protonge_versions.stdout_lines | length > 1
+  changed_when: true
