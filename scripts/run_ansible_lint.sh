@@ -24,5 +24,7 @@ export ANSIBLE_LIBRARY="${repo_dir}/library"
 export ANSIBLE_MODULE_UTILS="${repo_dir}/.config/plugins/module_utils"
 export ANSIBLE_ROLES_PATH="${repo_dir}/roles"
 
+uv run ansible-galaxy collection install --requirements-file requirements.yml --upgrade
+
 # shellcheck disable=SC2068
 uv run ansible-lint --project-dir="${repo_dir}" site.yml $@
