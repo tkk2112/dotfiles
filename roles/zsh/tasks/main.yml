@@ -1,39 +1,49 @@
 ---
-- name: Install Oh My Zsh # noqa: latest
-  ansible.builtin.git:
-    repo: https://github.com/ohmyzsh/ohmyzsh.git
-    dest: ~/.oh-my-zsh
-    depth: 1
+- name: Check if git is installed
+  ansible.builtin.command: which git
+  register: zsh_git_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
 
-- name: Install zsh-autosuggestions plugin # noqa: latest
-  ansible.builtin.git:
-    repo: https://github.com/zsh-users/zsh-autosuggestions
-    dest: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-    depth: 1
+- name: Install Oh My Zsh and plugins (requires git) # noqa: latest
+  when: zsh_git_check.rc == 0
+  block:
+    - name: Install Oh My Zsh # noqa: latest
+      ansible.builtin.git:
+        repo: https://github.com/ohmyzsh/ohmyzsh.git
+        dest: ~/.oh-my-zsh
+        depth: 1
 
-- name: Install zsh-completions plugin # noqa: latest
-  ansible.builtin.git:
-    repo: https://github.com/zsh-users/zsh-completions
-    dest: ~/.oh-my-zsh/custom/plugins/zsh-completions
-    depth: 1
+    - name: Install zsh-autosuggestions plugin # noqa: latest
+      ansible.builtin.git:
+        repo: https://github.com/zsh-users/zsh-autosuggestions
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+        depth: 1
 
-- name: Install zsh-syntax-highlighting plugin # noqa: latest
-  ansible.builtin.git:
-    repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
-    dest: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-    depth: 1
+    - name: Install zsh-completions plugin # noqa: latest
+      ansible.builtin.git:
+        repo: https://github.com/zsh-users/zsh-completions
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-completions
+        depth: 1
 
-- name: Install autoupdate-zsh-plugin # noqa: latest
-  ansible.builtin.git:
-    repo: https://github.com/TamCore/autoupdate-oh-my-zsh-plugins
-    dest: ~/.oh-my-zsh/custom/plugins/autoupdate
-    depth: 1
+    - name: Install zsh-syntax-highlighting plugin # noqa: latest
+      ansible.builtin.git:
+        repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+        depth: 1
 
-- name: Install Powerline10k theme # noqa: latest
-  ansible.builtin.git:
-    repo: https://github.com/romkatv/powerlevel10k.git
-    dest: ~/.oh-my-zsh/custom/themes/powerlevel10k
-    depth: 1
+    - name: Install autoupdate-zsh-plugin # noqa: latest
+      ansible.builtin.git:
+        repo: https://github.com/TamCore/autoupdate-oh-my-zsh-plugins
+        dest: ~/.oh-my-zsh/custom/plugins/autoupdate
+        depth: 1
+
+    - name: Install Powerline10k theme # noqa: latest
+      ansible.builtin.git:
+        repo: https://github.com/romkatv/powerlevel10k.git
+        dest: ~/.oh-my-zsh/custom/themes/powerlevel10k
+        depth: 1
 
 - name: Ensure .config directories exist
   ansible.builtin.file:
@@ -46,14 +56,14 @@
 - name: Symlink zsh dotfiles
   ansible.builtin.file:
     src: "{{ role_path }}/files/{{ item }}"
-    dest: "{{ ansible_facts.env.HOME }}/.{{ item }}"
+    dest: "{{ ansible_facts.env.HOME }}/{{ item }}"
     state: link
     force: true
   loop:
-    - zshrc
-    - zshenv
-    - zprofile
-    - zsh
+    - .zshrc
+    - .zshenv
+    - .zprofile
+    - .zsh
 
 - name: Set secure permissions for .zshrc
   ansible.builtin.file:
@@ -69,7 +79,9 @@
 - name: Get zsh path
   ansible.builtin.command: which zsh
   register: zsh_path
+  failed_when: false
   changed_when: false
+  check_mode: false
 
 - name: Set zsh as the default shell for the user
   ansible.builtin.user:
@@ -78,4 +90,5 @@
   when:
     - ansible_facts.user_id != 'root'
     - not justauser | bool
+    - zsh_path.rc == 0
   become: true

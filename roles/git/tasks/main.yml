@@ -1,16 +1,24 @@
 ---
+- name: Check if git is installed
+  ansible.builtin.command: which git
+  register: git_git_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
 - name: Configure git user name
   community.general.git_config:
     name: user.name
     value: "{{ git_user_name | default(git_default_user_name) }}"
     scope: global
+  when: git_git_check.rc == 0
 
 - name: Configure git user email
   community.general.git_config:
     name: user.email
     value: "{{ git_user_email }}"
     scope: global
-  when: git_user_email is defined and git_user_email | length > 0
+  when: git_user_email is defined and git_user_email | length > 0 and git_git_check.rc == 0
 
 - name: Configure git aliases
   community.general.git_config:
@@ -49,11 +57,13 @@
     - { key: ss, value: show --stat }
     - { key: st, value: status }
     - key: sync
-      value: "!git pull --prune --quiet && git -P branch --format \"%(refname:short) %(upstream:track)\"
-        | grep -F \"[gone]\" | sed \"s/\\[gone\\]//g\" | xargs -r git branch -D"
+    # yamllint disable-line rule:line-length
+      value: "!git pull --prune --quiet && git -P branch --format \"%(refname:short) %(upstream:track)\" | grep -F \"[gone]\" | sed \"s/\\[gone\\]//g\" | xargs -r
+        git branch -D"
     - { key: track, value: '!git branch --set-upstream-to $(git for-each-ref --format="%(refname:short)" $(git symbolic-ref HEAD))' }
     - { key: up, value: remote update }
     - { key: backup, value: "!git push --force-with-lease backup HEAD:$(git symbolic-ref --short HEAD)" }
+  when: git_git_check.rc == 0
 
 - name: Configure git settings
   community.general.git_config:
@@ -75,3 +85,4 @@
     - { name: rebase.autoStash, value: "true" }
     - { name: status.submoduleSummary, value: "true" }
     - { name: user.useConfigOnly, value: "true" }
+  when: git_git_check.rc == 0
