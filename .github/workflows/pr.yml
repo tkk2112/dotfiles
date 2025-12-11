@@ -63,8 +63,6 @@ jobs:
       options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          fetch-depth: 0
       - name: Setup and run dotfiles
         uses: ./.github/actions/setup-and-run-dotfiles
         with:
