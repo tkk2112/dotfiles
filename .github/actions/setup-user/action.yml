@@ -1,30 +1,30 @@
 ---
 name: 'Setup User'
-description: 'Sets up a user with specified INPUT_UID/INPUT_GID for running containerized workflows'
+description: 'Sets up a user with specified UID/GID for running containerized workflows'
 inputs:
   workspace_path:
     description: 'Path to the workspace directory'
     required: false
     default: ${{ github.workspace }}
   username:
-    description: 'Username to create or use'
+    description: 'Username'
     required: false
-    default: 'newuser'
+    default: 'dotuser'
   uid:
     description: 'User ID'
     required: false
-    default: '1000'
+    default: '1337'
   gid:
     description: 'Group ID'
     required: false
-    default: '1000'
+    default: '1337'
   enable_sudo:
-    description: 'Enable passwordless sudo access'
+    description: 'Enable pw-less sudo access'
     required: false
     default: 'true'
 outputs:
   username:
-    description: 'Username created or found'
+    description: 'User to run subsequent steps as'
     value: ${{ steps.user_setup.outputs.username }}
   dotfiles_location:
     description: 'Location of the dotfiles'
@@ -32,91 +32,107 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Add user if needed
+    - name: Setup user
       id: user_setup
       shell: bash
       run: |
         set -e
-        export INPUT_USERNAME="${{ inputs.username }}"
-        export INPUT_UID="${{ inputs.uid }}"
-        export INPUT_GID="${{ inputs.gid }}"
-        export ENABLE_SUDO="${{ inputs.enable_sudo }}"
+        TARGET_UID="${{ inputs.uid }}"
+        TARGET_GID="${{ inputs.gid }}"
+        USERNAME="${{ inputs.username }}"
+        WORKSPACE_PATH="${{ inputs.workspace_path }}"
+        ENABLE_SUDO="${{ inputs.enable_sudo }}"
 
-        if getent passwd ${INPUT_UID} >/dev/null; then
-          echo "User with INPUT_UID ${INPUT_UID} already exists"
-          INPUT_USERNAME=$(getent passwd ${INPUT_UID} | cut -d: -f1)
+        if getent passwd "$TARGET_UID" >/dev/null 2>&1; then
+          EXISTING_USER=$(getent passwd "$TARGET_UID" | cut -d: -f1)
+          echo "Error: UID $TARGET_UID is already taken by user '$EXISTING_USER'" >&2
+          exit 1
+        fi
+
+        if getent group "$TARGET_GID" >/dev/null 2>&1; then
+          EXISTING_GROUP=$(getent group "$TARGET_GID" | cut -d: -f1)
+          echo "Error: GID $TARGET_GID is already taken by group '$EXISTING_GROUP'" >&2
+          exit 1
+        fi
+
+        if getent passwd "$USERNAME" >/dev/null 2>&1; then
+          echo "Error: Username '$USERNAME' already exists" >&2
+          exit 1
+        fi
+
+        IS_FEDORA=false
+        if [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ]; then
+          IS_FEDORA=true
+          echo "Detected Fedora/RHEL-based system"
+        fi
+
+        if [ "$IS_FEDORA" = "true" ]; then
+          echo "Setting up shadow group and permissions for Fedora/RHEL"
+          getent group shadow >/dev/null 2>&1 || groupadd -r shadow
+          chown root:shadow /etc/shadow
+          chmod 640 /etc/shadow
+        fi
+
+        echo "Creating group '$USERNAME' with GID $TARGET_GID"
+        groupadd --gid "$TARGET_GID" "$USERNAME"
+
+        echo "Creating user '$USERNAME' with UID $TARGET_UID"
+        useradd --uid "$TARGET_UID" --gid "$TARGET_GID" --create-home --shell /bin/bash "$USERNAME"
+
+        if [ "$ENABLE_SUDO" = "true" ]; then
+          echo "Setting up passwordless sudo for user '$USERNAME'"
+
+         if getent group wheel >/dev/null 2>&1; then
+            echo "Adding user to 'wheel' group for sudo access"
+            usermod -aG wheel "$USERNAME"
+          elif getent group sudo >/dev/null 2>&1; then
+            echo "Adding user to 'sudo' group for sudo access"
+            usermod -aG sudo "$USERNAME"
+          fi
+
+          echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$USERNAME"
+          if [ "$IS_FEDORA" = "true" ]; then
+            echo "Defaults:$USERNAME !requiretty" >> "/etc/sudoers.d/$USERNAME"
+          fi
+          chmod 0440 "/etc/sudoers.d/$USERNAME"
+          visudo -c || {
+            echo "Error: sudoers configuration is invalid" >&2
+            exit 1
+          }
+
+          echo "Testing passwordless sudo access..."
+          if ! sudo -u "$USERNAME" sudo -n true 2>&1; then
+            echo "Error: Passwordless sudo test failed for user '$USERNAME'" >&2
+            echo "Debug: User groups:"
+            groups "$USERNAME"
+            echo "Debug: Sudoers entry:"
+            cat "/etc/sudoers.d/$USERNAME"
+            exit 1
+          fi
+          echo "Passwordless sudo verified for user '$USERNAME'"
         else
-          echo "Creating user ${INPUT_USERNAME} with UID/GID ${INPUT_UID}/${INPUT_GID}"
-          groupadd --gid ${INPUT_GID} ${INPUT_USERNAME} || true
-          useradd --uid ${INPUT_UID} --gid ${INPUT_GID} --create-home --shell $(which bash) ${INPUT_USERNAME}
+          echo "Sudo access not enabled for user '$USERNAME'"
 
-          # Add to wheel/sudo group based on distro if sudo is enabled
-          if [ "${ENABLE_SUDO}" = "true" ]; then
-            if grep -q wheel /etc/group; then
-              usermod -aG wheel ${INPUT_USERNAME} || true
-              echo "Added ${INPUT_USERNAME} to wheel group"
-            elif grep -q sudo /etc/group; then
-              usermod -aG sudo ${INPUT_USERNAME} || true
-              echo "Added ${INPUT_USERNAME} to sudo group"
-            fi
+          echo "Verifying user cannot use sudo..."
+          if sudo -u "$USERNAME" sudo -n true 2>/dev/null; then
+            echo "Error: User '$USERNAME' has sudo access when it shouldn't" >&2
+            exit 1
           fi
+          echo "Confirmed user '$USERNAME' cannot use sudo"
         fi
 
-        # Configure sudo access without password if enabled
-        if [ "${ENABLE_SUDO}" = "true" ]; then
-          # Backup sudoers file
-          cp /etc/sudoers /etc/sudoers.bak
-          # Append to sudoers file
-          echo "${INPUT_USERNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          # Verify sudoers config
-          visudo -c || exit 1
-        fi
-
-        echo "username=${INPUT_USERNAME}" >> "$GITHUB_OUTPUT"
-
-        # Check group membership
-        groups ${INPUT_USERNAME}
-        passwd ${INPUT_USERNAME} --status
-
-        # Set directory permissions
-        if [ -d /workspace ]; then
-          echo "dotfiles_location=/workspace" >> "$GITHUB_OUTPUT"
-          chown -R ${INPUT_UID}:${INPUT_GID} /workspace
+        if [ -d "$WORKSPACE_PATH" ]; then
+          echo "Setting ownership of $WORKSPACE_PATH to $USERNAME:$USERNAME"
+          chown -R "$TARGET_UID:$TARGET_GID" "$WORKSPACE_PATH"
         else
-          WORKSPACE_PATH="${{ inputs.workspace_path }}"
-          echo "Checking workspace path: ${WORKSPACE_PATH}"
-
-          # First try the input path
-          if [ -d "${WORKSPACE_PATH}" ]; then
-            echo "Using provided workspace path: ${WORKSPACE_PATH}"
-          # Then try GitHub default workspace
-          elif [ -d "$GITHUB_WORKSPACE" ]; then
-            WORKSPACE_PATH="$GITHUB_WORKSPACE"
-            echo "Using GITHUB_WORKSPACE: ${WORKSPACE_PATH}"
-          # Then try to find the repo in the standard GitHub runner path structure
-          elif [ -d "/home/runner/work" ]; then
-            # Look for the first directory in the work directory
-            for repo_dir in /home/runner/work/*/; do
-              if [ -d "${repo_dir}" ]; then
-                WORKSPACE_PATH="${repo_dir}"
-                echo "Found workspace in runner path: ${WORKSPACE_PATH}"
-                break
-              fi
-            done
-          fi
-
-          # Final check before attempting chown
-          if [ -d "${WORKSPACE_PATH}" ]; then
-            echo "dotfiles_location=${WORKSPACE_PATH}" >> "$GITHUB_OUTPUT"
-            echo "Setting ownership for: ${WORKSPACE_PATH}"
-            chown -R ${INPUT_UID}:${INPUT_GID} "${WORKSPACE_PATH}" || echo "Warning: Failed to change ownership of ${WORKSPACE_PATH}"
-          else
-            echo "Warning: Could not find a valid workspace directory"
-            echo "dotfiles_location=${WORKSPACE_PATH}" >> "$GITHUB_OUTPUT"
-            # Don't fail the action, just warn
-            echo "Available directories in /home/runner:"
-            ls -la /home/runner/ || true
-            echo "Available directories in /home/runner/work (if exists):"
-            ls -la /home/runner/work/ || true
-          fi
+          echo "Error: Workspace path $WORKSPACE_PATH does not exist" >&2
+          exit 1
         fi
+
+        echo "username=$USERNAME" >> $GITHUB_OUTPUT
+        echo "dotfiles_location=$WORKSPACE_PATH" >> $GITHUB_OUTPUT
+
+        echo "User setup complete:"
+        id "$USERNAME"
+        groups "$USERNAME"
+        echo "Home directory: $(getent passwd "$USERNAME" | cut -d: -f6)"
