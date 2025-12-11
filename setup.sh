@@ -21,7 +21,6 @@ PULL_REPO_URL="https://github.com/${GITHUB_REPO}.git"
 PUSH_REPO_URL="git@github.com:${GITHUB_REPO}.git"
 DOTFILES_DIR="$(printenv DOTFILES_LOCATION || true)"
 DEFAULT_DIR="${HOME}/.dotfiles"
-ANSIBLE_COLLECTIONS="community.general ansible.posix"
 
 # --- flags ---
 ASSUME_YES_FLAG=100
@@ -190,10 +189,7 @@ export ANSIBLE_ROLES_PATH="${repo_dir}/roles"
 
 if ! has_flag "$NO_UPDATE_FLAG"; then
   echo "Installing Ansible collections..."
-  for collection in $ANSIBLE_COLLECTIONS; do
-    echo "  - $collection"
-    uv run ansible-galaxy collection install "$collection" --upgrade
-  done
+  uv run ansible-galaxy collection install --requirements-file requirements.yml --upgrade
 fi
 # shellcheck disable=SC2086  # double quote to prevent globbing and word splitting
 uv run ansible-playbook site.yml $PROCESSED_ARGS
