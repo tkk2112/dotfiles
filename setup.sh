@@ -15,16 +15,19 @@ if [ "${DOTFILES_DEBUG:-}" = "1" ]; then
 fi
 
 # --- configuration ---
+
 GITHUB_REPO="tkk2112/dotfiles"
 GIT_USER_EMAIL="thomas@sl.m04r.space"
 PULL_REPO_URL="https://github.com/${GITHUB_REPO}.git"
 PUSH_REPO_URL="git@github.com:${GITHUB_REPO}.git"
-DOTFILES_DIR="$(printenv DOTFILES_LOCATION || true)"
 DEFAULT_DIR="${HOME}/.dotfiles"
 
 # --- flags ---
+
 ASSUME_YES_FLAG=100
 NO_UPDATE_FLAG=101
+
+# ----------------------
 
 if ! command -v git >/dev/null 2>&1; then
   printf "git is required to bootstrap this repo. Install git and rerun.\n" >&2
@@ -33,84 +36,49 @@ fi
 
 EXEC_DIR="$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)"
 
-is_git_repo() {
+is_our_repo() {
   local _dir="$1"
+  local _repo_github_var
 
-  [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Checking if %s is a git repo\n' "$_dir" >&2
+  [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Checking if %s is our repo\n' "$_dir" >&2
 
   if [ ! -d "$_dir" ]; then
     [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: %s is not a directory\n' "$_dir" >&2
     return 1
   fi
 
-  if [ ! -e "$_dir/.git" ]; then
-    [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: %s/.git does not exist\n' "$_dir" >&2
-    return 1
-  fi
-
-  if git -C "$_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: %s is a valid git repository\n' "$_dir" >&2
-    return 0
-  else
-    [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: %s has .git but git rev-parse failed\n' "$_dir" >&2
-    return 1
-  fi
-}
-
-is_our_repo() {
-  local _dir="$1"
-  local _origin_url
-  local _repo_github_var
-
-  if ! is_git_repo "$_dir"; then
-    [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: %s is not a git repo\n' "$_dir" >&2
-    return 1
-  fi
-
-  if [ -f "$_dir/setup.sh" ]; then
-    _repo_github_var="$(grep '^GITHUB_REPO=' "$_dir/setup.sh" 2>/dev/null | cut -d'"' -f2 || true)"
-    [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Found setup.sh with GITHUB_REPO=%s (expecting %s)\n' "$_repo_github_var" "$GITHUB_REPO" >&2
-    if [ "$_repo_github_var" = "$GITHUB_REPO" ]; then
-      return 0
-    fi
-  else
+  if [ ! -f "$_dir/setup.sh" ]; then
     [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: %s/setup.sh does not exist\n' "$_dir" >&2
-  fi
-
-  _origin_url="$(git -C "$_dir" remote get-url origin 2>/dev/null || true)"
-  [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Git remote origin URL: %s\n' "$_origin_url" >&2
-
-  if [ -z "$_origin_url" ]; then
     return 1
   fi
 
-  if printf '%s\n' "$_origin_url" | grep -q "${GITHUB_REPO}"; then
+  _repo_github_var="$(grep '^GITHUB_REPO=' "$_dir/setup.sh" 2>/dev/null | cut -d'"' -f2 || true)"
+  [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: Found setup.sh with GITHUB_REPO=%s (expecting %s)\n' "$_repo_github_var" "$GITHUB_REPO" >&2
+
+  if [ "$_repo_github_var" = "$GITHUB_REPO" ]; then
     return 0
   fi
+
   return 1
 }
 
 repo_dir=""
 if printenv DOTFILES_LOCATION >/dev/null; then
-  if is_git_repo "$DOTFILES_LOCATION"; then
+  [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: DOTFILES_LOCATION is set to %s\n' "$DOTFILES_LOCATION" >&2
+
+  if is_our_repo "$DOTFILES_LOCATION"; then
     repo_dir="$DOTFILES_LOCATION"
-    if ! is_our_repo "$DOTFILES_LOCATION"; then
-      printf 'Error: DOTFILES_LOCATION is set to %s, which is already a git repository for %s\n' "$DOTFILES_DIR" "${GITHUB_REPO}" >&2
-      exit 1
-    fi
   else
-    printf 'Error: DOTFILES_LOCATION is set to %s but it is empty or not a git repo\n' "$DOTFILES_DIR" >&2
+    printf 'Error: DOTFILES_LOCATION is set to %s, but it does not contain our repository\n' "$DOTFILES_LOCATION" >&2
     exit 1
   fi
-elif is_git_repo "$EXEC_DIR"; then
-  if is_our_repo "$EXEC_DIR"; then
-    repo_dir="$EXEC_DIR"
-  fi
-elif is_git_repo "$DEFAULT_DIR"; then
-  if is_our_repo "$DEFAULT_DIR"; then
-    repo_dir="$DEFAULT_DIR"
-  fi
+elif is_our_repo "$EXEC_DIR"; then
+  repo_dir="$EXEC_DIR"
+elif is_our_repo "$DEFAULT_DIR"; then
+  repo_dir="$DEFAULT_DIR"
 else
+  # Only clone if we don't have the repo anywhere
+  [ "${DOTFILES_DEBUG:-}" = "1" ] && printf 'DEBUG: No existing repo found, cloning to %s\n' "$DEFAULT_DIR" >&2
   git clone "$PULL_REPO_URL" "$DEFAULT_DIR"
   repo_dir="$DEFAULT_DIR"
 fi
@@ -144,7 +112,7 @@ if [ $status -ne 0 ]; then
 fi
 
 if ! has_flag "$NO_UPDATE_FLAG"; then
-  update_dotfiles_repo "$ASSUME_YES_FLAG" "$PUSH_REPO_URL" "$GIT_USER_EMAIL" "$repo_dir"
+  update_dotfiles_repo "$ASSUME_YES_FLAG" "$PUSH_REPO_URL" "$GIT_USER_EMAIL" "$repo_dir" "$PULL_REPO_URL"
 fi
 
 # Source library after potential repo update
@@ -164,19 +132,27 @@ uv sync
 
 if ! has_flag "$NO_UPDATE_FLAG"; then
   platform="$(detect_platform)"
-  case "$platform" in
-  debian)
-    install_package "apt-utils"
-    ;;
-  fedora)
-    install_package "python3-libdnf5"
-    ;;
-  esac
-
-  uv run pre-commit install
-
-  if [ "$platform" = "debian" ]; then
-    uv pip install six python-debian
+  if has_pwless_sudo; then
+    echo "Passwordless sudo available, installing system packages..."
+    case "$platform" in
+    debian)
+      install_package "apt-utils"
+      ;;
+    fedora)
+      install_package "python3-libdnf5"
+      ;;
+    esac
+  else
+    echo "No passwordless sudo available, skipping system package installation"
+    echo "You may need to manually install platform-specific packages:"
+    case "$platform" in
+    debian)
+      echo "  - apt-utils"
+      ;;
+    fedora)
+      echo "  - python3-libdnf5"
+      ;;
+    esac
   fi
 fi
 

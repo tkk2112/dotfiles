@@ -1,6 +1,8 @@
 #!/bin/sh
 # shellcheck shell=dash
-set -x
+if [ "${DOTFILES_DEBUG:-}" = "1" ]; then
+    set -x
+fi
 script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(realpath "$script_dir/..")
 
