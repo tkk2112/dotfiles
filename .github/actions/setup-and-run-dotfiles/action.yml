@@ -14,29 +14,13 @@ inputs:
     description: 'Name of the task being executed'
     required: false
     default: ''
-  workspace_path:
-    description: 'Path to the workspace directory'
-    required: false
-    default: ${{ github.workspace }}
-  username:
-    description: 'Username to create or use (Linux only)'
-    required: false
-    default: 'newuser'
-  uid:
-    description: 'User ID (Linux only)'
-    required: false
-    default: '1000'
-  gid:
-    description: 'Group ID (Linux only)'
-    required: false
-    default: '1000'
   enable_sudo:
     description: 'Enable passwordless sudo access (Linux only)'
     required: false
     default: 'true'
 outputs:
   username:
-    description: 'Username created or found (Linux only)'
+    description: 'Username created (Linux only)'
     value: ${{ steps.user_setup.outputs.username }}
   dotfiles_location:
     description: 'Location of the dotfiles'
@@ -56,6 +40,16 @@ runs:
           echo "Unsupported OS: $RUNNER_OS"
           exit 1
         fi
+
+    - name: Detect workspace path
+      id: workspace_path
+      shell: bash
+      run: |
+        # In containers, use GITHUB_WORKSPACE which is set correctly
+        # Otherwise fall back to github.workspace
+        WORKSPACE="${GITHUB_WORKSPACE:-${{ github.workspace }}}"
+        echo "workspace_path=$WORKSPACE" >> $GITHUB_OUTPUT
+        echo "Detected workspace path: $WORKSPACE"
 
     - name: Install dependencies (Linux)
       if: steps.detect_os.outputs.os == 'linux'
@@ -79,10 +73,10 @@ runs:
       id: user_setup
       uses: ./.github/actions/setup-user
       with:
-        workspace_path: ${{ inputs.workspace_path }}
-        username: ${{ inputs.username }}
-        uid: ${{ inputs.uid }}
-        gid: ${{ inputs.gid }}
+        workspace_path: ${{ steps.workspace_path.outputs.workspace_path }}
+        username: dotuser
+        uid: '1337'
+        gid: '1337'
         enable_sudo: ${{ inputs.enable_sudo }}
 
     - name: Set dotfiles location
@@ -92,7 +86,7 @@ runs:
         if [[ "${{ steps.detect_os.outputs.os }}" == "linux" ]]; then
           echo "dotfiles_location=${{ steps.user_setup.outputs.dotfiles_location }}" >> $GITHUB_OUTPUT
         else
-          echo "dotfiles_location=$GITHUB_WORKSPACE" >> $GITHUB_OUTPUT
+          echo "dotfiles_location=${{ steps.workspace_path.outputs.workspace_path }}" >> $GITHUB_OUTPUT
         fi
 
     - name: Set environment variables
@@ -117,10 +111,20 @@ runs:
       env:
         DOTFILES_DEBUG: 1
         SETUP_ARGS: ${{ inputs.setup_args }}
+        ENABLE_SUDO: ${{ inputs.enable_sudo }}
       run: |
-       cd "${DOTFILES_LOCATION}"
+        echo "DEBUG: Current user: $(whoami) (UID: $EUID)"
+        echo "DEBUG: DOTFILES_LOCATION: ${DOTFILES_LOCATION}"
+        echo "DEBUG: USERNAME: ${USERNAME}"
+        echo "DEBUG: ENABLE_SUDO: ${ENABLE_SUDO}"
+        echo "DEBUG: SETUP_ARGS: ${SETUP_ARGS}"
 
-        # Check if we're running as root
+        cd "${DOTFILES_LOCATION}"
+        echo "DEBUG: Changed to directory: $(pwd)"
+
+        ls -la "$DOTFILES_LOCATION" >&2
+        ls -la "$DOTFILES_LOCATION/.git" >&2 || echo "No .git directory found"
+
         if [[ $EUID -eq 0 ]]; then
           # Running as root in container, switch to test user
           SUDO_CHECK=""
