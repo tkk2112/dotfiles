@@ -45,8 +45,9 @@ base_fedora_packages:
   - zsh
 
 base_fedora_copr_repos:
-  - gsauthof/dracut-sshd
   - dejan/lazygit
+  - gsauthof/dracut-sshd
+  - kylegospo/grub-btrfs
 
 base_macos_packages:
   - ag
