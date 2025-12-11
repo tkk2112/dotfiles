@@ -99,7 +99,8 @@ if printenv DOTFILES_LOCATION >/dev/null; then
       exit 1
     fi
   else
-    git clone "$PULL_REPO_URL" "$DOTFILES_LOCATION"
+    printf 'Error: DOTFILES_LOCATION is set to %s but it is empty or not a git repo\n' "$DOTFILES_DIR" >&2
+    exit 1
   fi
 elif is_git_repo "$EXEC_DIR"; then
   if is_our_repo "$EXEC_DIR"; then
