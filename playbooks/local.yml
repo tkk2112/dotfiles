@@ -209,3 +209,5 @@
       when: "'git' in roles_to_run"
     - role: tmux
       when: "'tmux' in roles_to_run"
+    - role: go
+      when: "'go' in roles_to_run"
