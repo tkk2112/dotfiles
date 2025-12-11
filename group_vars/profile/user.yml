@@ -1,2 +1,3 @@
 ---
-disallow_root_roles: []
+disallow_root_roles:
+  - gaming

@@ -211,3 +211,5 @@
       when: "'tmux' in roles_to_run"
     - role: go
       when: "'go' in roles_to_run"
+    - role: gaming
+      when: "'gaming' in roles_to_run"
