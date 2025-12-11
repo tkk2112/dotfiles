@@ -46,14 +46,14 @@
 - name: Symlink zsh dotfiles
   ansible.builtin.file:
     src: "{{ role_path }}/files/{{ item }}"
-    dest: "{{ ansible_facts.env.HOME }}/.{{ item }}"
+    dest: "{{ ansible_facts.env.HOME }}/{{ item }}"
     state: link
     force: true
   loop:
-    - zshrc
-    - zshenv
-    - zprofile
-    - zsh
+    - .zshrc
+    - .zshenv
+    - .zprofile
+    - .zsh
 
 - name: Set secure permissions for .zshrc
   ansible.builtin.file:
