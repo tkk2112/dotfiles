@@ -9,3 +9,4 @@ os_family: fedora
 
 install_roles:
   alacritty: true
+  gaming: true
