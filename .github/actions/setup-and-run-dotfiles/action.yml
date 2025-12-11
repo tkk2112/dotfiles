@@ -126,14 +126,23 @@ runs:
         ls -la "$DOTFILES_LOCATION/.git" >&2 || echo "No .git directory found"
 
         if [[ $EUID -eq 0 ]]; then
-          # Running as root in container, switch to test user
+          echo "DEBUG: Running as root, switching to user ${USERNAME}"
+
           SUDO_CHECK=""
           if [[ "${ENABLE_SUDO}" == "true" ]]; then
+            echo "DEBUG: Sudo is enabled, adding visudo check"
             SUDO_CHECK="sudo visudo -c && "
+          else
+            echo "DEBUG: Sudo is disabled, no visudo check"
           fi
-          su --login --whitelist-environment=DOTFILES_LOCATION,DOTFILES_DEBUG ${USERNAME} -c \
-            "${SUDO_CHECK}cd ${DOTFILES_LOCATION} && ./setup.sh ${SETUP_ARGS}"
+
+          CMD="${SUDO_CHECK}cd ${DOTFILES_LOCATION} && ./setup.sh ${SETUP_ARGS}"
+          echo "DEBUG: Executing as ${USERNAME}: ${CMD}"
+
+          su --login --whitelist-environment=DOTFILES_LOCATION,DOTFILES_DEBUG ${USERNAME} -c "${CMD}"
         else
-          # Running as non-root user
+          echo "DEBUG: Running as non-root user, executing setup.sh directly"
           ./setup.sh ${SETUP_ARGS}
         fi
+
+        echo "DEBUG: setup.sh completed with exit code: $?"
