@@ -1,0 +1,5 @@
+---
+- name: Include Fedora gaming tasks
+  ansible.builtin.import_tasks:
+    file: fedora.yml
+  when: ansible_facts.distribution == 'Fedora'
