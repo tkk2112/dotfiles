@@ -203,12 +203,9 @@
   roles:
     - role: base
       when: "'base' in roles_to_run"
-
-    # - role: zsh
-    #   when: "'zsh' in roles_to_run"
-
-    # - role: git
-    #   when: "'git' in roles_to_run"
-
-    # - role: tmux
-    #   when: "'tmux' in roles_to_run"
+    - role: zsh
+      when: "'zsh' in roles_to_run"
+    - role: git
+      when: "'git' in roles_to_run"
+    - role: tmux
+      when: "'tmux' in roles_to_run"

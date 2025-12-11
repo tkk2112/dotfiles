@@ -1,10 +1,25 @@
 ---
+- name: Check if git is installed
+  ansible.builtin.command: which git
+  register: tmux_git_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Check if tmux is installed
+  ansible.builtin.command: which tmux
+  register: tmux_tmux_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
 - name: Clone Tmux Plugin Manager repository
   ansible.builtin.git:
     repo: "{{ tmux_plugin_repo }}"
     dest: "{{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm"
     version: "{{ tmux_plugin_version }}"
     force: true
+  when: tmux_git_check.rc == 0
 
 - name: Symlink Tmux configuration file
   ansible.builtin.file:
@@ -24,13 +39,17 @@
     {{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm/bin/install_plugins
   args:
     executable: /bin/bash
-  when: not tmux_tpm_check.stat.exists
   changed_when: true
+  when:
+    - tmux_tmux_check.rc == 0
+    - tmux_tpm_check.stat.exists
 
 - name: Update Tmux plugins
   ansible.builtin.shell: |
     {{ ansible_facts.env.HOME }}/.config/tmux/plugins/tpm/bin/update_plugins all
   args:
     executable: /bin/bash
-  when: tmux_tpm_check.stat.exists
+  when:
+    - tmux_tmux_check.rc == 0
+    - tmux_tpm_check.stat.exists
   changed_when: true
