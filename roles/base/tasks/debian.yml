@@ -1,13 +1,14 @@
 ---
-- name: Add repositories for {{ ansible_distribution_release }}
+- name: Add repositories for {{ ansible_facts.distribution_release }}
   ansible.builtin.deb822_repository:
     name: debian
     types: deb
     uris: https://deb.debian.org/debian
-    suites: "{{ ansible_distribution_release }}"
+    suites: "{{ ansible_facts.distribution_release }}"
     components:
       - main
       - contrib
       - non-free
     signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
   become: true
+  when: not justauser | bool

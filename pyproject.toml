@@ -1,53 +1,16 @@
 [project]
 name = "dotfiles"
-version = "0.1.0"
-requires-python = ">=3.11, <3.14"
+version = "2.0.0"
+requires-python = ">=3.13"
 dependencies = [
-    "ansible>=12.0.0",
-    "ansible-lint>=25.8.2",
-    "pre-commit>=4.3.0",
+    "ansible>=13.0.0",
+    "ansible-lint>=25.12.0",
+    "pre-commit>=4.5.0",
     "pyproject-aliases>=0.2.0",
-    "pytest>=8.4.2",
-    "mypy>=1.18.1",
-    "pytest-cov>=7.0.0",
-    "python-debian>=1.0.1",
-    "pytest-random-order>=1.2.0",
-    "no-implicit-optional>=1.4",
-    "certifi>=2025.10.5",
 ]
+
 classifiers = ["Private :: Do Not Upload"]
 
-[tool.ruff]
-line-length = 158
-lint.select = ["E", "F", "W", "C90"]
-
-[tool.isort]
-profile = "black"
-line_length = 158
-
-[tool.mypy]
-python_version = "3.11"
-check_untyped_defs = true
-disallow_incomplete_defs = true
-ignore_missing_imports = true
-implicit_optional = true
-
-[tool.pytest.ini_options]
-minversion = "8.0"
-testpaths = ["tests"]
-addopts = [
-    "--import-mode=importlib",
-    "--strict-markers",
-    "--random-order",
-    "--cov=library",
-    "--no-cov-on-fail",
-    "--cov-branch",
-    "--cov-report=term",
-]
-
 [tool.aliases]
-test = "uv run pytest"
 check = "uv run pre-commit run --all-files"
-lint = "./setup.sh --only-lint"
-run = "./setup.sh --skip-lint"
-check_syntax = "uv run ansible-playbook --syntax-check playbook.yml"
+lint = "uv run ansible-playbook --syntax-check site.yml"

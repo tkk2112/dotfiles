@@ -8,7 +8,7 @@
 
 - name: Set GOPATH fact
   ansible.builtin.set_fact:
-    go_path: "{{ ansible_env.HOME }}/.local/share/go"
+    go_path: "{{ ansible_facts.env.HOME }}/.local/share/go"
 
 - name: Ensure GOPATH directory exists
   ansible.builtin.file:
@@ -18,7 +18,7 @@
 
 - name: Add GOPATH and its bin to PATH in env file
   ansible.builtin.blockinfile:
-    path: "{{ ansible_env.HOME }}/.local/bin/env"
+    path: "{{ ansible_facts.env.HOME }}/.local/bin/env"
     marker: "# {mark} ANSIBLE MANAGED BLOCK FOR GOPATH/BIN"
     block: |
       export GOPATH={{ go_path }}

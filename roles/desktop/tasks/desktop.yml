@@ -1,7 +1,0 @@
----
-- name: Install essential desktop packages
-  ansible.builtin.apt:
-    name: "{{ desktop_packages }}"
-    state: present
-  become: true
-  when: ansible_distribution in ['Debian', 'Ubuntu']
