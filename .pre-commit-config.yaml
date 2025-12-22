@@ -5,7 +5,7 @@ default_install_hook_types:
 
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.13
+    rev: 0.9.18
     hooks:
       - id: uv-sync
         args: ["--locked", "--all-packages"]
@@ -21,12 +21,12 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.35.0
+    rev: 0.36.0
     hooks:
       - id: check-github-workflows
       - id: check-renovate
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         args: [--strict]
@@ -40,7 +40,7 @@ repos:
     - id: pyupgrade
       args: [--py313-plus]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.7
+    rev: v0.14.10
     hooks:
       - id: ruff
         args: [--fix]
