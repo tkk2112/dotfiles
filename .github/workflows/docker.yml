@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - run: mkdir -p .dockerfile-hashes
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         id: cache-restore
         with:
           path: .dockerfile-hashes
@@ -114,7 +114,7 @@ jobs:
           echo "${{ matrix.dockerfile.hash }}" > ".dockerfile-hashes/${{ matrix.dockerfile.tag }}.hash"
           echo "Updated hash for ${{ matrix.dockerfile.tag }}: ${{ matrix.dockerfile.hash }}"
 
-      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - uses: actions/cache/save@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: .dockerfile-hashes
           key: dockerfile-hashes-${{ matrix.dockerfile.tag }}-${{ github.sha }}
