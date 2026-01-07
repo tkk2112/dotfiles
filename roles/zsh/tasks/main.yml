@@ -89,6 +89,6 @@
     shell: "{{ zsh_path.stdout }}"
   when:
     - ansible_facts.user_id != 'root'
-    - not justauser | bool
+    - allow_root | default(false) | bool
     - zsh_path.rc == 0
   become: true

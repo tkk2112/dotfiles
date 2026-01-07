@@ -1,10 +1,10 @@
 ---
-- name: Include tasks for {{ ansible_distribution }}
+- name: Include tasks for {{ ansible_facts['distribution'] }}
   ansible.builtin.include_tasks:
-    file: "{{ ansible_distribution | lower }}.yml"
+    file: "{{ ansible_facts['distribution'] | lower }}.yml"
 
 - name: System package management (requires root)
-  when: not justauser | bool
+  when: allow_root | bool
   block:
     - name: Update and upgrade system packages
       ansible.builtin.apt:

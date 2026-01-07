@@ -6,7 +6,6 @@ dotfiles_flags:
   headless: true
   personal: false
   internal: false
-  justauser: false
 
 role_defaults:
   base: true
