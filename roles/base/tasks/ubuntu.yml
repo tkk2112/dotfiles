@@ -17,4 +17,4 @@
     signed_by: /usr/share/keyrings/ubuntu-archive-keyring.gpg
     enabled: true
   become: true
-  when: not justauser | bool
+  when: allow_root | bool

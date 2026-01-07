@@ -11,4 +11,4 @@
       - non-free
     signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
   become: true
-  when: not justauser | bool
+  when: allow_root | bool
