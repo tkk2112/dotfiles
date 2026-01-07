@@ -1,0 +1,7 @@
+---
+# No passwordless sudo / no root access.
+# Can be selected explicitly in host_vars via `profiles: [nosudo]`
+# and is also applied automatically when passwordless sudo is unavailable.
+
+disable_roles:
+  - gaming

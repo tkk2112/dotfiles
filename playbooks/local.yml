@@ -8,38 +8,6 @@
     dotfiles_dir: "{{ dotfiles_dir | default(ansible_env.HOME + '/.dotfiles') }}"
 
   pre_tasks:
-    - name: Expand flag defaults
-      ansible.builtin.set_fact:
-        headless: "{{ (dotfiles_flags | default({})).headless | default(false) }}"
-        personal: "{{ (dotfiles_flags | default({})).personal | default(false) }}"
-        internal: "{{ (dotfiles_flags | default({})).internal | default(false) }}"
-        justauser: "{{ (dotfiles_flags | default({})).justauser | default(false) }}"
-
-    - name: Detect passwordless sudo (best-effort)
-      ansible.builtin.command: sudo -n true
-      register: local_pwless_sudo_check
-      changed_when: false
-      failed_when: false
-      check_mode: false
-      when: ansible_facts.user_id != 'root'
-
-    - name: Set allow_root default based on sudo capability
-      ansible.builtin.set_fact:
-        allow_root: >-
-          {{
-            allow_root
-            if (allow_root is defined)
-            else (
-              true
-              if ansible_facts.user_id == 'root'
-              else (local_pwless_sudo_check.rc | default(1) == 0)
-            )
-          }}
-
-    - name: Force justauser when root access is not allowed
-      ansible.builtin.set_fact:
-        justauser: "{{ (justauser | default(false) | bool) or (not allow_root | bool) }}"
-
     - name: Load host-specific variables when present
       vars:
         candidate_host: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
@@ -52,6 +20,49 @@
         - name: Include host vars
           ansible.builtin.include_vars: "{{ playbook_dir }}/../host_vars/{{ candidate_host }}.yml"
           when: host_vars_file.stat.exists
+
+    - name: Initialize flags and accumulators
+      ansible.builtin.set_fact:
+        headless: false
+        personal: false
+        internal: false
+        profile_roles_extra: []
+        disable_roles: []
+        host_disable_roles_list: []
+
+    - name: Detect passwordless sudo (best-effort)
+      ansible.builtin.command: sudo -n true
+      register: local_pwless_sudo_check
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when: ansible_facts.user_id != 'root'
+
+    - name: Set root capability fact
+      ansible.builtin.set_fact:
+        pwless_sudo: >-
+          {{
+            true
+            if ansible_facts.user_id == 'root'
+            else (local_pwless_sudo_check.rc | default(1) == 0)
+          }}
+
+    - name: Set allow_root default based on sudo capability
+      ansible.builtin.set_fact:
+        allow_root: >-
+          {{
+            allow_root
+            if (allow_root is defined)
+            else (
+              true
+              if ansible_facts.user_id == 'root'
+              else (pwless_sudo | default(false) | bool)
+            )
+          }}
+
+    - name: Determine detected profiles
+      ansible.builtin.set_fact:
+        detected_profiles: "{{ ['nosudo'] if (not pwless_sudo | default(false) | bool) else [] }}"
 
     - name: Determine OS key
       ansible.builtin.set_fact:
@@ -86,31 +97,69 @@
         - name: Include OS vars
           ansible.builtin.include_vars: "{{ playbook_dir }}/../group_vars/os/{{ selected_os }}.yml"
 
-    - name: Determine profile name
+    - name: Determine active profiles
       ansible.builtin.set_fact:
-        profile_name: >-
+        profiles_effective: >-
           {{
-            profile | default(
-              'user' if (not allow_root | bool)
-              else 'personal' if machine_type | default('') == 'workstation'
-              else 'server'
-            )
+            (
+              (detected_profiles | default([]))
+              + (
+                profiles
+                if (profiles is defined)
+                else (['personal'] if machine_type | default('') == 'workstation' else ['server'])
+              )
+            ) | unique
           }}
 
-    - name: Load profile variables
-      block:
-        - name: Check profile vars file
-          ansible.builtin.stat:
-            path: "{{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
-          register: profile_vars_file
+    - name: Apply nosudo profile to root usage
+      ansible.builtin.set_fact:
+        allow_root: "{{ (allow_root | default(false) | bool) and ('nosudo' not in profiles_effective) }}"
 
-        - name: Fail if profile vars file missing
-          ansible.builtin.fail:
-            msg: "Missing profile vars file {{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
-          when: not profile_vars_file.stat.exists
+    - name: Include profile vars
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/profile/{{ item }}.yml"
+        name: profile_item
+      loop: "{{ profiles_effective }}"
+      register: profile_vars_loaded
 
-        - name: Include profile vars
-          ansible.builtin.include_vars: "{{ playbook_dir }}/../group_vars/profile/{{ profile_name }}.yml"
+    - name: Merge profile vars into facts
+      ansible.builtin.set_fact:
+        headless: "{{ headless | bool or (item.ansible_facts.profile_item.headless | default(false) | bool) }}"
+        personal: "{{ personal | bool or (item.ansible_facts.profile_item.personal | default(false) | bool) }}"
+        internal: "{{ internal | bool or (item.ansible_facts.profile_item.internal | default(false) | bool) }}"
+        profile_roles_extra: "{{ (profile_roles_extra + (item.ansible_facts.profile_item.profile_roles_extra | default([]))) | unique }}"
+        disable_roles: >-
+          {{
+            (
+              disable_roles
+              + (item.ansible_facts.profile_item.disable_roles | default([]))
+              + (item.ansible_facts.profile_item.disallow_root_roles | default([]))
+            ) | unique
+          }}
+      loop: "{{ profile_vars_loaded.results }}"
+
+    - name: Default host disable roles list
+      ansible.builtin.set_fact:
+        host_disable_roles_list: []
+
+    - name: Build host disable roles list
+      ansible.builtin.set_fact:
+        host_disable_roles_list: "{{ disable_roles_host | default([]) }}"
+      when: disable_roles_host is defined and disable_roles_host is not mapping
+
+    - name: Build host disable roles list from mapping
+      ansible.builtin.set_fact:
+        host_disable_roles_list: >-
+          {{
+            disable_roles_host | default({}) | dict2items
+            | selectattr('value', 'equalto', true)
+            | map(attribute='key') | list
+          }}
+      when: disable_roles_host is defined and disable_roles_host is mapping
+
+    - name: Merge host disable roles into final disable list
+      ansible.builtin.set_fact:
+        disable_roles: "{{ (disable_roles + host_disable_roles_list) | unique }}"
 
     - name: Default install roles list
       ansible.builtin.set_fact:
@@ -147,7 +196,7 @@
         roles_to_run: >-
           {{
             profile_roles_final
-            | difference(disallow_root_roles | default([]))
+            | difference(disable_roles | default([]))
           }}
 
     - name: Debug - Print configuration overview
@@ -160,19 +209,22 @@
           - "║ Distribution: {{ ansible_facts.distribution }} ({{ selected_os }})"
           - "║ User: {{ ansible_facts.user_id }}"
           - "║ Machine Type: {{ machine_type | default('not set') }}"
-          - "║ Profile Name: {{ profile_name }}"
+          - "║ Profiles: {{ profiles_effective | join(', ') }}"
+          - "║ Detected Profiles: {{ detected_profiles | default([]) | join(', ') }}"
+          - "║ OS Vars: group_vars/os/{{ selected_os }}.yml"
+          - "║ Profile Vars: group_vars/profile/<profile>.yml"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
           - "║ FLAGS:"
           - "║   Headless: {{ headless | default(false) }}"
           - "║   Personal: {{ personal | default(false) }}"
           - "║   Internal: {{ internal | default(false) }}"
-          - "║   Just a User: {{ justauser | default(false) }}"
           - "║   Allow Root: {{ allow_root | default(true) }}"
+          - "║   Passwordless Sudo: {{ pwless_sudo | default(false) }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
-          - "║ PROFILE ROLES (from group_vars/profile/{{ profile_name }}.yml):"
+          - "║ OS DEFAULT ROLES (from group_vars/os/{{ selected_os }}.yml):"
           - "║   {{ profile_roles | default([]) | join(', ') }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
-          - "║ PROFILE ROLES EXTRA:"
+          - "║ PROFILE EXTRA ROLES (from group_vars/profile/<profile>.yml):"
           - "║   {{ profile_roles_extra | default([]) | join(', ') }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
           - "║ INSTALL ROLES (from host_vars/{{ ansible_facts.hostname | default(inventory_hostname) }}.yml):"
@@ -191,8 +243,8 @@
           - "║ PROFILE ROLES FINAL (merged):"
           - "║   {{ profile_roles_final | default([]) | join(', ') }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
-          - "║ DISALLOW ROOT ROLES:"
-          - "║   {{ disallow_root_roles | default([]) | join(', ') if disallow_root_roles | default([]) | length > 0 else '(none)' }}"
+          - "║ DISABLED ROLES (host/profile/detection):"
+          - "║   {{ disable_roles | default([]) | join(', ') if disable_roles | default([]) | length > 0 else '(none)' }}"
           - "╠════════════════════════════════════════════════════════════════════════════╣"
           - "║ ROLES TO RUN (final list after filtering):"
           - "║   {{ roles_to_run | default([]) | join(', ') }}"

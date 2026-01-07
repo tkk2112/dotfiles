@@ -4,3 +4,4 @@
 .ansible
 __pycache__
 .coverage
+/legacy

@@ -5,7 +5,7 @@
   when: ansible_facts.distribution != 'MacOSX'
 
 - name: Set up base system configuration (only "owned" systems)
-  when: not justauser | bool
+  when: allow_root | default(false) | bool
   block:
     - name: Include tasks for debian-based systems
       ansible.builtin.include_tasks:

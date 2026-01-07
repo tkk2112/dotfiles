@@ -1,6 +1,6 @@
 ---
 - name: System configuration and package management (requires root)
-  when: not justauser | bool
+  when: allow_root | bool
   block:
     - name: Enable sshd at boot
       ansible.builtin.systemd:
