@@ -1,6 +1,6 @@
 ---
-personal: true
-headless: false
+profiles:
+  - personal
 
 ansible_host: beastbox
 ansible_user: thomas
