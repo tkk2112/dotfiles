@@ -137,6 +137,7 @@ if ! has_flag "$NO_UPDATE_FLAG"; then
     case "$platform" in
     debian)
       install_package "apt-utils"
+      install_package "python3-debian"
       ;;
     fedora)
       install_package "python3-libdnf5"
@@ -147,7 +148,7 @@ if ! has_flag "$NO_UPDATE_FLAG"; then
     echo "You may need to manually install platform-specific packages:"
     case "$platform" in
     debian)
-      echo "  - apt-utils"
+      echo "  - apt-utils python3-debian"
       ;;
     fedora)
       echo "  - python3-libdnf5"
