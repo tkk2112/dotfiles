@@ -13,6 +13,12 @@
   changed_when: false
   check_mode: false
 
+- name: Ensure tmux config directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.config/tmux"
+    state: directory
+    mode: "0755"
+
 - name: Clone Tmux Plugin Manager repository
   ansible.builtin.git:
     repo: "{{ tmux_plugin_repo }}"
