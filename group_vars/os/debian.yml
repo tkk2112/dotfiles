@@ -1,0 +1,8 @@
+---
+profile_roles:
+  - base
+  - zsh
+  - git
+  - tmux
+  - go
+  - fonts

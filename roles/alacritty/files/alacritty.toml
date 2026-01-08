@@ -1,9 +1,0 @@
-[general]
-live_config_reload = true
-import = [
-  'colors.toml',
-  'font.toml',
-  'mouse.toml',
-  'window.toml',
-  'local.toml',
-]
