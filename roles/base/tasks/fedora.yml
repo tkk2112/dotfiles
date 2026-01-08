@@ -2,6 +2,12 @@
 - name: System configuration and package management (requires root)
   when: allow_root | bool
   block:
+    - name: Install OpenSSH server
+      ansible.builtin.dnf:
+        name: openssh-server
+        state: present
+      become: true
+
     - name: Enable sshd at boot
       ansible.builtin.systemd:
         name: sshd
