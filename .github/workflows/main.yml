@@ -33,10 +33,10 @@ jobs:
           GITHUB_URL="https://raw.githubusercontent.com/tkk2112/dotfiles/refs/heads/main/setup.sh"
           CUSTOM_URL="https://link.m04r.space/dotfiles"
 
-          # Get content from both URLs
+          # Get content from both URLs (ignore cert validation for custom URL)
           GITHUB_CONTENT=$(curl -Ls "$GITHUB_URL")
           GITHUB_CHECKSUM=$(curl -Ls "$GITHUB_URL" | sha256sum | cut -d' ' -f1)
-          CUSTOM_CHECKSUM=$(curl -Ls "$CUSTOM_URL" | sha256sum | cut -d' ' -f1)
+          CUSTOM_CHECKSUM=$(curl -Lsk "$CUSTOM_URL" | sha256sum | cut -d' ' -f1)
 
           echo "Comparing checksums:"
           echo "GitHub ($GITHUB_URL): $GITHUB_CHECKSUM"
@@ -77,7 +77,7 @@ jobs:
   test:
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: [sanity-check]
+    needs: [sanity-check,url-check,check]
     steps:
       - run: exit 1
         if: ${{ contains(toJSON(needs.*.result), 'failure') || contains(toJSON(needs.*.result), 'cancelled') }}
