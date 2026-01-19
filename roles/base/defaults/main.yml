@@ -42,6 +42,7 @@ base_fedora_packages:
   - python3-argcomplete
   - the_silver_searcher
   - tldr
+  - which
   - zsh
 
 base_fedora_copr_repos:
