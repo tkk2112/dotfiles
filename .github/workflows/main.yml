@@ -24,7 +24,7 @@ jobs:
           key: pre-commit-5|${{ hashFiles('uv.lock') }}|${{ hashFiles('.pre-commit-config.yaml') }}
       - run: uv run alias check
 
-  standard-run:
+  url-check:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -47,19 +47,37 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare container for setup script
-        run: |
-          cat > "script-$GITHUB_RUN_ID.sh" << 'EOF'
-          #!/bin/sh
-          DEBIAN_FRONTEND=noninteractive apt-get -qq update </dev/null >/dev/null
-          DEBIAN_FRONTEND=noninteractive apt-get -qq install -y apt-utils curl sudo curl </dev/null >/dev/null
-          useradd -m -s /bin/bash newuser
-          echo 'newuser ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-          su --login newuser -c 'curl -LsS https://link.m04r.space/dotfiles | sh'
-          EOF
-
-      - name: Run setup script as advertised in README.md
-        uses: docker://debian:latest
+  sanity-check:
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    name: ${{ matrix.task.name }} on ${{ matrix.os.name }}
+    runs-on: ${{ matrix.os.runner }}
+    strategy:
+      matrix:
+        os:
+          - name: ubuntu:LTS
+            runner: ubuntu-latest
+            image: jrei/systemd-ubuntu:24.04
+        task:
+          - name: workstation
+            enable_sudo: 'true'
+    container:
+      image: ${{ matrix.os.image || '' }}
+      options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Setup and run dotfiles
+        uses: ./.github/actions/setup-and-run-dotfiles
         with:
-          entrypoint: /bin/sh
-          args: script-${{ github.run_id }}.sh
+          pkgs: 'git curl sudo'
+          setup_args: ${{ matrix.task.setup_args }}
+          task_name: ${{ matrix.task.name }}
+          enable_sudo: ${{ matrix.task.enable_sudo }}
+
+  test:
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [sanity-check]
+    steps:
+      - run: exit 1
+        if: ${{ contains(toJSON(needs.*.result), 'failure') || contains(toJSON(needs.*.result), 'cancelled') }}
