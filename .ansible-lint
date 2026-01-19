@@ -7,7 +7,6 @@ exclude_paths:
   - .github
   - .vscode
 
-parseable: true
 strict: true
 verbosity: 0
 quiet: false
