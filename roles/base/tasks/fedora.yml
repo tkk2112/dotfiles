@@ -23,12 +23,11 @@
         group: root
         mode: "0644"
       become: true
-      notify: Restart sshd
 
     - name: Start sshd service
       ansible.builtin.systemd:
         name: sshd
-        state: started
+        state: restarted
       become: true
       when: ansible_facts.service_mgr == 'systemd'
 
