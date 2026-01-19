@@ -125,6 +125,13 @@ runs:
         ls -la "$DOTFILES_LOCATION" >&2
         ls -la "$DOTFILES_LOCATION/.git" >&2 || echo "No .git directory found"
 
+        # Override sudo detection when explicitly disabled
+        EXTRA_ARGS="${SETUP_ARGS}"
+        if [[ "${ENABLE_SUDO}" == "false" ]]; then
+          echo "DEBUG: Forcing allow_root=false via extra vars"
+          EXTRA_ARGS="${EXTRA_ARGS} -e allow_root=false"
+        fi
+
         if [[ $EUID -eq 0 ]]; then
           echo "DEBUG: Running as root, switching to user ${USERNAME}"
 
@@ -136,13 +143,13 @@ runs:
             echo "DEBUG: Sudo is disabled, no visudo check"
           fi
 
-          CMD="${SUDO_CHECK}cd ${DOTFILES_LOCATION} && ./setup.sh ${SETUP_ARGS}"
+          CMD="${SUDO_CHECK}cd ${DOTFILES_LOCATION} && ./setup.sh ${EXTRA_ARGS}"
           echo "DEBUG: Executing as ${USERNAME}: ${CMD}"
 
           su --login --whitelist-environment=DOTFILES_LOCATION,DOTFILES_DEBUG ${USERNAME} -c "${CMD}"
         else
           echo "DEBUG: Running as non-root user, executing setup.sh directly"
-          ./setup.sh ${SETUP_ARGS}
+          ./setup.sh ${EXTRA_ARGS}
         fi
 
         echo "DEBUG: setup.sh completed with exit code: $?"
