@@ -21,6 +21,13 @@
         file_type: any
       register: base_tldr_files
 
+    - name: Check if crontab is available
+      ansible.builtin.command: which crontab
+      register: base_crontab_check
+      failed_when: false
+      changed_when: false
+      check_mode: false
+
     - name: Check if tldr cron job exists
       ansible.builtin.shell:
         cmd: set -o pipefail && crontab -l 2>/dev/null | grep -q 'tldr -u'
@@ -28,13 +35,14 @@
       register: base_tldr_cron_check
       changed_when: false
       failed_when: false
+      when: base_crontab_check.rc == 0
 
     - name: Initial tldr pages download
       ansible.builtin.command: tldr -u
       changed_when: true
       when:
         - base_tldr_files.matched | int == 0
-        - base_tldr_cron_check.rc != 0
+        - base_crontab_check.rc != 0 or base_tldr_cron_check.rc != 0
 
     - name: Add tldr update to crontab
       ansible.builtin.cron:
@@ -45,3 +53,4 @@
         month: "*"
         weekday: "0"
         job: "{{ base_tldr_check.stdout }} -u > /dev/null"
+      when: base_crontab_check.rc == 0
