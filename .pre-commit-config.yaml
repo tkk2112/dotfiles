@@ -47,7 +47,7 @@ repos:
       - id: talisman-push
       - id: talisman-commit
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         files: \.(yaml|yml)$
