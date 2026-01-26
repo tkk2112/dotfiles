@@ -1,0 +1,11 @@
+---
+profiles:
+  - personal
+
+machine_type: workstation
+os_family: darwin
+
+install_roles:
+  go: true
+  tmux: true
+  git: true

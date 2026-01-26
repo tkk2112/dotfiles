@@ -1,0 +1,10 @@
+---
+profiles:
+  - nosudo
+
+machine_type: workstation
+os_family: debian
+
+install_roles:
+  git: true
+  zsh: true

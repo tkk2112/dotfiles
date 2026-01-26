@@ -12,7 +12,7 @@ jobs:
     env:
       DOTFILES_CI: 'true'
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
         with:
           enable-cache: true
@@ -25,51 +25,59 @@ jobs:
 
   run-setup:
     needs: check
-    name: ${{ matrix.task.name }} on ${{ matrix.os.name }}
-    runs-on: ${{ matrix.os.runner }}
+    name: ${{ matrix.config.hostname }} (${{ matrix.config.os }})
+    runs-on: ${{ matrix.config.runner }}
     strategy:
       matrix:
-        os:
-          - name: fedora:latest
+        config:
+          - hostname: ci-fedora-workstation
+            os: fedora:latest
             runner: ubuntu-latest
             image: jrei/systemd-fedora:latest
-          - name: fedora:42
+            enable_sudo: 'true'
+          - hostname: ci-fedora-workstation
+            os: fedora:42
             runner: ubuntu-latest
             image: jrei/systemd-fedora:42
-          - name: debian:sid
+            enable_sudo: 'true'
+          - hostname: ci-debian-justuser
+            os: debian:sid
             runner: ubuntu-latest
             image: jrei/systemd-debian:sid
-          - name: debian:trixie
+            enable_sudo: 'false'
+          - hostname: ci-debian-justuser
+            os: debian:trixie
             runner: ubuntu-latest
             image: jrei/systemd-debian:13
-          - name: ubuntu:latest
+            enable_sudo: 'false'
+          - hostname: ci-ubuntu-server
+            os: ubuntu:latest
             runner: ubuntu-latest
             image: jrei/systemd-ubuntu:latest
-          - name: ubuntu:LTS
+            enable_sudo: 'true'
+          - hostname: ci-ubuntu-server
+            os: ubuntu:LTS
             runner: ubuntu-latest
             image: jrei/systemd-ubuntu:24.04
-          - name: macos:latest
+            enable_sudo: 'true'
+          - hostname: ci-macos-workstation
+            os: macos:latest
             runner: macos-latest
+            image: ''
             options: ''
-        task:
-          - name: workstation
             enable_sudo: 'true'
-          - name: server
-            enable_sudo: 'true'
-          - name: justuser
-            enable_sudo: 'false'
     container:
-      image: ${{ matrix.os.image || '' }}
-      options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
+      image: ${{ matrix.config.image || '' }}
+      options: ${{ matrix.config.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup and run dotfiles
         uses: ./.github/actions/setup-and-run-dotfiles
         with:
           pkgs: 'git curl sudo'
-          setup_args: ${{ matrix.task.setup_args }}
-          task_name: ${{ matrix.task.name }}
-          enable_sudo: ${{ matrix.task.enable_sudo }}
+          setup_args: -e target_host=${{ matrix.config.hostname }}
+          task_name: ${{ matrix.config.hostname }}
+          enable_sudo: ${{ matrix.config.enable_sudo }}
 
   test:
     if: ${{ always() }}

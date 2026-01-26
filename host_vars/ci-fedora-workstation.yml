@@ -1,0 +1,10 @@
+---
+profiles:
+  - personal
+
+machine_type: workstation
+os_family: fedora
+
+install_roles:
+  gaming: true
+  go: true

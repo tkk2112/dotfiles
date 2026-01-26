@@ -10,7 +10,7 @@
   pre_tasks:
     - name: Load host-specific variables when present
       vars:
-        candidate_host: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
+        candidate_host: "{{ target_host | default(ansible_facts.hostname) | default(inventory_hostname) }}"
       block:
         - name: Check host vars file
           ansible.builtin.stat:
