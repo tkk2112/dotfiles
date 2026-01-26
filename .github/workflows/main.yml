@@ -50,29 +50,28 @@ jobs:
   sanity-check:
     needs: check
     if: github.ref == 'refs/heads/main'
-    name: ${{ matrix.task.name }} on ${{ matrix.os.name }}
-    runs-on: ${{ matrix.os.runner }}
+    name: ${{ matrix.config.hostname }} (${{ matrix.config.os }})
+    runs-on: ${{ matrix.config.runner }}
     strategy:
       matrix:
-        os:
-          - name: ubuntu:LTS
+        config:
+          - hostname: ci-ubuntu-server
+            os: ubuntu:LTS
             runner: ubuntu-latest
             image: jrei/systemd-ubuntu:24.04
-        task:
-          - name: workstation
             enable_sudo: 'true'
     container:
-      image: ${{ matrix.os.image || '' }}
-      options: ${{ matrix.os.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
+      image: ${{ matrix.config.image || '' }}
+      options: ${{ matrix.config.options || '--privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup and run dotfiles
         uses: ./.github/actions/setup-and-run-dotfiles
         with:
           pkgs: 'git curl sudo'
-          setup_args: ${{ matrix.task.setup_args }}
-          task_name: ${{ matrix.task.name }}
-          enable_sudo: ${{ matrix.task.enable_sudo }}
+          setup_args: -e target_host=${{ matrix.config.hostname }}
+          task_name: ${{ matrix.config.hostname }}
+          enable_sudo: ${{ matrix.config.enable_sudo }}
 
   test:
     if: always() && github.ref == 'refs/heads/main'

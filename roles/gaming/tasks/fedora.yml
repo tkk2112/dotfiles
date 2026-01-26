@@ -1,9 +1,27 @@
 ---
+- name: Check if RPM Fusion Steam repository exists
+  ansible.builtin.command:
+    cmd: dnf repolist --all --verbose
+  register: gaming_fedora_repolist
+  changed_when: false
+  failed_when: false
+  become: true
+
+- name: Set Steam repo availability fact
+  ansible.builtin.set_fact:
+    gaming_steam_repo_available: "{{ 'rpmfusion-nonfree-steam' in gaming_fedora_repolist.stdout }}"
+
+- name: Skip gaming role if Steam repo not available
+  ansible.builtin.debug:
+    msg: "Skipping gaming role - RPM Fusion Steam repository not available"
+  when: not gaming_steam_repo_available
+
 - name: Enable RPM Fusion nonfree Steam repository
   dnf_config_manager:
     name: rpmfusion-nonfree-steam
     state: enabled
   become: true
+  when: gaming_steam_repo_available
 
 - name: Install gaming packages
   ansible.builtin.package:
@@ -14,6 +32,7 @@
       - gamemode
     state: present
   become: true
+  when: gaming_steam_repo_available
 
 - name: Detect GPU vendor
   ansible.builtin.shell:
@@ -23,6 +42,7 @@
   register: gaming_gpu_detection
   failed_when: false
   changed_when: false
+  when: gaming_steam_repo_available
 
 - name: Install NVIDIA drivers
   ansible.builtin.package:
@@ -30,7 +50,9 @@
       - akmod-nvidia
     state: present
   become: true
-  when: "'nvidia' in gaming_gpu_detection.stdout | lower"
+  when:
+    - gaming_steam_repo_available
+    - "'nvidia' in gaming_gpu_detection.stdout | lower"
 
 - name: Install AMD GPU packages
   ansible.builtin.package:
@@ -40,7 +62,9 @@
       - rocm
     state: present
   become: true
-  when: "'amd' in gaming_gpu_detection.stdout | lower"
+  when:
+    - gaming_steam_repo_available
+    - "'amd' in gaming_gpu_detection.stdout | lower"
 
 - name: Install asdf - The Multiple Runtime Version Manager
   ansible.builtin.command:
@@ -49,6 +73,7 @@
     GOPATH: "{{ go_path }}"
   args:
     creates: "{{ go_path }}/bin/asdf"
+  when: gaming_steam_repo_available
 
 - name: Install asdf protonge plugin
   ansible.builtin.command:
@@ -63,6 +88,7 @@
     - gaming_asdf_plugin_result.rc != 0
     - "'already added' not in gaming_asdf_plugin_result.stderr"
   changed_when: gaming_asdf_plugin_result.rc == 0
+  when: gaming_steam_repo_available
 
 - name: Get installed ProtonGE versions
   ansible.builtin.shell:
@@ -72,6 +98,7 @@
     ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
   register: gaming_installed_protonge_versions
   changed_when: false
+  when: gaming_steam_repo_available
 
 - name: Install latest ProtonGE version
   ansible.builtin.command:
@@ -79,7 +106,9 @@
   environment:
     ASDF_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
     ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
-  when: gaming_installed_protonge_versions.stdout | length == 0
+  when:
+    - gaming_steam_repo_available
+    - gaming_installed_protonge_versions.stdout | length == 0
   register: gaming_protonge_install
   changed_when: gaming_protonge_install.rc == 0
 
@@ -89,11 +118,13 @@
   register: gaming_steam_running
   failed_when: false
   changed_when: false
+  when: gaming_steam_repo_available
 
 - name: Stop Steam if running
   ansible.builtin.command:
     cmd: pkill -x steam
   when:
+    - gaming_steam_repo_available
     - gaming_steam_running.rc == 0
     - gaming_protonge_install.changed | default(false)
   register: gaming_steam_stopped
@@ -106,5 +137,7 @@
     ASDF_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
     ASDF_DATA_DIR: "{{ ansible_facts.env.HOME }}/.asdf"
   loop: "{{ gaming_installed_protonge_versions.stdout_lines[:-1] }}"
-  when: gaming_installed_protonge_versions.stdout_lines | length > 1
+  when:
+    - gaming_steam_repo_available
+    - gaming_installed_protonge_versions.stdout_lines | length > 1
   changed_when: true

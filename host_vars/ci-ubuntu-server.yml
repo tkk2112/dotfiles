@@ -1,0 +1,10 @@
+---
+profiles:
+  - server
+
+machine_type: server
+os_family: debian
+
+install_roles:
+  go: true
+  tmux: true

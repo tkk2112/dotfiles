@@ -1,23 +1,7 @@
 ---
 all:
+  hosts:
+    localhost:
   vars:
     ansible_connection: local
     ansible_python_interpreter: auto_silent
-  children:
-    workstation:
-      hosts:
-        beastbox:
-        metatron:
-    server_root:
-      hosts:
-        gcloud:
-    server_useronly:
-      hosts:
-        lightspeed:
-
-server_root:
-  vars:
-    allow_root: true
-server_useronly:
-  vars:
-    allow_root: false
