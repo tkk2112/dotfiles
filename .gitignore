@@ -1,7 +1,2 @@
-.config
-.venv
-.vscode
-.ansible
-__pycache__
-.coverage
-/legacy
+.nvim
+
