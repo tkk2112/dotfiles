@@ -1,5 +1,7 @@
-DMS_DISABLE_MATUGEN=1
-DMS_DANKBAR_LAYER=overlay
+# https://danklinux.com/docs/dankmaterialshell/advanced-configuration
+
+# DMS_DISABLE_MATUGEN=1
+# DMS_DANKBAR_LAYER=overlay
 
 QT_QPA_PLATFORM=wayland
 QT_QPA_PLATFORMTHEME=gtk3
