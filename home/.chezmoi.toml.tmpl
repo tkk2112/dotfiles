@@ -1,0 +1,26 @@
+{{- $osid := .chezmoi.os -}}
+{{- if hasKey .chezmoi.osRelease "id" -}}
+{{-   $osid = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
+{{- end -}}
+{{- $profileChoices := list "headless" "gaming" "development" -}}
+{{- $profiles := promptMultichoiceOnce . "profiles" "profiles" $profileChoices (list "development") -}}
+{{- $hasRoot := promptBoolOnce . "hasRoot" "passwordless sudo/root available" false -}}
+{{- $gitName := promptStringOnce . "git.name" "git user name" "Thomas Kristensen" -}}
+{{- $gitEmail := promptStringOnce . "git.email" "git user email" "" -}}
+
+sourceDir = {{ .chezmoi.workingTree | quote }}
+
+[data]
+    os = {{ .chezmoi.os | quote }}
+    osid = {{ $osid | quote }}
+    hostname = {{ .chezmoi.hostname | quote }}
+    machine = {{ promptStringOnce . "machine" "machine name" .chezmoi.hostname | quote }}
+    profiles = {{ $profiles | toToml }}
+    hasRoot = {{ $hasRoot }}
+    headless = {{ has "headless" $profiles }}
+    gaming = {{ has "gaming" $profiles }}
+    development = {{ has "development" $profiles }}
+
+[data.git]
+    name = {{ $gitName | quote }}
+    email = {{ $gitEmail | quote }}

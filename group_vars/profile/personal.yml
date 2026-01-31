@@ -1,8 +1,0 @@
----
-personal: true
-
-profile_roles_extra:
-  - desktop
-  - alacritty
-  - devel
-  - rust

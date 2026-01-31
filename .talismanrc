@@ -1,8 +1,1 @@
 threshold: medium
-fileignoreconfig:
-- filename: uv.lock
-  ignore_detectors:
-  - filecontent
-- filename: .github/**/*.yml
-  ignore_detectors:
-  - filecontent
