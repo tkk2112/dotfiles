@@ -35,6 +35,14 @@ gdb_on_target() {
   local filename
   filename="$(basename "$file_path")"
 
+  # Check for target-specific GDB config
+  local target_config="${HOME}/.config/gdb-on-target/targets/${filename}.gdb"
+  local gdb_extra_args=()
+  if [[ -f "$target_config" ]]; then
+    echo "Using target-specific config: $target_config"
+    gdb_extra_args=(-x "$target_config")
+  fi
+
   local need_copy=true
   local local_md5=$(md5sum "$file_path" | awk '{print $1}')
 
@@ -60,15 +68,17 @@ gdb_on_target() {
     }
   fi
 
-  local remote_command="gdbserver - ./${filename}"
+  # Build the remote command for gdbserver
+  local remote_command="cd ${remote_dir} && gdbserver - ./${filename}"
 
-  # Add program arguments if any
+  # Add program arguments
   if [[ ${#args[@]} -gt 0 ]]; then
     for arg in "${args[@]}"; do
       remote_command+=" \"$arg\""
     done
   fi
 
+  # Add environment variables
   if [[ ${#env_vars[@]} -gt 0 ]]; then
     local env_command="env"
     for var in "${env_vars[@]}"; do
@@ -78,7 +88,8 @@ gdb_on_target() {
   fi
 
   gdb -q "$file_path" \
+    -ex "set sysroot target:" \
+    -ex "set exec-file-mismatch off" \
     -ex "target remote | ssh -T $remote_host \"$remote_command\"" \
-    -ex "break main" \
-    -ex "continue"
+    "${gdb_extra_args[@]}"
 }
