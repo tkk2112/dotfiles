@@ -1,0 +1,24 @@
+sudo dnf copr enable scottames/ghostty
+sudo dnf install ghostty
+
+sudo dnf copr enable avengemedia/dms
+sudo dnf install dms
+
+# edit /etc/sddm.conf (dank-greeter might replace?)
+# auto login
+Session=sway
+User=thomas
+
+sudo dnf install sway
+sudo dnf group install swaywm-extended
+sudo dnf install sway-config-fedora
+sudo dnf install dms-greeter
+# edit /etc/greetd/config.toml
+sudo sed -i 's/--command niri/--command sway/' /etc/greetd/config.toml
+
+sudo systemctl disable gdm lightdm sddm
+sudo systemctl enable greetd
+sudo systemctl start greetd
+
+sudo dnf copr enable alebastr/swayr
+sudo dnf install swayr

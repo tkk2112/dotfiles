@@ -1,0 +1,1 @@
+include '$(/usr/libexec/sway/layered-include "${XDG_CONFIG_HOME:-$HOME/.config}/sway/conf.d/*.conf")'
