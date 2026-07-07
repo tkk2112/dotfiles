@@ -16,4 +16,3 @@ Local apply from a checkout:
 ```
 
 After bootstrap, update machines with `chezmoi update`.
-
