@@ -5,6 +5,7 @@ command -v git >/dev/null 2>&1 || exit 0
 
 tpm_dir="$HOME/.config/tmux/plugins/tpm"
 if [ ! -d "$tpm_dir/.git" ]; then
+    # renovate: datasource=github-tags depName=tmux-plugins/tpm
     git clone --branch v3.1.0 --depth 1 https://github.com/tmux-plugins/tpm "$tpm_dir"
 fi
 
