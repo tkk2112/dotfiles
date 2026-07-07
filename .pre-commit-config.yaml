@@ -1,0 +1,59 @@
+---
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+        stages: [pre-push]
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        files: \.(yaml|yml)$
+        types: [file, yaml]
+        args: [-c, .yamllint]
+
+  - repo: local
+    hooks:
+      - id: shell-syntax
+        name: shell syntax
+        language: system
+        entry: sh -c 'sh -n setup.sh && find home/.chezmoiscripts -type f -name "*.sh" -exec sh -n {} +'
+        files: '(^setup\.sh$|^home/\.chezmoiscripts/.*\.sh$)'
+        pass_filenames: false
+
+      - id: chezmoi-verify-root
+        name: chezmoi source root
+        language: system
+        entry: sh -c 'test "$(cat .chezmoiroot)" = home'
+        files: '^\.chezmoiroot$'
+        pass_filenames: false
+
+      - id: chezmoi-dry-run
+        name: chezmoi dry-run apply
+        language: system
+        entry: sh -c 'chezmoi --source "$PWD" --destination "$(mktemp -d)" apply --dry-run --exclude scripts'
+        pass_filenames: false
+        stages: [pre-push]
