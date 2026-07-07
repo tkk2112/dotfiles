@@ -1,0 +1,69 @@
+[user]
+	name = {{ .git.name | quote }}
+{{- if .git.email }}
+	email = {{ .git.email | quote }}
+{{- end }}
+	useConfigOnly = true
+
+[advice]
+	detachedHead = false
+	skippedCherryPicks = false
+
+[blame]
+	ignoreRevsFile = .git-blame-ignore-revs
+	markIgnoredLines = true
+	markUnblamableLines = true
+
+[branch]
+	autoSetupRebase = remote
+
+[fetch]
+	prune = true
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = true
+
+[push]
+	default = upstream
+	followTags = true
+
+[rebase]
+	autoStash = true
+
+[status]
+	submoduleSummary = true
+
+[alias]
+	ap = add -p
+	au = add -u
+	br = branch -vv
+	bra = branch -avv
+	ci = commit -v
+	co = checkout
+	desc = describe
+	dfs = diff --stat
+	dh = diff HEAD
+	dhs = diff HEAD --stat
+	ds = diff --staged
+	dss = diff --staged --stat
+	ff = merge --ff-only @{u}
+	fixup = commit --amend -a -C HEAD
+	lease = push --force-with-lease
+	lg = log --pretty=format:"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset" --graph --date=short
+	lga = log --pretty=format:"%C(green)%h %C(blue)%ad %Creset%s%C(yellow)%d %Creset%C(cyan)<%an (%ae)>%Creset" --graph --date=short --all
+	ls = "!git --no-pager log --pretty=format:\"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset\" --graph -20"
+	lsa = log --pretty=format:"%C(green)%h %Creset%s%C(yellow)%d %Creset%C(cyan)<%ae>%Creset" --graph -20 --all
+	pr = "!f() { git checkout -b \"$1\" && git push --set-upstream origin HEAD:\"$1\"; }; f"
+	rank = shortlog -s -n --no-merges
+	rup = rebase @{u}
+	save = "!git add -u && git commit -m \"WIP: $(git show -q --oneline HEAD)\""
+	sm = submodule
+	ss = show --stat
+	st = status
+	sync = "!git pull --prune --quiet && git -P branch --format \"%(refname:short) %(upstream:track)\" | grep -F \"[gone]\" | sed \"s/\\[gone\\]//g\" | xargs -r git branch -D"
+	track = "!git branch --set-upstream-to $(git for-each-ref --format=\"%(refname:short)\" $(git symbolic-ref HEAD))"
+	up = remote update
+	backup = "!git push --force-with-lease backup HEAD:$(git symbolic-ref --short HEAD)"

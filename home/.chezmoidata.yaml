@@ -1,0 +1,20 @@
+---
+dotfiles:
+  layers:
+    os:
+      - linux
+      - darwin
+    distro:
+      - debian
+      - fedora
+      - arch
+    profile:
+      - headless
+      - gaming
+      - development
+    privilege:
+      - hasRoot
+
+git:
+  name: Thomas Kristensen
+  email: ""

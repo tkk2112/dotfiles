@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+command -v git >/dev/null 2>&1 || exit 0
+
+clone_if_missing() {
+    repo="$1"
+    dest="$2"
+    if [ ! -d "$dest/.git" ]; then
+        git clone --depth 1 "$repo" "$dest"
+    fi
+}
+
+clone_if_missing https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
+clone_if_missing https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+clone_if_missing https://github.com/zsh-users/zsh-completions "$HOME/.oh-my-zsh/custom/plugins/zsh-completions"
+clone_if_missing https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+clone_if_missing https://github.com/TamCore/autoupdate-oh-my-zsh-plugins "$HOME/.oh-my-zsh/custom/plugins/autoupdate"
+clone_if_missing https://github.com/romkatv/powerlevel10k.git "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
