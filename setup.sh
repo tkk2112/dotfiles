@@ -9,6 +9,15 @@ if [ "${DOTFILES_DEBUG:-}" = "1" ]; then
     set -x
 fi
 
+log() {
+    printf '%s\n' "$*"
+}
+
+run() {
+    printf '+ %s\n' "$*"
+    "$@"
+}
+
 if ! command -v git >/dev/null 2>&1; then
     printf "git is required to bootstrap this repo. Install git and rerun.\n" >&2
     exit 1
@@ -19,9 +28,9 @@ if ! command -v chezmoi >/dev/null 2>&1; then
     mkdir -p "$bin_dir"
 
     if command -v curl >/dev/null 2>&1; then
-        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$bin_dir"
+        run sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$bin_dir"
     elif command -v wget >/dev/null 2>&1; then
-        sh -c "$(wget -qO- get.chezmoi.io)" -- -b "$bin_dir"
+        run sh -c "$(wget -qO- get.chezmoi.io)" -- -b "$bin_dir"
     else
         printf "chezmoi is not installed and neither curl nor wget is available.\n" >&2
         exit 1
@@ -43,10 +52,23 @@ if [ -z "$repo_dir" ]; then
     fi
 fi
 
+chezmoi_init_flags=""
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+    chezmoi_init_flags="--promptDefaults"
+fi
+
+log "DOTFILES_CI=${DOTFILES_CI:-}"
+log "DOTFILES_LOCATION=${DOTFILES_LOCATION:-}"
+log "repo_dir=${repo_dir:-}"
+log "chezmoi_init_flags=${chezmoi_init_flags:-}"
+
 if [ -n "$repo_dir" ] && [ -f "$repo_dir/.chezmoiroot" ]; then
-    chezmoi init --source "$repo_dir"
-    chezmoi --source "$repo_dir" apply "$@"
+    log "Using local chezmoi source: $repo_dir"
+    run chezmoi init --source "$repo_dir" $chezmoi_init_flags
+    run chezmoi --source "$repo_dir" apply "$@"
 else
-    chezmoi init "$PULL_REPO_URL"
-    chezmoi apply "$@"
+    log "Using remote chezmoi source: $PULL_REPO_URL"
+    run chezmoi init "$PULL_REPO_URL" $chezmoi_init_flags
+    run chezmoi apply "$@"
 fi
