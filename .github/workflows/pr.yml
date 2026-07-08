@@ -69,3 +69,29 @@ jobs:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
         run: ./scripts/ci-install.sh
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    needs:
+      - check
+      - install-linux
+      - install-macos
+    if: always()
+
+    steps:
+      - name: Check required jobs
+        run: |
+          set -eu
+
+          check_result='${{ needs.check.result }}'
+          install_linux_result='${{ needs.install-linux.result }}'
+          install_macos_result='${{ needs.install-macos.result }}'
+
+          printf 'check: %s\n' "$check_result"
+          printf 'install-linux: %s\n' "$install_linux_result"
+          printf 'install-macos: %s\n' "$install_macos_result"
+
+          test "$check_result" = "success"
+          test "$install_linux_result" = "success"
+          test "$install_macos_result" = "success"
