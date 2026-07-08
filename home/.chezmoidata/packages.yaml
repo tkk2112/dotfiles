@@ -1,0 +1,221 @@
+---
+# Package catalog for the chezmoi package bootstrap script.
+#
+# Rules:
+# - group: base is always installed.
+# - group: development/utilities are installed only when that profile is enabled.
+# - managers omitted means: brew, apt, dnf, and pacman all use the same package name.
+# - managers restricts a package to specific package managers.
+# - names overrides package names where managers disagree.
+
+packages:
+  dnf:
+    copr:
+      - dejan/lazygit
+      - gsauthof/dracut-sshd
+      - kylegospo/grub-btrfs
+
+  catalog:
+    # Base packages with the same name everywhere.
+    - name: bat
+    - name: btop
+    - name: cmake
+    - name: direnv
+    - name: fzf
+    - name: git
+    - name: git-lfs
+    - name: git-gui
+    - name: jq
+    - name: lsd
+    - name: nmap
+    - name: ripgrep
+    - name: shellcheck
+    - name: shfmt
+    - name: tmux
+    - name: tree
+    - name: yamllint
+    - name: zsh
+
+    # Base packages that are only useful/needed on specific managers.
+    - name: ca-certificates
+      managers: [apt, dnf, pacman]
+
+    - name: curl
+      managers: [apt, dnf, pacman]
+
+    - name: fontconfig
+      managers: [apt, dnf, pacman]
+
+    - name: htop
+      managers: [apt, dnf, pacman]
+
+    - name: nvtop
+      managers: [apt, dnf, pacman]
+
+    - name: rsync
+      managers: [apt, dnf, pacman]
+
+    - name: tio
+      managers: [apt, dnf, pacman]
+
+    - name: unzip
+      managers: [apt, dnf, pacman]
+
+    - name: openssh
+      managers: [apt, dnf, pacman]
+      names:
+        apt: openssh-server
+        dnf: openssh-server
+        pacman: openssh
+
+    - name: argcomplete
+      managers: [apt, dnf, brew]
+      names:
+        apt: python3-argcomplete
+        dnf: python3-argcomplete
+        brew: python-argcomplete
+
+    - name: the_silver_searcher
+      names:
+        apt: silversearcher-ag
+
+    - name: moreutils
+      managers: [apt, dnf]
+
+    # Debian/Ubuntu-specific base packages.
+    - name: debian-goodies
+      managers: [apt]
+
+    - name: dnsutils
+      managers: [apt]
+
+    # Fedora-specific base packages.
+    - name: bind-utils
+      managers: [dnf]
+
+    - name: dnf-utils
+      managers: [dnf]
+
+    - name: dracut-sshd
+      managers: [dnf]
+
+    - name: perl
+      managers: [dnf]
+
+    - name: tldr
+      managers: [dnf]
+
+    - name: which
+      managers: [dnf]
+
+    # macOS/Homebrew-specific base packages.
+    - name: coreutils
+      managers: [brew]
+
+    - name: zsh-completions
+      managers: [brew]
+
+    # Development packages.
+    - name: ast-grep
+      group: development
+      managers: [brew, pacman]
+
+    - name: build-essential
+      group: development
+      managers: [apt]
+
+    - name: base-devel
+      group: development
+      managers: [pacman]
+
+    - name: clang
+      group: development
+      managers: [apt, dnf, pacman]
+
+    - name: cmake-language-server
+      group: development
+      managers: [brew, pacman]
+
+    - name: code-minimap
+      group: development
+      managers: [brew]
+
+    - name: git-delta
+      group: development
+      managers: [brew, dnf, pacman]
+
+    - name: lazygit
+      group: development
+      managers: [brew, dnf, pacman]
+
+    - name: llvm
+      group: development
+
+    - name: meson
+      group: development
+
+    - name: ninja
+      group: development
+      managers: [apt, dnf, pacman]
+      names:
+        apt: ninja-build
+        dnf: ninja-build
+        pacman: ninja
+
+    - name: pkg-config
+      group: development
+      managers: [apt]
+
+    - name: python-lsp-server
+      group: development
+      managers: [brew, pacman]
+
+    - name: rust
+      group: development
+      managers: [brew, dnf, pacman]
+
+    - name: uv
+      group: development
+      managers: [brew, dnf, pacman]
+
+    - name: whatcable-cli
+      group: development
+      managers: [brew]
+
+    - name: zig
+      group: development
+      managers: [brew, dnf, pacman]
+
+    - name: zls
+      group: development
+      managers: [brew, pacman]
+
+    # Utility packages.
+    - name: duf
+      group: utilities
+      managers: [brew, dnf, pacman]
+
+    - name: gping
+      group: utilities
+      managers: [brew, dnf, pacman]
+
+    - name: icdiff
+      group: utilities
+      managers: [apt, brew]
+
+    - name: imagemagick
+      group: utilities
+      names:
+        dnf: ImageMagick
+
+    - name: p7zip
+      group: utilities
+      names:
+        apt: p7zip-full
+
+    - name: yt-dlp
+      group: utilities
+
+    - name: zellij
+      group: utilities
+      managers: [brew, dnf, pacman]

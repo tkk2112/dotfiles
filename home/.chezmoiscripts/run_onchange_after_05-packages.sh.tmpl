@@ -1,0 +1,179 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "development") }}
+{{ define "packageLines" }}
+{{- $manager := index . 0 -}}
+{{- $profiles := index . 1 -}}
+{{- $catalog := index . 2 -}}
+{{- $defaultManagers := list "brew" "apt" "dnf" "pacman" -}}
+{{- range $pkg := $catalog -}}
+{{- $name := get $pkg "name" -}}
+{{- $group := get $pkg "group" | default "base" -}}
+{{- $managers := get $pkg "managers" | default $defaultManagers -}}
+{{- $names := get $pkg "names" | default (dict) -}}
+{{- $enabledGroup := or (eq $group "base") (has $group $profiles) -}}
+{{- $enabledManager := has $manager $managers -}}
+{{- if and $name $enabledGroup $enabledManager -}}
+{{- $packageName := get $names $manager | default $name -}}
+{{- printf "%s\n" $packageName -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+BREW_PACKAGES="$(cat <<'EOF'
+{{ template "packageLines" (list "brew" $profiles .packages.catalog) }}
+EOF
+)"
+
+APT_PACKAGES="$(cat <<'EOF'
+{{ template "packageLines" (list "apt" $profiles .packages.catalog) }}
+EOF
+)"
+
+DNF_PACKAGES="$(cat <<'EOF'
+{{ template "packageLines" (list "dnf" $profiles .packages.catalog) }}
+EOF
+)"
+
+PACMAN_PACKAGES="$(cat <<'EOF'
+{{ template "packageLines" (list "pacman" $profiles .packages.catalog) }}
+EOF
+)"
+
+if [ "${DOTFILES_SKIP_PACKAGES:-}" = "1" ]; then
+    printf 'Skipping package install because DOTFILES_SKIP_PACKAGES=1\n'
+    exit 0
+fi
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+    printf 'Skipping package install in CI\n'
+    exit 0
+fi
+
+run() {
+    printf '+ %s\n' "$*"
+
+    if [ "${DOTFILES_PACKAGES_DRY_RUN:-}" = "1" ]; then
+        return 0
+    fi
+
+    "$@"
+}
+
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        run "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        run sudo "$@"
+    else
+        printf 'Need root or sudo to install packages\n' >&2
+        exit 1
+    fi
+}
+
+normalize_packages() {
+    printf '%s\n' "$1" | awk 'NF && !seen[$0]++ { print }'
+}
+
+print_packages() {
+    label="$1"
+    packages="$2"
+
+    printf 'Installing %s packages:\n' "$label"
+    printf '%s\n' "$packages" | sed 's/^/  - /'
+}
+
+install_user_packages() {
+    label="$1"
+    package_block="$2"
+    shift 2
+
+    packages="$(normalize_packages "$package_block")"
+
+    if [ -z "$packages" ]; then
+        printf 'No %s packages selected\n' "$label"
+        return 0
+    fi
+
+    print_packages "$label" "$packages"
+
+    # shellcheck disable=SC2086
+    run "$@" $packages
+}
+
+install_root_packages() {
+    label="$1"
+    package_block="$2"
+    shift 2
+
+    packages="$(normalize_packages "$package_block")"
+
+    if [ -z "$packages" ]; then
+        printf 'No %s packages selected\n' "$label"
+        return 0
+    fi
+
+    print_packages "$label" "$packages"
+
+    # shellcheck disable=SC2086
+    run_as_root "$@" $packages
+}
+
+install_brew() {
+    if ! command -v brew >/dev/null 2>&1; then
+        printf 'Homebrew is not installed; skipping packages\n' >&2
+        exit 0
+    fi
+
+    install_user_packages Homebrew "$BREW_PACKAGES" brew install
+}
+
+install_apt() {
+    run_as_root apt-get update
+
+    install_root_packages apt "$APT_PACKAGES" \
+        env DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y --no-install-recommends
+}
+
+install_dnf() {
+    run_as_root dnf install -y dnf-plugins-core || true
+
+    if dnf copr --help >/dev/null 2>&1; then
+{{- $dnf := get .packages "dnf" | default (dict) -}}
+{{- range (get $dnf "copr" | default (list)) }}
+        run_as_root dnf copr enable -y {{ . }} || true
+{{- end }}
+    else
+        printf 'dnf copr support is unavailable; skipping COPR repositories\n' >&2
+    fi
+
+    install_root_packages dnf "$DNF_PACKAGES" dnf install -y
+}
+
+install_pacman() {
+    install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed
+}
+
+case "{{ .chezmoi.os }}" in
+darwin)
+    install_brew
+    ;;
+
+linux)
+    if command -v apt-get >/dev/null 2>&1; then
+        install_apt
+    elif command -v dnf >/dev/null 2>&1; then
+        install_dnf
+    elif command -v pacman >/dev/null 2>&1; then
+        install_pacman
+    else
+        printf 'No supported package manager found; skipping packages\n' >&2
+    fi
+    ;;
+
+*)
+    printf 'Unsupported OS for package install: %s\n' "{{ .chezmoi.os }}" >&2
+    ;;
+esac
