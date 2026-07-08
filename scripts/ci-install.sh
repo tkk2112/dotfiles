@@ -48,6 +48,7 @@ fi
 
 export DOTFILES_CI=true
 export DOTFILES_LOCATION="${DOTFILES_LOCATION:-$GITHUB_WORKSPACE}"
+export PATH="$HOME/.local/bin:$PATH"
 
 log ""
 log "Running setup.sh"
