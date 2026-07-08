@@ -52,7 +52,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 log ""
 log "Running setup.sh"
-run sh "$DOTFILES_LOCATION/setup.sh" --verbose
+run sh "$DOTFILES_LOCATION/setup.sh"
 
 log ""
 log "Running install validation"
