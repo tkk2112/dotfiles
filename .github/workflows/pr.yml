@@ -39,10 +39,9 @@ jobs:
           - ubuntu:latest
           - debian:13
           - debian:sid
-          - fedora:42
           - fedora:latest
-          - alpine:latest
           - archlinux:latest
+          - cachyos/cachyos:latest
 
     container:
       image: ${{ matrix.image }}
