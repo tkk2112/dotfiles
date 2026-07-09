@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOTFILES_CI: 'true'
+
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -29,19 +30,36 @@ jobs:
 
   install-linux:
     needs: check
-    name: install on ${{ matrix.image }}
+    name: install on ${{ matrix.image }} / ${{ matrix.profiles }}
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - ubuntu:24.04
-          - ubuntu:latest
-          - debian:13
-          - debian:sid
-          - fedora:latest
-          - archlinux:latest
-          - cachyos/cachyos:latest
+        include:
+          # Ubuntu/Debian: normal workstation and server/headless coverage.
+          - image: ubuntu:24.04
+            profiles: base,workstation,development,owned
+          - image: ubuntu:latest
+            profiles: base,workstation,development,owned
+          - image: debian:13
+            profiles: base,headless,server,owned
+          - image: debian:sid
+            profiles: base,development
+
+          # Fedora: owned workstation, server, and gaming coverage.
+          - image: fedora:latest
+            profiles: base,workstation,development,owned
+          - image: fedora:latest
+            profiles: base,headless,server,owned
+          - image: fedora:latest
+            profiles: base,workstation,development,gaming,server,owned
+
+          # Arch/CachyOS: rolling workstation/development coverage.
+          - image: archlinux:latest
+            profiles: base,workstation,development,owned
+          - image: cachyos/cachyos:latest
+            profiles: base,workstation,development,owned
 
     container:
       image: ${{ matrix.image }}
@@ -53,11 +71,12 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: ${{ matrix.profiles }}
         run: ./scripts/ci-install.sh
 
   install-macos:
     needs: check
-    name: install on macos:latest
+    name: install on macos:latest / base,workstation,development,owned
     runs-on: macos-latest
 
     steps:
@@ -67,6 +86,7 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: base,workstation,development,owned
         run: ./scripts/ci-install.sh
 
   test:

@@ -12,9 +12,24 @@
 packages:
   dnf:
     copr:
+      - atim/gping
       - dejan/lazygit
       - gsauthof/dracut-sshd
       - kylegospo/grub-btrfs
+
+  casks:
+    - name: whatcable
+      group: development
+      tap: darrylmorley/whatcable
+      cask: whatcable
+
+  uv_tools:
+    - name: cmake-language-server
+      group: development
+      package: cmake-language-server
+      command: cmake-language-server
+      with:
+        - pygls==1.3.1
 
   catalog:
     # --------------------------------------------------------------------------
@@ -26,9 +41,9 @@ packages:
     - name: fzf
     - name: git
     - name: git-lfs
-    - name: git-gui
     - name: jq
     - name: lsd
+    - name: neovim
     - name: ripgrep
     - name: shellcheck
     - name: shfmt
@@ -45,6 +60,9 @@ packages:
 
     - name: fontconfig
       managers: [apt, dnf, pacman]
+
+    - name: git-gui
+      managers: [brew, apt, dnf]
 
     - name: rsync
       managers: [apt, dnf, pacman]
@@ -80,10 +98,6 @@ packages:
 
     - name: cmake
       group: development
-
-    - name: cmake-language-server
-      group: development
-      managers: [brew, pacman]
 
     - name: code-minimap
       group: development
@@ -134,10 +148,6 @@ packages:
     - name: uv
       group: development
       managers: [brew, dnf, pacman]
-
-    - name: whatcable-cli
-      group: development
-      managers: [brew]
 
     - name: zig
       group: development
@@ -190,14 +200,10 @@ packages:
 
     - name: tio
       group: workstation
-      managers: [apt, dnf, pacman]
+      managers: [apt, dnf]
 
     - name: yt-dlp
       group: workstation
-
-    - name: zellij
-      group: workstation
-      managers: [brew, dnf, pacman]
 
     # --------------------------------------------------------------------------
     # Server/headless: server-friendly tooling.
