@@ -22,10 +22,34 @@ set -eu
 {{- end -}}
 {{ end }}
 
+{{ define "caskLines" }}
+{{- $profiles := index . 0 -}}
+{{- $casks := index . 1 | default (list) -}}
+{{- range $cask := $casks -}}
+{{- $name := get $cask "name" -}}
+{{- $group := get $cask "group" | default "base" -}}
+{{- $tap := get $cask "tap" | default "" -}}
+{{- $caskName := get $cask "cask" | default $name -}}
+{{- $enabledGroup := or (eq $group "base") (has $group $profiles) -}}
+{{- if and $name $enabledGroup -}}
+{{- if $tap -}}
+{{- printf "%s/%s\n" $tap $caskName -}}
+{{- else -}}
+{{- printf "%s\n" $caskName -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{ end }}
+
 PROFILE_OWNED="{{ if $owned }}true{{ else }}false{{ end }}"
 
 BREW_PACKAGES="$(cat <<'EOF'
 {{ template "packageLines" (list "brew" $profiles .packages.catalog) }}
+EOF
+)"
+
+BREW_CASKS="$(cat <<'EOF'
+{{ template "caskLines" (list $profiles .packages.casks) }}
 EOF
 )"
 
@@ -46,11 +70,6 @@ EOF
 
 if [ "${DOTFILES_SKIP_PACKAGES:-}" = "1" ]; then
     printf 'Skipping package install because DOTFILES_SKIP_PACKAGES=1\n'
-    exit 0
-fi
-
-if [ "${DOTFILES_CI:-}" = "true" ]; then
-    printf 'Skipping package install in CI\n'
     exit 0
 fi
 
@@ -123,6 +142,20 @@ install_root_packages() {
     run_as_root "$@" $packages
 }
 
+install_brew_casks() {
+    casks="$(normalize_packages "$BREW_CASKS")"
+
+    if [ -z "$casks" ]; then
+        printf 'No Homebrew casks selected\n'
+        return 0
+    fi
+
+    print_packages "Homebrew cask" "$casks"
+
+    # shellcheck disable=SC2086
+    run brew install --cask $casks
+}
+
 install_brew() {
     if ! command -v brew >/dev/null 2>&1; then
         printf 'Homebrew is not installed; skipping packages\n' >&2
@@ -130,10 +163,11 @@ install_brew() {
     fi
 
     install_user_packages Homebrew "$BREW_PACKAGES" brew install
+    install_brew_casks
 }
 
 install_apt() {
-    if [ "$PROFILE_OWNED" != "true" ]; then
+    if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
         printf 'Skipping apt packages because owned profile is not enabled\n'
         exit 0
     fi
@@ -146,7 +180,7 @@ install_apt() {
 }
 
 install_dnf() {
-    if [ "$PROFILE_OWNED" != "true" ]; then
+    if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
         printf 'Skipping dnf packages because owned profile is not enabled\n'
         exit 0
     fi
@@ -155,7 +189,7 @@ install_dnf() {
 }
 
 install_pacman() {
-    if [ "$PROFILE_OWNED" != "true" ]; then
+    if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
         printf 'Skipping pacman packages because owned profile is not enabled\n'
         exit 0
     fi

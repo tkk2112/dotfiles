@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOTFILES_CI: 'true'
+
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -30,10 +31,11 @@ jobs:
 
   install-linux:
     needs: check
-    name: install on ubuntu:24.04
+    name: install on ubuntu:24.04 / base,workstation,development,owned
     runs-on: ubuntu-latest
+
     container:
-      image: ubuntu:26.04
+      image: ubuntu:24.04
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -42,11 +44,12 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: base,workstation,development,owned
         run: ./scripts/ci-install.sh
 
   install-macos:
     needs: check
-    name: install on macos:latest
+    name: install on macos:latest / base,workstation,development,owned
     runs-on: macos-latest
 
     steps:
@@ -56,6 +59,7 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: base,workstation,development,owned
         run: ./scripts/ci-install.sh
 
   bootstrap-url-check:

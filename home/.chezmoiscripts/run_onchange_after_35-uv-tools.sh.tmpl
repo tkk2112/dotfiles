@@ -1,0 +1,52 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "base") }}
+{{ define "uvToolLines" }}
+{{- $profiles := index . 0 -}}
+{{- $tools := index . 1 | default (list) -}}
+{{- range $tool := $tools -}}
+{{- $name := get $tool "name" -}}
+{{- $group := get $tool "group" | default "base" -}}
+{{- $package := get $tool "package" | default $name -}}
+{{- $command := get $tool "command" | default $name -}}
+{{- $enabledGroup := or (eq $group "base") (has $group $profiles) -}}
+{{- if and $name $enabledGroup -}}
+{{ printf "%s %s\n" $package $command }}
+{{- end -}}
+{{- end -}}
+{{ end }}
+
+UV_TOOLS="$(cat <<'EOF'
+{{ template "uvToolLines" (list $profiles .packages.uv_tools) }}
+EOF
+)"
+
+if [ "${DOTFILES_SKIP_UV_TOOLS:-}" = "1" ]; then
+    printf 'Skipping uv tools because DOTFILES_SKIP_UV_TOOLS=1\n'
+    exit 0
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+    printf 'uv is not installed; skipping uv tools\n'
+    exit 0
+fi
+
+run() {
+    printf '+ %s\n' "$*"
+
+    if [ "${DOTFILES_UV_TOOLS_DRY_RUN:-}" = "1" ]; then
+        return 0
+    fi
+
+    "$@"
+}
+
+printf '%s\n' "$UV_TOOLS" | awk 'NF' | while IFS=' ' read -r package command; do
+    if command -v "$command" >/dev/null 2>&1; then
+        printf 'uv tool already available: %s\n' "$command"
+        continue
+    fi
+
+    run uv tool install "$package"
+done
