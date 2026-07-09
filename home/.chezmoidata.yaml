@@ -9,9 +9,13 @@ dotfiles:
       - fedora
       - arch
     profile:
+      - base
       - headless
-      - gaming
+      - workstation
       - development
+      - gaming
+      - server
+      - owned
     privilege:
       - hasRoot
 

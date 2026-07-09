@@ -3,7 +3,8 @@
 #
 # Rules:
 # - group: base is always installed.
-# - group: development/utilities are installed only when that profile is enabled.
+# - group: development/workstation/server/gaming are installed only when that
+#   profile is enabled.
 # - managers omitted means: brew, apt, dnf, and pacman all use the same package name.
 # - managers restricts a package to specific package managers.
 # - names overrides package names where managers disagree.
@@ -16,10 +17,11 @@ packages:
       - kylegospo/grub-btrfs
 
   catalog:
-    # Base packages with the same name everywhere.
+    # --------------------------------------------------------------------------
+    # Base: safe default CLI foundation.
+    # --------------------------------------------------------------------------
     - name: bat
     - name: btop
-    - name: cmake
     - name: direnv
     - name: fzf
     - name: git
@@ -27,7 +29,6 @@ packages:
     - name: git-gui
     - name: jq
     - name: lsd
-    - name: nmap
     - name: ripgrep
     - name: shellcheck
     - name: shfmt
@@ -36,7 +37,6 @@ packages:
     - name: yamllint
     - name: zsh
 
-    # Base packages that are only useful/needed on specific managers.
     - name: ca-certificates
       managers: [apt, dnf, pacman]
 
@@ -46,27 +46,11 @@ packages:
     - name: fontconfig
       managers: [apt, dnf, pacman]
 
-    - name: htop
-      managers: [apt, dnf, pacman]
-
-    - name: nvtop
-      managers: [apt, dnf, pacman]
-
     - name: rsync
-      managers: [apt, dnf, pacman]
-
-    - name: tio
       managers: [apt, dnf, pacman]
 
     - name: unzip
       managers: [apt, dnf, pacman]
-
-    - name: openssh
-      managers: [apt, dnf, pacman]
-      names:
-        apt: openssh-server
-        dnf: openssh-server
-        pacman: openssh
 
     - name: argcomplete
       managers: [apt, dnf, brew]
@@ -75,62 +59,27 @@ packages:
         dnf: python3-argcomplete
         brew: python-argcomplete
 
-    - name: the_silver_searcher
-      names:
-        apt: silversearcher-ag
-
-    - name: moreutils
-      managers: [apt, dnf]
-
-    # Debian/Ubuntu-specific base packages.
-    - name: debian-goodies
-      managers: [apt]
-
-    - name: dnsutils
-      managers: [apt]
-
-    # Fedora-specific base packages.
-    - name: bind-utils
-      managers: [dnf]
-
-    - name: dnf-utils
-      managers: [dnf]
-
-    - name: dracut-sshd
-      managers: [dnf]
-
-    - name: perl
-      managers: [dnf]
-
-    - name: tldr
-      managers: [dnf]
-
-    - name: which
-      managers: [dnf]
-
-    # macOS/Homebrew-specific base packages.
-    - name: coreutils
-      managers: [brew]
-
-    - name: zsh-completions
-      managers: [brew]
-
-    # Development packages.
+    # --------------------------------------------------------------------------
+    # Development: build tools, language tooling, LSPs, git helpers.
+    # --------------------------------------------------------------------------
     - name: ast-grep
       group: development
       managers: [brew, pacman]
-
-    - name: build-essential
-      group: development
-      managers: [apt]
 
     - name: base-devel
       group: development
       managers: [pacman]
 
+    - name: build-essential
+      group: development
+      managers: [apt]
+
     - name: clang
       group: development
       managers: [apt, dnf, pacman]
+
+    - name: cmake
+      group: development
 
     - name: cmake-language-server
       group: development
@@ -143,6 +92,14 @@ packages:
     - name: git-delta
       group: development
       managers: [brew, dnf, pacman]
+
+    - name: golang
+      group: development
+      managers: [apt, dnf, pacman]
+      names:
+        apt: golang
+        dnf: golang
+        pacman: go
 
     - name: lazygit
       group: development
@@ -190,32 +147,131 @@ packages:
       group: development
       managers: [brew, pacman]
 
-    # Utility packages.
+    # --------------------------------------------------------------------------
+    # Workstation: interactive local-machine tools.
+    # --------------------------------------------------------------------------
     - name: duf
-      group: utilities
+      group: workstation
       managers: [brew, dnf, pacman]
 
     - name: gping
-      group: utilities
+      group: workstation
       managers: [brew, dnf, pacman]
 
+    - name: htop
+      group: workstation
+      managers: [apt, dnf, pacman]
+
     - name: icdiff
-      group: utilities
+      group: workstation
       managers: [apt, brew]
 
     - name: imagemagick
-      group: utilities
+      group: workstation
       names:
         dnf: ImageMagick
 
+    - name: nmap
+      group: workstation
+
+    - name: nvtop
+      group: workstation
+      managers: [apt, dnf, pacman]
+
     - name: p7zip
-      group: utilities
+      group: workstation
       names:
         apt: p7zip-full
 
+    - name: the_silver_searcher
+      group: workstation
+      names:
+        apt: silversearcher-ag
+
+    - name: tio
+      group: workstation
+      managers: [apt, dnf, pacman]
+
     - name: yt-dlp
-      group: utilities
+      group: workstation
 
     - name: zellij
-      group: utilities
+      group: workstation
       managers: [brew, dnf, pacman]
+
+    # --------------------------------------------------------------------------
+    # Server/headless: server-friendly tooling.
+    # --------------------------------------------------------------------------
+    - name: openssh
+      group: server
+      managers: [apt, dnf, pacman]
+      names:
+        apt: openssh-server
+        dnf: openssh-server
+        pacman: openssh
+
+    - name: moreutils
+      group: server
+      managers: [apt, dnf]
+
+    - name: debian-goodies
+      group: server
+      managers: [apt]
+
+    - name: dnsutils
+      group: server
+      managers: [apt]
+
+    - name: bind-utils
+      group: server
+      managers: [dnf]
+
+    - name: dnf-utils
+      group: server
+      managers: [dnf]
+
+    - name: dracut-sshd
+      group: server
+      managers: [dnf]
+
+    - name: perl
+      group: server
+      managers: [dnf]
+
+    - name: tldr
+      group: server
+      managers: [dnf]
+
+    - name: which
+      group: server
+      managers: [dnf]
+
+    # --------------------------------------------------------------------------
+    # macOS/Homebrew-only helpers.
+    # --------------------------------------------------------------------------
+    - name: coreutils
+      group: workstation
+      managers: [brew]
+
+    - name: zsh-completions
+      group: workstation
+      managers: [brew]
+
+    # --------------------------------------------------------------------------
+    # Gaming: currently Fedora-focused.
+    # --------------------------------------------------------------------------
+    - name: steam
+      group: gaming
+      managers: [dnf]
+
+    - name: mangohud
+      group: gaming
+      managers: [dnf]
+
+    - name: goverlay
+      group: gaming
+      managers: [dnf]
+
+    - name: gamemode
+      group: gaming
+      managers: [dnf]
