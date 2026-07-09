@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list "development") }}
+{{ $profiles := .profiles | default (list "base") }}
+{{ $owned := has "owned" $profiles }}
 {{ define "packageLines" }}
 {{- $manager := index . 0 -}}
 {{- $profiles := index . 1 -}}
@@ -19,7 +20,9 @@ set -eu
 {{- printf "%s\n" $packageName -}}
 {{- end -}}
 {{- end -}}
-{{- end -}}
+{{ end }}
+
+PROFILE_OWNED="{{ if $owned }}true{{ else }}false{{ end }}"
 
 BREW_PACKAGES="$(cat <<'EOF'
 {{ template "packageLines" (list "brew" $profiles .packages.catalog) }}
@@ -130,6 +133,11 @@ install_brew() {
 }
 
 install_apt() {
+    if [ "$PROFILE_OWNED" != "true" ]; then
+        printf 'Skipping apt packages because owned profile is not enabled\n'
+        exit 0
+    fi
+
     run_as_root apt-get update
 
     install_root_packages apt "$APT_PACKAGES" \
@@ -138,21 +146,20 @@ install_apt() {
 }
 
 install_dnf() {
-    run_as_root dnf install -y dnf-plugins-core || true
-
-    if dnf copr --help >/dev/null 2>&1; then
-{{- $dnf := get .packages "dnf" | default (dict) -}}
-{{- range (get $dnf "copr" | default (list)) }}
-        run_as_root dnf copr enable -y {{ . }} || true
-{{- end }}
-    else
-        printf 'dnf copr support is unavailable; skipping COPR repositories\n' >&2
+    if [ "$PROFILE_OWNED" != "true" ]; then
+        printf 'Skipping dnf packages because owned profile is not enabled\n'
+        exit 0
     fi
 
     install_root_packages dnf "$DNF_PACKAGES" dnf install -y
 }
 
 install_pacman() {
+    if [ "$PROFILE_OWNED" != "true" ]; then
+        printf 'Skipping pacman packages because owned profile is not enabled\n'
+        exit 0
+    fi
+
     install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed
 }
 

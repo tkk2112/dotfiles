@@ -1,0 +1,58 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "base") }}
+PROFILE_DEVELOPMENT="{{ if has "development" $profiles }}true{{ else }}false{{ end }}"
+
+if [ "${DOTFILES_SKIP_GO_TOOLS:-}" = "1" ]; then
+    printf 'Skipping Go tools because DOTFILES_SKIP_GO_TOOLS=1\n'
+    exit 0
+fi
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+    printf 'Skipping Go tools in CI\n'
+    exit 0
+fi
+
+if [ "$PROFILE_DEVELOPMENT" != "true" ]; then
+    printf 'Skipping Go tools because development profile is not enabled\n'
+    exit 0
+fi
+
+if ! command -v go >/dev/null 2>&1; then
+    printf 'Skipping Go tools because go is not installed\n'
+    exit 0
+fi
+
+run() {
+    printf '+ %s\n' "$*"
+
+    if [ "${DOTFILES_GO_TOOLS_DRY_RUN:-}" = "1" ]; then
+        return 0
+    fi
+
+    "$@"
+}
+
+go_path="${GOPATH:-$HOME/.local/share/go}"
+
+run mkdir -p "$go_path/bin"
+
+install_go_tool() {
+    package="$1"
+    binary="$2"
+
+    if [ -x "$go_path/bin/$binary" ]; then
+        printf 'Go tool already installed: %s\n' "$binary"
+        return 0
+    fi
+
+    run env GOPATH="$go_path" go install "$package"
+}
+
+install_go_tool github.com/google/yamlfmt/cmd/yamlfmt@latest yamlfmt
+install_go_tool github.com/nao1215/gup@latest gup
+
+if [ "${DOTFILES_UPDATE_GO_TOOLS:-}" = "1" ] && [ -x "$go_path/bin/gup" ]; then
+    run env GOPATH="$go_path" "$go_path/bin/gup" update
+fi

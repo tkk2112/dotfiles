@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "base") }}
+PROFILE_SERVER="{{ if has "server" $profiles }}true{{ else }}false{{ end }}"
+PROFILE_WORKSTATION="{{ if has "workstation" $profiles }}true{{ else }}false{{ end }}"
+
+if [ "${DOTFILES_SKIP_TLDR:-}" = "1" ]; then
+    printf 'Skipping tldr setup because DOTFILES_SKIP_TLDR=1\n'
+    exit 0
+fi
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+    printf 'Skipping tldr setup in CI\n'
+    exit 0
+fi
+
+if [ "$PROFILE_SERVER" != "true" ] && [ "$PROFILE_WORKSTATION" != "true" ]; then
+    printf 'Skipping tldr setup because neither server nor workstation profile is enabled\n'
+    exit 0
+fi
+
+if ! command -v tldr >/dev/null 2>&1; then
+    printf 'Skipping tldr setup because tldr is not installed\n'
+    exit 0
+fi
+
+run() {
+    printf '+ %s\n' "$*"
+
+    if [ "${DOTFILES_TLDR_DRY_RUN:-}" = "1" ]; then
+        return 0
+    fi
+
+    "$@"
+}
+
+tldr_dir="$HOME/.local/share/tldr"
+
+run mkdir -p "$tldr_dir"
+
+if find "$tldr_dir" -mindepth 1 -print -quit | grep -q .; then
+    printf 'tldr cache already exists\n'
+    exit 0
+fi
+
+run tldr -u
