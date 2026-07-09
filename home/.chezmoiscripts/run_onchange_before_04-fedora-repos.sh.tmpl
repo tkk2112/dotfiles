@@ -18,11 +18,6 @@ if [ "${DOTFILES_SKIP_REPOS:-}" = "1" ]; then
     exit 0
 fi
 
-if [ "${DOTFILES_CI:-}" = "true" ]; then
-    printf 'Skipping repository bootstrap in CI\n'
-    exit 0
-fi
-
 if [ "{{ .chezmoi.os }}" != "linux" ]; then
     printf 'Skipping Fedora repositories on non-Linux OS\n'
     exit 0
