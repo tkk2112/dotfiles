@@ -1,0 +1,104 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "base") }}
+PROFILE_GAMING="{{ if has "gaming" $profiles }}true{{ else }}false{{ end }}"
+PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
+
+if [ "${DOTFILES_SKIP_GAMING:-}" = "1" ]; then
+    printf 'Skipping gaming setup because DOTFILES_SKIP_GAMING=1\n'
+    exit 0
+fi
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+    printf 'Skipping gaming setup in CI\n'
+    exit 0
+fi
+
+if [ "{{ .chezmoi.os }}" != "linux" ]; then
+    printf 'Skipping gaming setup on non-Linux OS\n'
+    exit 0
+fi
+
+if [ "$PROFILE_GAMING" != "true" ]; then
+    printf 'Skipping gaming setup because gaming profile is not enabled\n'
+    exit 0
+fi
+
+if [ "$PROFILE_OWNED" != "true" ]; then
+    printf 'Skipping gaming setup because owned profile is not enabled\n'
+    exit 0
+fi
+
+if [ ! -r /etc/os-release ]; then
+    printf 'Skipping gaming setup because /etc/os-release is missing\n'
+    exit 0
+fi
+
+# shellcheck disable=SC1091
+. /etc/os-release
+
+if [ "${ID:-}" != "fedora" ]; then
+    printf 'Skipping gaming setup on distro: %s\n' "${ID:-unknown}"
+    exit 0
+fi
+
+run() {
+    printf '+ %s\n' "$*"
+
+    if [ "${DOTFILES_GAMING_DRY_RUN:-}" = "1" ]; then
+        return 0
+    fi
+
+    "$@"
+}
+
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        run "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        run sudo "$@"
+    else
+        printf 'Need root or sudo for gaming setup\n' >&2
+        exit 1
+    fi
+}
+
+detect_gpu_vendor() {
+    if ! command -v lspci >/dev/null 2>&1; then
+        printf ''
+        return 0
+    fi
+
+    lspci | awk '
+        BEGIN { vendor = "" }
+        /VGA|3D|Display/ {
+            line = tolower($0)
+            if (line ~ /nvidia/) vendor = vendor " nvidia"
+            if (line ~ /amd|advanced micro devices|ati/) vendor = vendor " amd"
+        }
+        END { print vendor }
+    '
+}
+
+run_as_root dnf install -y dnf-plugins-core
+
+if dnf copr --help >/dev/null 2>&1; then
+    run_as_root dnf config-manager setopt rpmfusion-nonfree-steam.enabled=1 || true
+fi
+
+run_as_root dnf install -y steam mangohud goverlay gamemode
+
+gpu_vendor="$(detect_gpu_vendor)"
+
+case "$gpu_vendor" in
+*nvidia*)
+    run_as_root dnf install -y akmod-nvidia
+    ;;
+esac
+
+case "$gpu_vendor" in
+*amd*)
+    run_as_root dnf install -y amd-gpu-firmware amdsmi rocm
+    ;;
+esac
