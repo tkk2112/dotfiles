@@ -44,7 +44,6 @@ plugins=(
   ssh-agent
   sudo
   uv
-  virtualenv
   autoupdate
   chezmoi
 )
@@ -76,15 +75,7 @@ for func_file in ~/.zsh/functions/*.zsh; do
 done
 
 # Platform-specific configurations
-if darwin; then
-  # iTerm2 shell integration
-  [ -e "${HOME}/.iterm2_shell_integration.zsh" ] && source "${HOME}/.iterm2_shell_integration.zsh"
-
-  # Google Cloud SDK
-  gcloud_sdk="$(brew --prefix)/share/google-cloud-sdk"
-  [ -r "$gcloud_sdk/path.zsh.inc" ] && source "$gcloud_sdk/path.zsh.inc"
-  [ -r "$gcloud_sdk/completion.zsh.inc" ] && source "$gcloud_sdk/completion.zsh.inc"
-else
+if ! darwin; then
   source ~/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme
 fi
 
@@ -101,7 +92,7 @@ if [ -d /usr/lib/python3/dist-packages/argcomplete/bash_completion.d ]; then
 fi
 
 # Source additional environment variables or scripts
-[ -f "$HOME/.local/share/../bin/env" ] && source "$HOME/.local/share/../bin/env"
+[ -f "$HOME/.local/bin/env" ] && source "$HOME/.local/bin/env"
 
 # Load additional work functions from ProtonDrive
 if [[ -d ~/ProtonDrive/work/zsh ]]; then
