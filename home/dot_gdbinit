@@ -1,0 +1,57 @@
+set confirm off
+set pagination off
+set print pretty on
+set print object on
+set print static-members on
+set print vtbl on
+set print demangle on
+set demangle-style auto
+set disassemble-next-line on
+set history save on
+set history size 10000
+set history filename ~/.cache/gdb/history
+set debuginfod enabled on
+
+define btfull
+    thread apply all bt full
+end
+
+define regs
+    info registers
+end
+
+define libs
+    info sharedlibrary
+end
+
+define maps
+    info proc mappings
+end
+
+define cls
+    shell clear
+end
+
+define hook-quit
+    set confirm off
+end
+
+document btfull
+Show full backtraces for all threads.
+end
+
+document regs
+Show registers.
+end
+
+document libs
+Show loaded shared libraries.
+end
+
+document maps
+Show process memory mappings.
+end
+
+document cls
+Clear the terminal.
+end

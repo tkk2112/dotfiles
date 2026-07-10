@@ -157,6 +157,26 @@ packages:
       group: development
       managers: [brew, pacman]
 
+    - name: gdb
+      group: development
+      managers: [apt, dnf, pacman, brew]
+
+    - name: cgdb
+      group: development
+      managers: [apt, dnf, pacman, brew]
+
+    - name: rr
+      group: development
+      managers: [apt, dnf, pacman]
+
+    - name: strace
+      group: development
+      managers: [apt, dnf, pacman]
+
+    - name: ltrace
+      group: development
+      managers: [apt, dnf, pacman]
+
     # --------------------------------------------------------------------------
     # Workstation: interactive local-machine tools.
     # --------------------------------------------------------------------------

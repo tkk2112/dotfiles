@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "base") }}
+PROFILE_DEVELOPMENT="{{ if has "development" $profiles }}true{{ else }}false{{ end }}"
+
+if [ "$PROFILE_DEVELOPMENT" != "true" ]; then
+    printf 'Skipping gdb setup because development profile is not enabled\n'
+    exit 0
+fi
+
+mkdir -p "$HOME/.cache/gdb"
