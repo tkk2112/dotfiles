@@ -1,13 +1,6 @@
 ---
 # Package catalog for the chezmoi package bootstrap script.
 #
-# Rules:
-# - group: base is always installed.
-# - group: development/workstation/server/gaming are installed only when that
-#   profile is enabled.
-# - managers omitted means: brew, apt, dnf, and pacman all use the same package name.
-# - managers restricts a package to specific package managers.
-# - names overrides package names where managers disagree.
 
 packages:
   dnf:
@@ -31,6 +24,13 @@ packages:
       with:
         - pygls==1.3.1
 
+  # Rules:
+  # - group: base is always installed.
+  # - group: development/workstation/server/gaming are installed only when that
+  #   profile is enabled.
+  # - managers omitted means: brew, apt, dnf, and pacman all use the same package name.
+  # - managers restricts a package to specific package managers.
+  # - names overrides package names where managers disagree.
   catalog:
     # --------------------------------------------------------------------------
     # Base: safe default CLI foundation.
@@ -211,6 +211,46 @@ packages:
 
     - name: yt-dlp
       group: workstation
+
+    - name: gnupg
+      group: development
+      names:
+        apt: gnupg
+        dnf: gnupg2
+        pacman: gnupg
+        brew: gnupg
+
+    - name: pinentry
+      group: workstation
+      names:
+        apt: pinentry-curses
+        dnf: pinentry
+        pacman: pinentry
+        brew: pinentry-mac
+
+    - name: pcsc-lite
+      group: workstation
+      managers: [dnf, pacman]
+      names:
+        apt: psccd
+        dnf: pcsc-lite
+        pacman: pcsclite
+
+    - name: pcsc-ccid
+      group: workstation
+      managers: [dnf, pacman]
+      names:
+        apt: libccid
+        dnf: pcsc-lite-ccid
+        pacman: ccid
+
+    - name: opensc
+      group: workstation
+      managers: [apt, dnf, pacman, brew]
+
+    - name: yubikey-manager
+      group: workstation
+      managers: [apt, dnf, pacman, brew]
 
     # --------------------------------------------------------------------------
     # Server/headless: server-friendly tooling.
