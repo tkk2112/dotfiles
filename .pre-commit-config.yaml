@@ -17,9 +17,12 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: detect-private-key
       - id: end-of-file-fixer
+        exclude: '\.age$'
       - id: trailing-whitespace
+        exclude: '\.age$'
       - id: mixed-line-ending
         args: [--fix=lf]
+        exclude: '\.age$'
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1

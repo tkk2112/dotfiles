@@ -55,9 +55,11 @@ if [ -z "$repo_dir" ]; then
 fi
 
 chezmoi_init_flags=""
+chezmoi_apply_flags=""
 
 if [ "${DOTFILES_CI:-}" = "true" ]; then
     chezmoi_init_flags="--promptDefaults"
+    chezmoi_apply_flags="--exclude encrypted"
 fi
 
 log "DOTFILES_CI=${DOTFILES_CI:-}"
@@ -68,9 +70,9 @@ log "chezmoi_init_flags=${chezmoi_init_flags:-}"
 if [ -n "$repo_dir" ] && [ -f "$repo_dir/.chezmoiroot" ]; then
     log "Using local chezmoi source: $repo_dir"
     run chezmoi init --source "$repo_dir" $chezmoi_init_flags
-    run chezmoi --source "$repo_dir" apply "$@"
+    run chezmoi --source "$repo_dir" apply $chezmoi_apply_flags "$@"
 else
     log "Using remote chezmoi source: $PULL_REPO_URL"
     run chezmoi init "$PULL_REPO_URL" $chezmoi_init_flags
-    run chezmoi apply "$@"
+    run chezmoi apply $chezmoi_apply_flags "$@"
 fi
