@@ -47,7 +47,7 @@ test_profile_set() {
     run chezmoi --config "$config_file" \
         --source "$repo_root" \
         --destination "$destination" \
-        apply --dry-run --exclude scripts
+        apply --dry-run --exclude scripts,encrypted
 
     for script in "$repo_root"/home/.chezmoiscripts/*.tmpl; do
         out="/tmp/$(basename "$script" .tmpl)-$(printf '%s' "$profiles" | tr ',' '-')"
