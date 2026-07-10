@@ -1,0 +1,11 @@
+# Machine-local overrides that must win over shared config
+Include ~/.ssh/config.pre.local
+
+# Reset scope so includes are not inside Host void
+Host *
+
+# Shared config
+Include ~/.ssh/conf.d/*.conf
+
+# Machine-local defaults that should apply after shared config
+Include ~/.ssh/config.post.local

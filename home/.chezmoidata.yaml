@@ -22,3 +22,6 @@ dotfiles:
 git:
   name: Thomas Kristensen
   email: ""
+
+ssh:
+  defaultAuthorizedKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAX2m792UY8H0/ykGmd6myqoP3raXPVr6nNM3H+hhUuB m04r

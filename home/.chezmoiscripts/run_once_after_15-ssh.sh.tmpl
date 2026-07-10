@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+
+keys_target="$HOME/ProtonDrive/unixprofile/.ssh/keys"
+
+if [ ! -e "$HOME/.ssh/keys" ]; then
+  if [ -d "$keys_target" ]; then
+    ln -s "$keys_target" "$HOME/.ssh/keys"
+  else
+    mkdir -p "$HOME/.ssh/keys"
+  fi
+fi
+chmod 700 "$HOME/.ssh/keys"
+
+touch "$HOME/.ssh/config.pre.local"
+touch "$HOME/.ssh/config.post.local"
+chmod 600 "$HOME/.ssh/config.pre.local" "$HOME/.ssh/config.post.local"
+
+if [ ! -f "$HOME/.ssh/authorized_keys" ]; then
+    : > "$HOME/.ssh/authorized_keys"
+{{- with .ssh.defaultAuthorizedKey }}
+    printf '%s\n' {{ . | quote }} > "$HOME/.ssh/authorized_keys"
+{{- end }}
+fi
+
+chmod 600 "$HOME/.ssh/authorized_keys"
