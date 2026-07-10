@@ -31,7 +31,7 @@ jobs:
 
   install-linux:
     needs: check
-    name: install on ubuntu:24.04 / base,workstation,development,owned
+    name: install on ubuntu / base,workstation,development,owned
     runs-on: ubuntu-latest
 
     container:

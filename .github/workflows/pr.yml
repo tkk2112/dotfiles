@@ -38,7 +38,7 @@ jobs:
       matrix:
         include:
           # Ubuntu/Debian: normal workstation and server/headless coverage.
-          - image: ubuntu:24.04
+          - image: ubuntu:26.04
             profiles: base,workstation,development,owned
           - image: ubuntu:latest
             profiles: base,workstation,development,owned
