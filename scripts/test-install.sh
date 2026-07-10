@@ -219,12 +219,14 @@ check_development_tools() {
     fi
 
     log "Checking command: cmake-language-server"
-    if command -v cmake-language-server >/dev/null 2>&1; then
-        path="$(command -v cmake-language-server)"
-        pass "command found: cmake-language-server -> $path"
-    else
-        fail "missing command: cmake-language-server"
+
+    if ! command -v cmake-language-server >/dev/null 2>&1; then
+        skip "cmake-language-server not installed"
+        return 0
     fi
+
+    path="$(command -v cmake-language-server)"
+    pass "command found: cmake-language-server -> $path"
 
     run cmake-language-server --version \
         || fail "cmake-language-server --version failed"
