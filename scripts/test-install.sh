@@ -210,6 +210,38 @@ check_chezmoi_state() {
     pass "chezmoi source path: $source_path"
 }
 
+check_development_tools() {
+    section "Checking development tools"
+
+    if ! command -v chezmoi >/dev/null 2>&1; then
+        skip "development tool checks; chezmoi not installed"
+        return 0
+    fi
+
+    if ! command -v jq >/dev/null 2>&1; then
+        skip "development tool checks; jq not installed"
+        return 0
+    fi
+
+    if [ "$(chezmoi data | jq -r '.development')" != "true" ]; then
+        skip "development tool checks; development profile not enabled"
+        return 0
+    fi
+
+    log "Checking command: cmake-language-server"
+    if command -v cmake-language-server >/dev/null 2>&1; then
+        path="$(command -v cmake-language-server)"
+        pass "command found: cmake-language-server -> $path"
+    else
+        fail "missing command: cmake-language-server"
+    fi
+
+    run cmake-language-server --version \
+        || fail "cmake-language-server --version failed"
+
+    pass "cmake-language-server version check ok"
+}
+
 print_environment() {
     section "Environment"
 
@@ -222,11 +254,18 @@ print_environment() {
     log "GITHUB_ACTIONS=${GITHUB_ACTIONS:-}"
     log "USE_COLOR=$USE_COLOR"
     log "PATH=$PATH"
+    log "DOTFILES_PROFILES=${DOTFILES_PROFILES:-}"
 
     if [ -f /etc/os-release ]; then
         log ""
         log "/etc/os-release:"
         cat /etc/os-release
+    fi
+
+    if command -v chezmoi >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+        log ""
+        log "Chezmoi profile data:"
+        chezmoi data | jq '{os, osid, hostname, profiles, owned, hasRoot, base, headless, workstation, development, gaming, server}'
     fi
 
     log ""
@@ -253,6 +292,7 @@ main() {
     check_zsh_syntax
     check_tmux_config
     check_nvim_config
+    check_development_tools
     check_chezmoi_state
 
     section "Result"
