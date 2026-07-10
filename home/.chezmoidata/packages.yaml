@@ -159,7 +159,7 @@ packages:
 
     - name: rr
       group: development
-      managers: [apt, dnf, pacman]
+      managers: [apt, dnf]
 
     - name: strace
       group: development
