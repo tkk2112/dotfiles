@@ -7,8 +7,22 @@ PROFILE_WORKSTATION="{{ if has "workstation" $profiles }}true{{ else }}false{{ e
 FONT_NAME="FiraCode"
 # renovate: datasource=github-releases depName=ryanoasis/nerd-fonts
 NERD_FONTS_VERSION="v3.4.0"
-FONT_ZIP="$HOME/.local/share/fonts/${FONT_NAME}.zip"
-FONT_MARKER="$HOME/.local/share/fonts/.${FONT_NAME}-${NERD_FONTS_VERSION}.installed"
+
+case "{{ .chezmoi.os }}" in
+darwin)
+    FONT_DIR="$HOME/Library/Fonts"
+    ;;
+linux)
+    FONT_DIR="$HOME/.local/share/fonts"
+    ;;
+*)
+    printf 'Skipping fonts on unsupported OS: %s\n' "{{ .chezmoi.os }}"
+    exit 0
+    ;;
+esac
+
+FONT_ZIP="$FONT_DIR/${FONT_NAME}.zip"
+FONT_MARKER="$FONT_DIR/.${FONT_NAME}-${NERD_FONTS_VERSION}.installed"
 FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/${FONT_NAME}.zip"
 
 if [ "${DOTFILES_SKIP_FONTS:-}" = "1" ]; then
@@ -36,7 +50,7 @@ run() {
     "$@"
 }
 
-mkdir -p "$HOME/.local/share/fonts"
+mkdir -p "$FONT_DIR"
 
 if [ -e "$FONT_MARKER" ]; then
     printf 'Font already installed: %s %s\n' "$FONT_NAME" "$NERD_FONTS_VERSION"
@@ -56,14 +70,14 @@ else
 fi
 
 if command -v unzip >/dev/null 2>&1; then
-    run unzip -o "$tmp_dir/$FONT_NAME.zip" -d "$HOME/.local/share/fonts"
+    run unzip -o "$tmp_dir/$FONT_NAME.zip" -d "$FONT_DIR"
 else
     printf 'Need unzip to install fonts\n' >&2
     exit 1
 fi
 
 if command -v fc-cache >/dev/null 2>&1; then
-    run fc-cache -f "$HOME/.local/share/fonts"
+    run fc-cache -f "$FONT_DIR"
 fi
 
 cp "$tmp_dir/$FONT_NAME.zip" "$FONT_ZIP"
