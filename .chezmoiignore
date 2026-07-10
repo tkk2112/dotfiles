@@ -1,3 +1,8 @@
 .config/nvim/.nvim
 .config/nvim/.nvim/**
 .config/nvim/lazy-lock.json
+.ssh/agent
+.ssh/agent/**
+.ssh/known_hosts
+.ssh/keys
+.ssh/keys/*

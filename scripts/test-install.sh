@@ -200,16 +200,6 @@ check_nvim_config() {
     done
 }
 
-check_chezmoi_state() {
-    section "Checking chezmoi state"
-
-    run chezmoi --version
-    run chezmoi source-path >/dev/null || fail "chezmoi source-path failed"
-
-    source_path="$(chezmoi source-path)"
-    pass "chezmoi source path: $source_path"
-}
-
 check_development_tools() {
     section "Checking development tools"
 
@@ -240,6 +230,35 @@ check_development_tools() {
         || fail "cmake-language-server --version failed"
 
     pass "cmake-language-server version check ok"
+}
+
+check_ssh_config() {
+    section "Checking SSH config"
+
+    if ! command -v ssh >/dev/null 2>&1; then
+        skip "ssh config checks; ssh not installed"
+        return 0
+    fi
+
+    if [ ! -f "$HOME/.ssh/config" ]; then
+        skip "ssh config checks; ~/.ssh/config not managed"
+        return 0
+    fi
+
+    run ssh -F "$HOME/.ssh/config" -G example.invalid >/dev/null \
+        || fail "ssh config failed"
+
+    pass "ssh config ok"
+}
+
+check_chezmoi_state() {
+    section "Checking chezmoi state"
+
+    run chezmoi --version
+    run chezmoi source-path >/dev/null || fail "chezmoi source-path failed"
+
+    source_path="$(chezmoi source-path)"
+    pass "chezmoi source path: $source_path"
 }
 
 print_environment() {
@@ -293,6 +312,7 @@ main() {
     check_tmux_config
     check_nvim_config
     check_development_tools
+    check_ssh_config
     check_chezmoi_state
 
     section "Result"
