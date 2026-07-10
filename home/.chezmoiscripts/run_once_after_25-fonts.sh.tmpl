@@ -1,0 +1,71 @@
+#!/bin/sh
+set -eu
+
+{{ $profiles := .profiles | default (list "base") }}
+PROFILE_WORKSTATION="{{ if has "workstation" $profiles }}true{{ else }}false{{ end }}"
+
+FONT_NAME="FiraCode"
+# renovate: datasource=github-releases depName=ryanoasis/nerd-fonts
+NERD_FONTS_VERSION="v3.4.0"
+FONT_ZIP="$HOME/.local/share/fonts/${FONT_NAME}.zip"
+FONT_MARKER="$HOME/.local/share/fonts/.${FONT_NAME}-${NERD_FONTS_VERSION}.installed"
+FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/${FONT_NAME}.zip"
+
+if [ "${DOTFILES_SKIP_FONTS:-}" = "1" ]; then
+    printf 'Skipping fonts because DOTFILES_SKIP_FONTS=1\n'
+    exit 0
+fi
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+    printf 'Skipping fonts in CI\n'
+    exit 0
+fi
+
+if [ "$PROFILE_WORKSTATION" != "true" ]; then
+    printf 'Skipping fonts because workstation profile is not enabled\n'
+    exit 0
+fi
+
+run() {
+    printf '+ %s\n' "$*"
+
+    if [ "${DOTFILES_FONTS_DRY_RUN:-}" = "1" ]; then
+        return 0
+    fi
+
+    "$@"
+}
+
+mkdir -p "$HOME/.local/share/fonts"
+
+if [ -e "$FONT_MARKER" ]; then
+    printf 'Font already installed: %s %s\n' "$FONT_NAME" "$NERD_FONTS_VERSION"
+    exit 0
+fi
+
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT INT TERM
+
+if command -v curl >/dev/null 2>&1; then
+    run curl -fsSL "$FONT_URL" -o "$tmp_dir/$FONT_NAME.zip"
+elif command -v wget >/dev/null 2>&1; then
+    run wget -qO "$tmp_dir/$FONT_NAME.zip" "$FONT_URL"
+else
+    printf 'Need curl or wget to install fonts\n' >&2
+    exit 1
+fi
+
+if command -v unzip >/dev/null 2>&1; then
+    run unzip -o "$tmp_dir/$FONT_NAME.zip" -d "$HOME/.local/share/fonts"
+else
+    printf 'Need unzip to install fonts\n' >&2
+    exit 1
+fi
+
+if command -v fc-cache >/dev/null 2>&1; then
+    run fc-cache -f "$HOME/.local/share/fonts"
+fi
+
+cp "$tmp_dir/$FONT_NAME.zip" "$FONT_ZIP"
+touch "$FONT_MARKER"
+printf 'Installed font: %s %s\n' "$FONT_NAME" "$NERD_FONTS_VERSION"
