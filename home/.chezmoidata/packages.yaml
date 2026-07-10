@@ -107,14 +107,6 @@ packages:
       group: development
       managers: [brew, dnf, pacman]
 
-    - name: golang
-      group: development
-      managers: [apt, dnf, pacman]
-      names:
-        apt: golang
-        dnf: golang
-        pacman: go
-
     - name: lazygit
       group: development
       managers: [brew, dnf, pacman]
@@ -140,10 +132,6 @@ packages:
     - name: python-lsp-server
       group: development
       managers: [brew, pacman]
-
-    - name: rust
-      group: development
-      managers: [brew, dnf, pacman]
 
     - name: uv
       group: development
