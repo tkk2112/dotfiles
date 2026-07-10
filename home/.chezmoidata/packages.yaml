@@ -263,7 +263,11 @@ packages:
     - name: yubikey-manager
       group: workstation
       managers: [apt, dnf, pacman, brew]
-
+      names:
+        apt: yubikey-manager
+        dnf: yubikey-manager
+        pacman: yubikey-manager
+        brew: ykman
     # --------------------------------------------------------------------------
     # Server/headless: server-friendly tooling.
     # --------------------------------------------------------------------------
