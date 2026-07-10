@@ -94,9 +94,6 @@ fi
 # Load local overrides if available
 [[ -r ~/.zshrc_local ]] && source ~/.zshrc_local
 
-# Add Rust's cargo binary directory to PATH
-[ -r "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
-
 # Add Python's argcomplete bash completion directory to zsh completion paths (fpath)
 # This enables tab completion for Python scripts using argcomplete
 if [ -d /usr/lib/python3/dist-packages/argcomplete/bash_completion.d ]; then
