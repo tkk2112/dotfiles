@@ -164,6 +164,10 @@ packages:
       group: workstation
       managers: [brew, dnf, pacman]
 
+    - name: fontconfig
+      group: workstation
+      managers: [apt, dnf, pacman]
+
     - name: gping
       group: workstation
       managers: [brew, dnf, pacman]
@@ -201,6 +205,9 @@ packages:
     - name: tio
       group: workstation
       managers: [apt, dnf]
+
+    - name: unzip
+      managers: [apt, dnf, pacman, brew]
 
     - name: yt-dlp
       group: workstation
