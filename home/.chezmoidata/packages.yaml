@@ -3,6 +3,10 @@
 #
 
 packages:
+  apt:
+    ppas:
+      - ppa:neovim-ppa/unstable
+
   dnf:
     copr:
       - atim/gping
