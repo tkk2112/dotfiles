@@ -38,12 +38,11 @@ keybind = super+shift+f=csi:70;6u
 keybind = super+w=text:\x17
 
 # aesthetics
+theme = DotfilesDark
 background-blur=16
 macos-titlebar-style = hidden
-theme = Cobalt2
 background-opacity = 0.95
 scrollbar = never
-copy-on-select = false
 
 # typography
 font-size=14
@@ -52,16 +51,13 @@ font-thicken-strength=1
 adjust-cell-height=1
 font-family = JetBrains Mono
 
-theme                   = TokyoNight Moon
-cursor-style            = block
-term                    = xterm-256color
-unfocused-split-fill    = "black"
+cursor-style = block
+term = xterm-256color
 mouse-hide-while-typing = true
 
-copy-on-select           = clipboard
-clipboard-read           = allow
-clipboard-write          = allow
-
+copy-on-select = clipboard
+clipboard-read = allow
+clipboard-write = allow
 
 keybind = global:f12=toggle_quick_terminal
 quick-terminal-position = top

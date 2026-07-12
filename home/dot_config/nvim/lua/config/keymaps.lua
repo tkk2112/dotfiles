@@ -231,3 +231,21 @@ map("n", "<leader>ut", theme.toggle, { desc = "Toggle theme" })
 -- macOS Fn-Up/Fn-Down usually arrive as PageUp/PageDown.
 map("n", "<PageUp>", "<C-u>", { desc = "Scroll half page up" })
 map("n", "<PageDown>", "<C-d>", { desc = "Scroll half page down" })
+
+vim.keymap.set("n", "<F24>", function()
+  vim.show_pos()
+end, {
+  desc = "Inspect highlights under cursor",
+})
+
+vim.keymap.set("n", "<leader>te", "<cmd>ThemeEdit<cr>", {
+  desc = "Edit colorscheme",
+})
+
+vim.keymap.set("n", "<leader>tr", "<cmd>ThemeReload<cr>", {
+  desc = "Reload colorscheme",
+})
+
+vim.keymap.set("n", "<leader>ta", "<cmd>ThemeApply<cr>", {
+  desc = "Apply and reload colorscheme",
+})

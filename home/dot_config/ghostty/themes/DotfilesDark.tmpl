@@ -1,0 +1,13 @@
+{{- $palette := .theme.dark }}
+{{- range $index, $color := $palette.ansi }}
+palette = {{ $index }}={{ $color }}
+{{- end }}
+
+background = {{ $palette.background }}
+foreground = {{ $palette.foreground }}
+
+cursor-color = {{ $palette.cursor }}
+cursor-text = {{ $palette.background }}
+
+selection-background = {{ $palette.selection }}
+selection-foreground = {{ $palette.foreground }}

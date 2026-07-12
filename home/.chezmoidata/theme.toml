@@ -1,0 +1,80 @@
+[theme.dark]
+background = "#111318"
+surface = "#181B22"
+surface_alt = "#222732"
+border = "#303746"
+
+foreground = "#DDE3EC"
+foreground_dim = "#B7C0CE"
+muted = "#7C8797"
+
+selection = "#2B3545"
+cursor = "#DDE3EC"
+
+red = "#D76D77"
+orange = "#C98B5A"
+yellow = "#D5B66F"
+green = "#82B87A"
+cyan = "#65B8B3"
+blue = "#6D9FD5"
+purple = "#A889D6"
+
+ansi = [
+  "#111318",
+  "#D76D77",
+  "#82B87A",
+  "#D5B66F",
+  "#6D9FD5",
+  "#A889D6",
+  "#65B8B3",
+  "#B7C0CE",
+  "#7C8797",
+  "#EA858D",
+  "#9BCF93",
+  "#E8CA86",
+  "#89B7E6",
+  "#C0A4EA",
+  "#82CCC7",
+  "#DDE3EC",
+]
+
+[theme.light]
+background = "#FFFFFF"
+surface = "#F3F3F3"
+surface_alt = "#E8E8E8"
+border = "#D4D4D4"
+
+foreground = "#1F1F1F"
+foreground_dim = "#3B3B3B"
+muted = "#6E7681"
+
+selection = "#ADD6FF"
+cursor = "#000000"
+
+# General application colors.
+red = "#CD3131"
+orange = "#A31515"
+yellow = "#795E26"
+green = "#008000"
+cyan = "#267F99"
+blue = "#007ACC"
+purple = "#AF00DB"
+
+ansi = [
+  "#000000",
+  "#CD3131",
+  "#008000",
+  "#949800",
+  "#0451A5",
+  "#AF00DB",
+  "#0598BC",
+  "#D4D4D4",
+  "#666666",
+  "#CD3131",
+  "#14CE14",
+  "#B5BA00",
+  "#0451A5",
+  "#AF00DB",
+  "#0598BC",
+  "#FFFFFF",
+]
