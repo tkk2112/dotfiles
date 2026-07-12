@@ -9,4 +9,20 @@ if [ "$PROFILE_DEVELOPMENT" != "true" ]; then
     exit 0
 fi
 
-mkdir -p "$HOME/.cache/gdb"
+dashboard_dir="$HOME/.local/share/gdb-dashboard"
+dashboard_file="$dashboard_dir/dashboard.gdb"
+
+mkdir -p \
+    "$HOME/.cache/gdb" \
+    "$HOME/.local/bin" \
+    "$dashboard_dir"
+
+curl \
+    --fail \
+    --location \
+    --silent \
+    --show-error \
+    --output "$dashboard_file" \
+    'https://raw.githubusercontent.com/cyrus-and/gdb-dashboard/master/.gdbinit'
+
+chmod 0644 "$dashboard_file"

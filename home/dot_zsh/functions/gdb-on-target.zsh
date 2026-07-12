@@ -87,7 +87,13 @@ gdb_on_target() {
     remote_command="${env_command} ${remote_command}"
   fi
 
-  gdb -q "$file_path" \
+  local gdb_command=(gdb)
+
+  if [[ -n "${TMUX:-}" ]] && (( $+commands[gdb-tmux] )); then
+    gdb_command=(gdb-tmux)
+  fi
+
+  "$gdb_command[@]" -q "$file_path" \
     -ex "set sysroot target:" \
     -ex "set exec-file-mismatch off" \
     -ex "target remote | ssh -T $remote_host \"$remote_command\"" \
