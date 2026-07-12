@@ -38,29 +38,2218 @@ keybind = super+shift+f=csi:70;6u
 keybind = super+w=text:\x17
 
 # aesthetics
+theme = DotfilesDark
 background-blur=16
 macos-titlebar-style = hidden
-theme = Cobalt2
 background-opacity = 0.95
 scrollbar = never
-copy-on-select = false
 
 # typography
 font-size=14
+diff --git a/home/.chezmoidata/packages.yaml b/home/.chezmoidata/packages.yaml
+index a46a894..5db49f9 100644
+--- a/home/.chezmoidata/packages.yaml
++++ b/home/.chezmoidata/packages.yaml
+@@ -103,6 +103,10 @@ packages:
+     - name: cmake
+       group: development
+
++    - name: tree-sitter-cli
++      group: development
++      managers: [brew, dnf, pacman]
++
+     - name: code-minimap
+       group: development
+       managers: [brew]
+diff --git a/home/.chezmoidata/theme.toml b/home/.chezmoidata/theme.toml
+new file mode 100644
+index 0000000..8c478c7
+--- /dev/null
++++ b/home/.chezmoidata/theme.toml
+@@ -0,0 +1,120 @@
++[theme.dark]
++background = "#111318"
++surface = "#181B22"
++surface_alt = "#222732"
++border = "#303746"
++
++foreground = "#DDE3EC"
++foreground_dim = "#B7C0CE"
++muted = "#7C8797"
++
++selection = "#2B3545"
++cursor = "#DDE3EC"
++
++red = "#D76D77"
++orange = "#C98B5A"
++yellow = "#D5B66F"
++green = "#82B87A"
++cyan = "#65B8B3"
++blue = "#6D9FD5"
++purple = "#A889D6"
++
++ansi = [
++  "#111318",
++  "#D76D77",
++  "#82B87A",
++  "#D5B66F",
++  "#6D9FD5",
++  "#A889D6",
++  "#65B8B3",
++  "#B7C0CE",
++  "#7C8797",
++  "#EA858D",
++  "#9BCF93",
++  "#E8CA86",
++  "#89B7E6",
++  "#C0A4EA",
++  "#82CCC7",
++  "#DDE3EC",
++]
++
++[theme.light]
++background = "#FFFFFF"
++surface = "#F3F3F3"
++surface_alt = "#E8E8E8"
++border = "#D4D4D4"
++
++foreground = "#1F1F1F"
++foreground_dim = "#3B3B3B"
++muted = "#6E7681"
++
++selection = "#ADD6FF"
++cursor = "#000000"
++
++# General application colors.
++red = "#CD3131"
++orange = "#A31515"
++yellow = "#795E26"
++green = "#008000"
++cyan = "#267F99"
++blue = "#007ACC"
++purple = "#AF00DB"
++
++ansi = [
++  "#000000",
++  "#CD3131",
++  "#008000",
++  "#949800",
++  "#0451A5",
++  "#AF00DB",
++  "#0598BC",
++  "#D4D4D4",
++  "#666666",
++  "#CD3131",
++  "#14CE14",
++  "#B5BA00",
++  "#0451A5",
++  "#AF00DB",
++  "#0598BC",
++  "#FFFFFF",
++]
++
++[theme.lightold]
++background = "#F6F5F1"
++surface = "#ECEBE6"
++surface_alt = "#E1E0DA"
++border = "#CBCAC3"
++
++foreground = "#25282F"
++foreground_dim = "#3F4651"
++muted = "#717A87"
++
++selection = "#D8E3F1"
++cursor = "#25282F"
++
++red = "#B64D58"
++orange = "#965F30"
++yellow = "#7E6824"
++green = "#4D7A4A"
++cyan = "#397A78"
++blue = "#3F6EA3"
++purple = "#70589A"
++
++ansi = [
++  "#25282F",
++  "#B64D58",
++  "#4D7A4A",
++  "#7E6824",
++  "#3F6EA3",
++  "#70589A",
++  "#397A78",
++  "#5C6470",
++  "#7F8792",
++  "#C95D67",
++  "#5C8B58",
++  "#927A2E",
++  "#527FB4",
++  "#8069AA",
++  "#478C89",
++  "#3F4651",
++]
+diff --git a/home/.chezmoiscripts/run_once_after_26-gdb.sh.tmpl b/home/.chezmoiscripts/run_once_after_26-gdb.sh.tmpl
+index 9b3fd56..2dc9249 100755
+--- a/home/.chezmoiscripts/run_once_after_26-gdb.sh.tmpl
++++ b/home/.chezmoiscripts/run_once_after_26-gdb.sh.tmpl
+@@ -9,4 +9,20 @@ if [ "$PROFILE_DEVELOPMENT" != "true" ]; then
+     exit 0
+ fi
+
+-mkdir -p "$HOME/.cache/gdb"
++dashboard_dir="$HOME/.local/share/gdb-dashboard"
++dashboard_file="$dashboard_dir/dashboard.gdb"
++
++mkdir -p \
++    "$HOME/.cache/gdb" \
++    "$HOME/.local/bin" \
++    "$dashboard_dir"
++
++curl \
++    --fail \
++    --location \
++    --silent \
++    --show-error \
++    --output "$dashboard_file" \
++    'https://raw.githubusercontent.com/cyrus-and/gdb-dashboard/master/.gdbinit'
++
++chmod 0644 "$dashboard_file"
+diff --git a/home/dot_config/ghostty/config b/home/dot_config/ghostty/config
+index 40c8596..7c2089a 100644
+--- a/home/dot_config/ghostty/config
++++ b/home/dot_config/ghostty/config
+@@ -40,10 +40,8 @@ keybind = super+w=text:\x17
+ # aesthetics
+ background-blur=16
+ macos-titlebar-style = hidden
+-theme = Cobalt2
+ background-opacity = 0.95
+ scrollbar = never
+-copy-on-select = false
+
+ # typography
+ font-size=14
+@@ -52,15 +50,13 @@ font-thicken-strength=1
+ adjust-cell-height=1
+ font-family = JetBrains Mono
+
+-theme                   = TokyoNight Moon
+-cursor-style            = block
+-term                    = xterm-256color
+-unfocused-split-fill    = "black"
++cursor-style = block
++term = xterm-256color
+ mouse-hide-while-typing = true
+
+-copy-on-select           = clipboard
+-clipboard-read           = allow
+-clipboard-write          = allow
++copy-on-select = clipboard
++clipboard-read = allow
++clipboard-write = allow
+
+
+ keybind = global:f12=toggle_quick_terminal
+diff --git a/home/dot_config/ghostty/themes/DotfilesDark.tmpl b/home/dot_config/ghostty/themes/DotfilesDark.tmpl
+new file mode 100644
+index 0000000..6e221ad
+--- /dev/null
++++ b/home/dot_config/ghostty/themes/DotfilesDark.tmpl
+@@ -0,0 +1,13 @@
++{{- $palette := .theme.dark }}
++{{- range $index, $color := $palette.ansi }}
++palette = {{ $index }}={{ $color }}
++{{- end }}
++
++background = {{ $palette.background }}
++foreground = {{ $palette.foreground }}
++
++cursor-color = {{ $palette.cursor }}
++cursor-text = {{ $palette.background }}
++
++selection-background = {{ $palette.selection }}
++selection-foreground = {{ $palette.foreground }}
+diff --git a/home/dot_config/ghostty/themes/DotfilesLight.tmpl b/home/dot_config/ghostty/themes/DotfilesLight.tmpl
+new file mode 100644
+index 0000000..8ceac31
+--- /dev/null
++++ b/home/dot_config/ghostty/themes/DotfilesLight.tmpl
+@@ -0,0 +1,13 @@
++{{- $palette := .theme.light }}
++{{- range $index, $color := $palette.ansi }}
++palette = {{ $index }}={{ $color }}
++{{- end }}
++
++background = {{ $palette.background }}
++foreground = {{ $palette.foreground }}
++
++cursor-color = {{ $palette.cursor }}
++cursor-text = {{ $palette.background }}
++
++selection-background = {{ $palette.selection }}
++selection-foreground = {{ $palette.foreground }}
+diff --git a/home/dot_config/nvim/colors/dotfiles-dark.lua b/home/dot_config/nvim/colors/dotfiles-dark.lua
+new file mode 100644
+index 0000000..9624092
+--- /dev/null
++++ b/home/dot_config/nvim/colors/dotfiles-dark.lua
+@@ -0,0 +1 @@
++require("theme.colorscheme").apply("dark")
+diff --git a/home/dot_config/nvim/colors/dotfiles-light.lua b/home/dot_config/nvim/colors/dotfiles-light.lua
+new file mode 100644
+index 0000000..2e20129
+--- /dev/null
++++ b/home/dot_config/nvim/colors/dotfiles-light.lua
+@@ -0,0 +1 @@
++require("theme.colorscheme").apply("light")
+diff --git a/home/dot_config/nvim/lua/config/filetypes.lua b/home/dot_config/nvim/lua/config/filetypes.lua
+index 4fbe54a..f493754 100644
+--- a/home/dot_config/nvim/lua/config/filetypes.lua
++++ b/home/dot_config/nvim/lua/config/filetypes.lua
+@@ -3,3 +3,30 @@ vim.filetype.add({
+     xsl = "xslt",
+   },
+ })
++
++vim.filetype.add({
++  extension = {
++    -- C++ source files
++    cc = "cpp",
++    cpp = "cpp",
++    cxx = "cpp",
++    C = "cpp",
++
++    -- C++ headers
++    hh = "cpp",
++    hpp = "cpp",
++    hxx = "cpp",
++    H = "cpp",
++
++    -- Template and inline implementation files
++    ipp = "cpp",
++    inl = "cpp",
++    tpp = "cpp",
++    txx = "cpp",
++
++    -- C++ module files
++    cppm = "cpp",
++    ixx = "cpp",
++    mpp = "cpp",
++  },
++})
+diff --git a/home/dot_config/nvim/lua/config/keymaps.lua b/home/dot_config/nvim/lua/config/keymaps.lua
+index a391826..f77c21c 100644
+--- a/home/dot_config/nvim/lua/config/keymaps.lua
++++ b/home/dot_config/nvim/lua/config/keymaps.lua
+@@ -231,3 +231,22 @@ map("n", "<leader>ut", theme.toggle, { desc = "Toggle theme" })
+ -- macOS Fn-Up/Fn-Down usually arrive as PageUp/PageDown.
+ map("n", "<PageUp>", "<C-u>", { desc = "Scroll half page up" })
+ map("n", "<PageDown>", "<C-d>", { desc = "Scroll half page down" })
++
++vim.keymap.set("n", "<F24>", function()
++  vim.show_pos()
++end, {
++  desc = "Inspect highlights under cursor",
++})
++
++vim.keymap.set("n", "<leader>te", "<cmd>ThemeEdit<cr>", {
++  desc = "Edit colorscheme",
++})
++
++vim.keymap.set("n", "<leader>tr", "<cmd>ThemeReload<cr>", {
++  desc = "Reload colorscheme",
++})
++
++vim.keymap.set("n", "<leader>ta", "<cmd>ThemeApply<cr>", {
++  desc = "Apply and reload colorscheme",
++})
++
+diff --git a/home/dot_config/nvim/lua/config/options.lua b/home/dot_config/nvim/lua/config/options.lua
+index 43dae12..30beb39 100644
+--- a/home/dot_config/nvim/lua/config/options.lua
++++ b/home/dot_config/nvim/lua/config/options.lua
+@@ -68,3 +68,10 @@ vim.g.loaded_ruby_provider = 0
+ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
+   command = "checktime",
+ })
++
++vim.opt.guicursor = {
++  "n-v-c-sm:block-Cursor",
++  "i-ci-ve:block-CursorInsert",
++  "r-cr:block-CursorReplace",
++  "o:block-Cursor",
++}
+diff --git a/home/dot_config/nvim/lua/config/theme.lua b/home/dot_config/nvim/lua/config/theme.lua
+index 559e827..a6d3609 100644
+--- a/home/dot_config/nvim/lua/config/theme.lua
++++ b/home/dot_config/nvim/lua/config/theme.lua
+@@ -1,13 +1,15 @@
+--- Colorscheme is global in Neovim; project overrides switch the whole UI.
++-- Colorschemes are global in Neovim; project overrides switch the whole UI.
+
+ local M = {}
+
+-local default_dark = "tokyonight-night"
+-local default_light = "tokyonight-day"
+-local current_mode = "dark"
++local default_schemes = {
++  dark = "dotfiles-dark",
++  light = "dotfiles-light",
++}
+
+ local function project_colorscheme(bufnr)
+   local ok, project_settings = pcall(require, "config.project_settings")
++
+   if not ok then
+     return nil
+   end
+@@ -21,23 +23,26 @@ function M.apply(name)
+   end
+
+   local ok, err = pcall(vim.cmd.colorscheme, name)
++
+   if not ok then
+-    vim.notify("Failed to load colorscheme: " .. name .. "\n" .. err, vim.log.levels.WARN)
++    vim.notify(
++      "Failed to load colorscheme: " .. name .. "\n" .. err,
++      vim.log.levels.WARN
++    )
+   end
+ end
+
+ function M.apply_for_buffer(bufnr)
+-  M.apply(project_colorscheme(bufnr))
++  local name = project_colorscheme(bufnr)
++
++  if name then
++    M.apply(name)
++  end
+ end
+
+ function M.toggle()
+-  if current_mode == "dark" then
+-    current_mode = "light"
+-    M.apply(default_light)
+-  else
+-    current_mode = "dark"
+-    M.apply(default_dark)
+-  end
++  local next_mode = vim.o.background == "dark" and "light" or "dark"
++  M.apply(default_schemes[next_mode])
+ end
+
+ vim.api.nvim_create_autocmd({ "BufEnter", "DirChanged" }, {
+@@ -46,4 +51,155 @@ vim.api.nvim_create_autocmd({ "BufEnter", "DirChanged" }, {
+   end,
+ })
+
++M.apply(default_schemes.dark)
++
++-- =============================================================================
++-- Theme development
++-- =============================================================================
++
++local theme_target =
++  vim.fn.expand("~/.config/nvim/lua/theme/colorscheme.lua")
++
++local function normalize_path(path)
++  return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
++end
++
++local function resolve_chezmoi_source(target)
++  local result = vim.system({
++    "chezmoi",
++    "source-path",
++    target,
++  }, {
++    text = true,
++  }):wait()
++
++  if result.code ~= 0 then
++    return nil, vim.trim(result.stderr or "")
++  end
++
++  local source = vim.trim(result.stdout or "")
++
++  if source == "" then
++    return nil, "chezmoi returned an empty source path"
++  end
++
++  return normalize_path(source)
++end
++
++local theme_source, theme_source_error =
++  resolve_chezmoi_source(theme_target)
++
++local apply_in_progress = false
++local apply_again = false
++
++function M.reload()
++  local scheme = vim.g.colors_name
++
++  -- Keep whichever custom variant is currently active.
++  if scheme ~= default_schemes.dark
++    and scheme ~= default_schemes.light
++  then
++    scheme = default_schemes[vim.o.background]
++  end
++
++  -- require() caches Lua modules. Clear the theme modules so the newly
++  -- applied files are actually read again.
++  package.loaded["theme.palette"] = nil
++  package.loaded["theme.colorscheme"] = nil
++
++  M.apply(scheme)
++  vim.cmd("redraw!")
++end
++
++local function apply_and_reload()
++  if apply_in_progress then
++    apply_again = true
++    return
++  end
++
++  apply_in_progress = true
++
++  vim.system({
++    "chezmoi",
++    "apply",
++    theme_target,
++  }, {
++    text = true,
++  }, function(result)
++    vim.schedule(function()
++      apply_in_progress = false
++
++      if result.code ~= 0 then
++        local message = vim.trim(
++          result.stderr or result.stdout or "Unknown chezmoi error"
++        )
++
++        vim.notify(
++          "Theme apply failed:\n" .. message,
++          vim.log.levels.ERROR
++        )
++      else
++        M.reload()
++
++        vim.notify(
++          "Theme applied and reloaded",
++          vim.log.levels.INFO
++        )
++      end
++
++      -- Do not lose a second save made while chezmoi was still running.
++      if apply_again then
++        apply_again = false
++        apply_and_reload()
++      end
++    end)
++  end)
++end
++
++vim.api.nvim_create_user_command("ThemeReload", function()
++  M.reload()
++end, {
++  desc = "Reload the current custom colorscheme",
++})
++
++vim.api.nvim_create_user_command("ThemeApply", function()
++  apply_and_reload()
++end, {
++  desc = "Apply the chezmoi colorscheme and reload it",
++})
++
++vim.api.nvim_create_user_command("ThemeEdit", function()
++  if not theme_source then
++    vim.notify(
++      "Could not resolve chezmoi theme source:\n"
++        .. (theme_source_error or "Unknown error"),
++      vim.log.levels.ERROR
++    )
++    return
++  end
++
++  vim.cmd("vsplit " .. vim.fn.fnameescape(theme_source))
++end, {
++  desc = "Edit the chezmoi colorscheme source",
++})
++
++if theme_source then
++  local theme_group = vim.api.nvim_create_augroup(
++    "dotfiles_theme_live_reload",
++    { clear = true }
++  )
++
++  vim.api.nvim_create_autocmd("BufWritePost", {
++    group = theme_group,
++    callback = function(event)
++      local filename =
++        normalize_path(vim.api.nvim_buf_get_name(event.buf))
++
++      if filename == theme_source then
++        apply_and_reload()
++      end
++    end,
++  })
++end
++
+ return M
+diff --git a/home/dot_config/nvim/lua/plugins/colorscheme.lua b/home/dot_config/nvim/lua/plugins/colorscheme.lua
+deleted file mode 100644
+index a408d7b..0000000
+--- a/home/dot_config/nvim/lua/plugins/colorscheme.lua
++++ /dev/null
+@@ -1,10 +0,0 @@
+-return {
+-  {
+-    "folke/tokyonight.nvim",
+-    lazy = false,
+-    priority = 1000,
+-    config = function()
+-      vim.cmd.colorscheme("tokyonight-night")
+-    end,
+-  },
+-}
+diff --git a/home/dot_config/nvim/lua/plugins/treesitter.lua b/home/dot_config/nvim/lua/plugins/treesitter.lua
+new file mode 100644
+index 0000000..d77f973
+--- /dev/null
++++ b/home/dot_config/nvim/lua/plugins/treesitter.lua
+@@ -0,0 +1,30 @@
++return {
++  {
++    "neovim-treesitter/nvim-treesitter",
++
++    dependencies = {
++      "neovim-treesitter/treesitter-parser-registry",
++    },
++
++    lazy = false,
++    build = ":TSUpdate",
++
++    config = function()
++      local group = vim.api.nvim_create_augroup(
++        "dotfiles_treesitter",
++        { clear = true }
++      )
++
++      vim.api.nvim_create_autocmd("FileType", {
++        group = group,
++        pattern = {
++          "c",
++          "cpp",
++        },
++        callback = function(event)
++          vim.treesitter.start(event.buf)
++        end,
++      })
++    end,
++  },
++}
+diff --git a/home/dot_config/nvim/lua/theme/colorscheme.lua b/home/dot_config/nvim/lua/theme/colorscheme.lua
+new file mode 100644
+index 0000000..e5d30d4
+--- /dev/null
++++ b/home/dot_config/nvim/lua/theme/colorscheme.lua
+@@ -0,0 +1,758 @@
++local M = {}
++
++local C_FAMILY = { "c", "cpp" }
++
++local function set(group, options)
++  vim.api.nvim_set_hl(0, group, options)
++end
++
++local function set_all(groups)
++  for group, options in pairs(groups) do
++    set(group, options)
++  end
++end
++
++local function set_for_filetypes(group, options, filetypes)
++  for _, filetype in ipairs(filetypes or C_FAMILY) do
++    set(group .. "." .. filetype, options)
++  end
++end
++
++local function set_captures(captures, filetypes)
++  for group, options in pairs(captures) do
++    set(group, options)
++
++    if filetypes then
++      set_for_filetypes(group, options, filetypes)
++    end
++  end
++end
++
++local function roles_for(mode, palette)
++  if mode == "light" then
++    return {
++      text = "#1F1F1F",
++      text_dim = "#3B3B3B",
++      comment = "#008000",
++
++      keyword = "#0000FF",
++      preprocessor = "#008000",
++      namespace = "#7A3E9D",
++      type = "#267F99",
++      type_parameter = "#AF00DB",
++
++      callable = "#795E26",
++      variable = "#001080",
++      parameter = "#001080",
++      member = "#001080",
++      constant = "#0070C1",
++
++      string = "#A31515",
++      number = "#098658",
++      boolean = "#0000FF",
++      macro = "#0000FF",
++      special = "#AF00DB",
++
++      operator = "#1F1F1F",
++      punctuation = "#1F1F1F",
++      punctuation_dim = "#616161",
++
++      diagnostic_error = "#9A4A4A",
++      diagnostic_error_strong = "#C42B2B",
++      diagnostic_warn = "#8A6D1D",
++      diagnostic_info = "#2563A5",
++      diagnostic_hint = "#397A78",
++
++      cursor_normal = "#005FB8",
++      cursor_insert = "#16825D",
++      cursor_replace = "#C42B2B",
++      cursor_text = "#FFFFFF",
++      cursorline = "#F0F4F8",
++
++      declaration_bold = false,
++      comment_italic = true,
++      type_parameter_italic = true,
++    }
++  end
++  local dark = {
++    -- Language structure.
++    keyword = palette.purple,
++    preprocessor = palette.red,
++
++    -- Named symbols.
++    namespace = "#63B7B0",
++    type = palette.yellow,
++    type_parameter = "#D16DFF",
++    callable = "#74A9E2",
++
++    -- Values.
++    parameter = "#D99A68",
++    member = "#78BEC7",
++    constant = "#E0AF67",
++    boolean = "#D77FA1",
++
++    -- Supporting syntax.
++    special = "#B89BE5",
++    operator = "#8BA6B3",
++  }
++
++  return {
++    text = palette.foreground,
++    text_dim = palette.foreground_dim,
++    comment = palette.muted,
++
++    keyword = dark.keyword,
++    preprocessor = dark.preprocessor,
++
++    namespace = dark.namespace,
++    type = dark.type,
++    type_parameter = dark.type_parameter,
++
++    callable = dark.callable,
++
++    variable = palette.foreground,
++    parameter = dark.parameter,
++    member = dark.member,
++    constant = dark.constant,
++
++    string = palette.green,
++    number = palette.orange,
++    boolean = dark.boolean,
++
++    macro = dark.preprocessor,
++    special = dark.special,
++
++    operator = dark.operator,
++    punctuation = palette.foreground_dim,
++    punctuation_dim = palette.muted,
++
++    diagnostic_error = palette.red,
++    diagnostic_error_strong = palette.red,
++    diagnostic_warn = palette.yellow,
++    diagnostic_info = palette.blue,
++    diagnostic_hint = palette.cyan,
++
++    cursor_normal = palette.blue,
++    cursor_insert = palette.green,
++    cursor_replace = palette.red,
++    cursor_text = palette.background,
++    cursorline = palette.surface,
++
++    declaration_bold = true,
++    comment_italic = true,
++    type_parameter_italic = true,
++  }
++end
++
++local function apply_ui(palette, roles)
++  set_all({
++    Normal = {
++      fg = palette.foreground,
++      bg = palette.background,
++    },
++    NormalNC = {
++      fg = palette.foreground_dim,
++      bg = palette.background,
++    },
++    NormalFloat = {
++      fg = palette.foreground,
++      bg = palette.surface,
++    },
++    FloatBorder = {
++      fg = palette.border,
++      bg = palette.surface,
++    },
++    FloatTitle = {
++      fg = roles.callable,
++      bg = palette.surface,
++      bold = true,
++    },
++
++    Cursor = {
++      fg = roles.cursor_text,
++      bg = roles.cursor_normal,
++    },
++    lCursor = {
++      fg = roles.cursor_text,
++      bg = roles.cursor_normal,
++    },
++    CursorInsert = {
++      fg = roles.cursor_text,
++      bg = roles.cursor_insert,
++    },
++    CursorReplace = {
++      fg = roles.cursor_text,
++      bg = roles.cursor_replace,
++    },
++    TermCursor = {
++      fg = roles.cursor_text,
++      bg = roles.cursor_normal,
++    },
++    TermCursorNC = {
++      fg = palette.foreground_dim,
++      bg = palette.surface_alt,
++    },
++
++    CursorLine = {
++      bg = roles.cursorline,
++    },
++    CursorColumn = {
++      bg = roles.cursorline,
++    },
++    CursorLineNr = {
++      fg = roles.cursor_normal,
++      bold = true,
++    },
++    LineNr = {
++      fg = palette.muted,
++    },
++    SignColumn = {
++      fg = palette.muted,
++      bg = palette.background,
++    },
++    FoldColumn = {
++      fg = palette.muted,
++      bg = palette.background,
++    },
++    Folded = {
++      fg = palette.muted,
++      bg = palette.surface,
++    },
++    ColorColumn = {
++      bg = palette.surface,
++    },
++
++    Visual = {
++      bg = palette.selection,
++    },
++    Search = {
++      fg = palette.background,
++      bg = palette.yellow,
++    },
++    IncSearch = {
++      fg = palette.background,
++      bg = palette.orange,
++      bold = true,
++    },
++    CurSearch = {
++      fg = palette.background,
++      bg = palette.orange,
++      bold = true,
++    },
++    MatchParen = {
++      fg = roles.text,
++      bg = palette.surface_alt,
++      bold = true,
++    },
++
++    Pmenu = {
++      fg = palette.foreground,
++      bg = palette.surface,
++    },
++    PmenuSel = {
++      fg = palette.background,
++      bg = roles.cursor_normal,
++      bold = true,
++    },
++    PmenuSbar = {
++      bg = palette.surface_alt,
++    },
++    PmenuThumb = {
++      bg = palette.muted,
++    },
++
++    StatusLine = {
++      fg = palette.foreground,
++      bg = palette.surface_alt,
++    },
++    StatusLineNC = {
++      fg = palette.muted,
++      bg = palette.surface,
++    },
++    WinBar = {
++      fg = palette.foreground_dim,
++      bg = palette.background,
++    },
++    WinBarNC = {
++      fg = palette.muted,
++      bg = palette.background,
++    },
++    TabLine = {
++      fg = palette.muted,
++      bg = palette.surface,
++    },
++    TabLineFill = {
++      bg = palette.surface,
++    },
++    TabLineSel = {
++      fg = palette.background,
++      bg = roles.cursor_normal,
++      bold = true,
++    },
++
++    WinSeparator = {
++      fg = palette.border,
++    },
++    NonText = {
++      fg = palette.muted,
++    },
++    Whitespace = {
++      fg = palette.border,
++    },
++    EndOfBuffer = {
++      fg = palette.background,
++    },
++
++    LspReferenceText = {
++      bg = palette.selection,
++    },
++    LspReferenceRead = {
++      bg = palette.selection,
++    },
++    LspReferenceWrite = {
++      bg = palette.selection,
++      bold = true,
++    },
++    LspInlayHint = {
++      fg = palette.muted,
++      bg = palette.surface,
++      italic = true,
++    },
++  })
++end
++
++local function apply_syntax(roles)
++  set_all({
++    Comment = {
++      fg = roles.comment,
++      italic = roles.comment_italic,
++    },
++    Constant = {
++      fg = roles.constant,
++    },
++    String = {
++      fg = roles.string,
++    },
++    Character = {
++      fg = roles.string,
++    },
++    Number = {
++      fg = roles.number,
++    },
++    Boolean = {
++      fg = roles.boolean,
++    },
++    Float = {
++      fg = roles.number,
++    },
++
++    Identifier = {
++      fg = roles.variable,
++    },
++    Function = {
++      fg = roles.callable,
++    },
++
++    Statement = {
++      fg = roles.keyword,
++    },
++    Conditional = {
++      fg = roles.keyword,
++    },
++    Repeat = {
++      fg = roles.keyword,
++    },
++    Label = {
++      fg = roles.keyword,
++    },
++    Operator = {
++      fg = roles.operator,
++    },
++    Keyword = {
++      fg = roles.keyword,
++    },
++    Exception = {
++      fg = roles.keyword,
++    },
++
++    PreProc = {
++      fg = roles.preprocessor,
++    },
++    Include = {
++      fg = roles.preprocessor,
++    },
++    Define = {
++      fg = roles.preprocessor,
++    },
++    Macro = {
++      fg = roles.macro,
++    },
++
++    Type = {
++      fg = roles.type,
++    },
++    StorageClass = {
++      fg = roles.keyword,
++    },
++    Structure = {
++      fg = roles.keyword,
++    },
++    Typedef = {
++      fg = roles.type,
++    },
++
++    Special = {
++      fg = roles.special,
++    },
++    SpecialChar = {
++      fg = roles.special,
++    },
++    Delimiter = {
++      fg = roles.punctuation,
++    },
++
++    Title = {
++      fg = roles.callable,
++      bold = true,
++    },
++    Underlined = {
++      underline = true,
++    },
++    Todo = {
++      fg = roles.keyword,
++      bold = true,
++    },
++  })
++end
++
++local function apply_diagnostics(roles)
++  set_all({
++    DiagnosticError = {
++      fg = roles.diagnostic_error,
++    },
++    DiagnosticWarn = {
++      fg = roles.diagnostic_warn,
++    },
++    DiagnosticInfo = {
++      fg = roles.diagnostic_info,
++    },
++    DiagnosticHint = {
++      fg = roles.diagnostic_hint,
++    },
++    DiagnosticOk = {
++      fg = roles.cursor_insert,
++    },
++
++    DiagnosticVirtualTextError = {
++      fg = roles.diagnostic_error,
++    },
++    DiagnosticVirtualTextWarn = {
++      fg = roles.diagnostic_warn,
++    },
++    DiagnosticVirtualTextInfo = {
++      fg = roles.diagnostic_info,
++    },
++    DiagnosticVirtualTextHint = {
++      fg = roles.diagnostic_hint,
++    },
++
++    DiagnosticFloatingError = {
++      fg = roles.diagnostic_error,
++    },
++    DiagnosticFloatingWarn = {
++      fg = roles.diagnostic_warn,
++    },
++    DiagnosticFloatingInfo = {
++      fg = roles.diagnostic_info,
++    },
++    DiagnosticFloatingHint = {
++      fg = roles.diagnostic_hint,
++    },
++
++    DiagnosticSignError = {
++      fg = roles.diagnostic_error_strong,
++    },
++    DiagnosticSignWarn = {
++      fg = roles.diagnostic_warn,
++    },
++    DiagnosticSignInfo = {
++      fg = roles.diagnostic_info,
++    },
++    DiagnosticSignHint = {
++      fg = roles.diagnostic_hint,
++    },
++
++    DiagnosticUnderlineError = {
++      undercurl = true,
++      sp = roles.diagnostic_error_strong,
++    },
++    DiagnosticUnderlineWarn = {
++      undercurl = true,
++      sp = roles.diagnostic_warn,
++    },
++    DiagnosticUnderlineInfo = {
++      undercurl = true,
++      sp = roles.diagnostic_info,
++    },
++    DiagnosticUnderlineHint = {
++      undercurl = true,
++      sp = roles.diagnostic_hint,
++    },
++
++    DiagnosticVirtualLinesError = {
++      fg = roles.diagnostic_error,
++    },
++    DiagnosticDeprecated = {
++      strikethrough = true,
++      sp = roles.comment,
++    },
++    DiagnosticUnnecessary = {
++      fg = roles.comment,
++    },
++  })
++end
++
++local function apply_diffs(palette)
++  set_all({
++    DiffAdd = {
++      fg = palette.green,
++      bg = palette.surface,
++    },
++    DiffChange = {
++      fg = palette.yellow,
++      bg = palette.surface,
++    },
++    DiffDelete = {
++      fg = palette.red,
++      bg = palette.surface,
++    },
++    DiffText = {
++      fg = palette.background,
++      bg = palette.blue,
++      bold = true,
++    },
++  })
++end
++
++local function apply_treesitter(roles)
++  local captures = {
++    ["@comment"] = {
++      fg = roles.comment,
++      italic = roles.comment_italic,
++    },
++
++    ["@string"] = { fg = roles.string },
++    ["@string.escape"] = { fg = roles.special },
++    ["@character"] = { fg = roles.string },
++    ["@number"] = { fg = roles.number },
++    ["@number.float"] = { fg = roles.number },
++    ["@boolean"] = { fg = roles.boolean },
++
++    ["@constant"] = { fg = roles.constant },
++    ["@constant.builtin"] = { fg = roles.constant },
++    ["@constant.macro"] = { fg = roles.macro },
++
++    ["@variable"] = { fg = roles.variable },
++    ["@variable.builtin"] = { fg = roles.special },
++    ["@variable.parameter"] = { fg = roles.parameter },
++    ["@variable.member"] = { fg = roles.member },
++    ["@property"] = { fg = roles.member },
++
++    ["@module"] = { fg = roles.namespace },
++    ["@module.builtin"] = { fg = roles.namespace },
++    ["@namespace"] = { fg = roles.namespace },
++
++    ["@type"] = { fg = roles.type },
++    ["@type.builtin"] = { fg = roles.type },
++    ["@type.definition"] = { fg = roles.type },
++    ["@type.parameter"] = {
++      fg = roles.type_parameter,
++      italic = roles.type_parameter_italic,
++    },
++
++    ["@function"] = { fg = roles.callable },
++    ["@function.call"] = { fg = roles.callable },
++    ["@function.builtin"] = { fg = roles.callable },
++    ["@function.method"] = { fg = roles.callable },
++    ["@function.method.call"] = { fg = roles.callable },
++    ["@method"] = { fg = roles.callable },
++    ["@method.call"] = { fg = roles.callable },
++    ["@constructor"] = { fg = roles.type },
++
++    ["@keyword"] = { fg = roles.keyword },
++    ["@keyword.function"] = { fg = roles.keyword },
++    ["@keyword.type"] = { fg = roles.keyword },
++    ["@keyword.modifier"] = { fg = roles.keyword },
++    ["@keyword.conditional"] = { fg = roles.keyword },
++    ["@keyword.repeat"] = { fg = roles.keyword },
++    ["@keyword.return"] = { fg = roles.keyword },
++    ["@keyword.exception"] = { fg = roles.keyword },
++    ["@keyword.operator"] = { fg = roles.keyword },
++    ["@keyword.directive"] = { fg = roles.preprocessor },
++    ["@keyword.directive.define"] = { fg = roles.preprocessor },
++
++    ["@operator"] = { fg = roles.operator },
++
++    ["@punctuation.delimiter"] = { fg = roles.punctuation_dim },
++    ["@punctuation.bracket"] = { fg = roles.punctuation },
++    ["@punctuation.special"] = { fg = roles.special },
++
++    ["@markup.heading"] = { fg = roles.callable, bold = true },
++    ["@markup.link"] = { fg = roles.namespace, underline = true },
++    ["@markup.raw"] = { fg = roles.string },
++  }
++
++  -- Set both the generic captures and explicit C/C++ variants. The explicit
++  -- variants make :Inspect output such as @keyword.type.cpp deterministic.
++  set_captures(captures, C_FAMILY)
++
++  -- Captures created by ~/.config/nvim/queries/cpp/highlights.scm.
++  set_all({
++    ["@punctuation.bracket.round.cpp"] = {
++      fg = roles.punctuation,
++    },
++    ["@punctuation.bracket.curly.cpp"] = {
++      fg = roles.punctuation,
++    },
++    ["@punctuation.bracket.square.cpp"] = {
++      fg = roles.punctuation,
++    },
++
++    ["@type.alias.cpp"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@type.struct.declaration.cpp"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@type.class.declaration.cpp"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@type.union.declaration.cpp"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@type.enum.declaration.cpp"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++
++    ["@type.concept.declaration.cpp"] = {
++      fg = roles.type_parameter,
++      bold = roles.concept_bold,
++    },
++  })
++end
++
++local function apply_lsp_semantic_tokens(roles)
++  local token_types = {
++    ["@lsp.type.namespace"] = { fg = roles.namespace },
++
++    ["@lsp.type.type"] = { fg = roles.type },
++    ["@lsp.type.class"] = { fg = roles.type },
++    ["@lsp.type.struct"] = { fg = roles.type },
++    ["@lsp.type.enum"] = { fg = roles.type },
++    ["@lsp.type.typeParameter"] = {
++      fg = roles.type_parameter,
++      italic = roles.type_parameter_italic,
++    },
++    ["@lsp.type.concept"] = {
++      fg = roles.type_parameter,
++      bold = roles.concept_bold,
++    },
++
++    ["@lsp.type.variable"] = { fg = roles.variable },
++    ["@lsp.type.parameter"] = { fg = roles.parameter },
++    ["@lsp.type.property"] = { fg = roles.member },
++
++    ["@lsp.type.function"] = { fg = roles.callable },
++    ["@lsp.type.method"] = { fg = roles.callable },
++
++    ["@lsp.type.enumMember"] = { fg = roles.constant },
++    ["@lsp.type.macro"] = { fg = roles.macro },
++    ["@lsp.type.operator"] = { fg = roles.operator },
++    ["@lsp.type.bracket"] = { fg = roles.punctuation },
++    -- Concepts, variable templates, and similar global compile-time symbols are
++    -- sometimes reported by clangd as global-scope variables.
++    ["@lsp.typemod.variable.globalScope"] = {
++      fg = roles.constant,
++    },
++  }
++
++  local modifiers = {
++    ["@lsp.typemod.variable.readonly"] = { fg = roles.constant },
++    ["@lsp.typemod.property.readonly"] = { fg = roles.constant },
++    ["@lsp.typemod.variable.static"] = { fg = roles.variable },
++    ["@lsp.typemod.property.static"] = { fg = roles.member },
++
++    ["@lsp.typemod.function.constructorOrDestructor"] = {
++      fg = roles.callable,
++    },
++    ["@lsp.typemod.method.constructorOrDestructor"] = {
++      fg = roles.callable,
++    },
++
++    ["@lsp.typemod.type.defaultLibrary"] = { fg = roles.type },
++    ["@lsp.typemod.class.defaultLibrary"] = { fg = roles.type },
++    ["@lsp.typemod.function.defaultLibrary"] = { fg = roles.callable },
++    ["@lsp.typemod.method.defaultLibrary"] = { fg = roles.callable },
++
++    ["@lsp.typemod.class.declaration"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@lsp.typemod.class.definition"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@lsp.typemod.type.declaration"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++    ["@lsp.typemod.type.definition"] = {
++      fg = roles.type,
++      bold = roles.declaration_bold,
++    },
++  }
++
++  set_captures(token_types, C_FAMILY)
++  set_captures(modifiers, C_FAMILY)
++end
++
++local function apply_legacy_c_cpp(roles)
++  set_all({
++    cStructure = { fg = roles.keyword },
++    cppStructure = { fg = roles.keyword },
++    cTypedef = { fg = roles.type },
++    cppTypedef = { fg = roles.type },
++    cInclude = { fg = roles.preprocessor },
++    cppInclude = { fg = roles.preprocessor },
++  })
++end
++
++function M.apply(mode)
++  local palette = require("theme.palette")[mode]
++
++  if not palette then
++    error("Unknown theme mode: " .. tostring(mode))
++  end
++
++  vim.o.background = mode
++  vim.cmd("highlight clear")
++  vim.g.colors_name = "dotfiles-" .. mode
++
++  local roles = roles_for(mode, palette)
++
++  apply_ui(palette, roles)
++  apply_syntax(roles)
++  apply_diagnostics(roles)
++  apply_diffs(palette)
++  apply_treesitter(roles)
++  apply_lsp_semantic_tokens(roles)
++  apply_legacy_c_cpp(roles)
++end
++
++return M
++
+diff --git a/home/dot_config/nvim/lua/theme/palette.lua.tmpl b/home/dot_config/nvim/lua/theme/palette.lua.tmpl
+new file mode 100644
+index 0000000..13bfa09
+--- /dev/null
++++ b/home/dot_config/nvim/lua/theme/palette.lua.tmpl
+@@ -0,0 +1,45 @@
++return {
++  dark = {
++    background = "{{ .theme.dark.background }}",
++    surface = "{{ .theme.dark.surface }}",
++    surface_alt = "{{ .theme.dark.surface_alt }}",
++    border = "{{ .theme.dark.border }}",
++
++    foreground = "{{ .theme.dark.foreground }}",
++    foreground_dim = "{{ .theme.dark.foreground_dim }}",
++    muted = "{{ .theme.dark.muted }}",
++
++    selection = "{{ .theme.dark.selection }}",
++    cursor = "{{ .theme.dark.cursor }}",
++
++    red = "{{ .theme.dark.red }}",
++    orange = "{{ .theme.dark.orange }}",
++    yellow = "{{ .theme.dark.yellow }}",
++    green = "{{ .theme.dark.green }}",
++    cyan = "{{ .theme.dark.cyan }}",
++    blue = "{{ .theme.dark.blue }}",
++    purple = "{{ .theme.dark.purple }}",
++  },
++
++  light = {
++    background = "{{ .theme.light.background }}",
++    surface = "{{ .theme.light.surface }}",
++    surface_alt = "{{ .theme.light.surface_alt }}",
++    border = "{{ .theme.light.border }}",
++
++    foreground = "{{ .theme.light.foreground }}",
++    foreground_dim = "{{ .theme.light.foreground_dim }}",
++    muted = "{{ .theme.light.muted }}",
++
++    selection = "{{ .theme.light.selection }}",
++    cursor = "{{ .theme.light.cursor }}",
++
++    red = "{{ .theme.light.red }}",
++    orange = "{{ .theme.light.orange }}",
++    yellow = "{{ .theme.light.yellow }}",
++    green = "{{ .theme.light.green }}",
++    cyan = "{{ .theme.light.cyan }}",
++    blue = "{{ .theme.light.blue }}",
++    purple = "{{ .theme.light.purple }}",
++  },
++}
+diff --git a/home/dot_config/nvim/queries/cpp/highlights.scm b/home/dot_config/nvim/queries/cpp/highlights.scm
+new file mode 100644
+index 0000000..a643051
+--- /dev/null
++++ b/home/dot_config/nvim/queries/cpp/highlights.scm
+@@ -0,0 +1,125 @@
++;; extends
++
++; ==============================================================================
++; Template parameter declarations
++; ==============================================================================
++
++; template<typename T>
++; template<class T>
++(type_parameter_declaration
++  (type_identifier) @type.parameter
++  (#set! @type.parameter priority 120))
++
++; template<typename... Ts>
++(variadic_type_parameter_declaration
++  (type_identifier) @type.parameter
++  (#set! @type.parameter priority 120))
++
++; template<typename T = void>
++(optional_type_parameter_declaration
++  name: (type_identifier) @type.parameter
++  (#set! @type.parameter priority 120))
++
++;; extends
++
++; Template-parameter references that clangd occasionally leaves without
++; semantic tokens. Keep this list limited to established project conventions.
++(
++  [
++    (identifier)
++    (type_identifier)
++  ] @type.parameter
++  (#any-of? @type.parameter
++    "T"
++    "U"
++    "V"
++    "R"
++    "To"
++    "From"
++    "Ts"
++    "Us"
++    "Args"
++    "Fn"
++    "Tuple"
++    "Policy"
++    "OtherT"
++    "OtherPolicy")
++  (#set! priority 115)
++)
++
++; ==============================================================================
++; Named type declarations
++; ==============================================================================
++
++; using value_type = T;
++(alias_declaration
++  name: (type_identifier) @type.alias
++  (#set! @type.alias priority 120))
++
++; struct Foo {};
++(struct_specifier
++  name: (type_identifier) @type.struct.declaration
++  (#set! @type.struct.declaration priority 120))
++
++; class Foo {};
++(class_specifier
++  name: (type_identifier) @type.class.declaration
++  (#set! @type.class.declaration priority 120))
++
++; union Foo {};
++(union_specifier
++  name: (type_identifier) @type.union.declaration
++  (#set! @type.union.declaration priority 120))
++
++; enum Foo {};
++(enum_specifier
++  name: (type_identifier) @type.enum.declaration
++  (#set! @type.enum.declaration priority 120))
++
++; concept foo = ...;
++(concept_definition
++  name: (identifier) @type.concept.declaration
++  (#set! @type.concept.declaration priority 130))
++
++
++; ==============================================================================
++; Common C++ naming conventions
++; ==============================================================================
++
++; Standard type aliases:
++; remove_cvref_t, remove_pointer_t, value_type, etc.
++([
++  (identifier)
++  (type_identifier)
++] @type
++  (#match? @type "(_t|_type)$")
++  (#set! @type priority 110))
++
++; Standard variable templates:
++; is_reference_v, is_same_v, is_trivially_copyable_v, etc.
++(identifier) @constant
++  (#match? @constant "_v$")
++  (#set! @constant priority 110)
++
++
++; ==============================================================================
++; Punctuation
++; ==============================================================================
++
++[
++  "("
++  ")"
++] @punctuation.bracket.round
++  (#set! @punctuation.bracket.round priority 105)
++
++[
++  "{"
++  "}"
++] @punctuation.bracket.curly
++  (#set! @punctuation.bracket.curly priority 105)
++
++[
++  "["
++  "]"
++] @punctuation.bracket.square
++  (#set! @punctuation.bracket.square priority 105)
+diff --git a/home/dot_config/tmux/theme.conf.tmpl b/home/dot_config/tmux/theme.conf.tmpl
+new file mode 100644
+index 0000000..1fa1a8a
+--- /dev/null
++++ b/home/dot_config/tmux/theme.conf.tmpl
+@@ -0,0 +1,21 @@
++{{- $palette := .theme.dark }}
++
++THEME_BG="{{ $palette.background }}"
++THEME_SURFACE="{{ $palette.surface }}"
++THEME_SURFACE_ALT="{{ $palette.surface_alt }}"
++THEME_BORDER="{{ $palette.border }}"
++
++THEME_FG="{{ $palette.foreground }}"
++THEME_FG_DIM="{{ $palette.foreground_dim }}"
++THEME_MUTED="{{ $palette.muted }}"
++
++THEME_SELECTION="{{ $palette.selection }}"
++THEME_ACCENT="{{ $palette.blue }}"
++
++THEME_RED="{{ $palette.red }}"
++THEME_ORANGE="{{ $palette.orange }}"
++THEME_YELLOW="{{ $palette.yellow }}"
++THEME_GREEN="{{ $palette.green }}"
++THEME_CYAN="{{ $palette.cyan }}"
++THEME_PURPLE="{{ $palette.purple }}"
++
+diff --git a/home/dot_config/tmux/tmux.conf b/home/dot_config/tmux/tmux.conf
+index 4c749ea..9bf416d 100644
+--- a/home/dot_config/tmux/tmux.conf
++++ b/home/dot_config/tmux/tmux.conf
+@@ -106,80 +106,156 @@ bind-key v if-shell "$is_vim" 'send-keys C-a v' 'split-window -h -c "#{pane_curr
+ bind-key s if-shell "$is_vim" 'send-keys C-a s' 'split-window -v -c "#{pane_current_path}"'
+ bind-key x if-shell "$is_vim" 'send-keys C-a x' 'confirm-before -p "kill-pane #P? (y/n)" kill-pane'
+
++# ==============================================================================
++# Theme
++# ==============================================================================
++
++# Shared dark palette.
++#
++# These are hidden tmux environment variables: tmux can expand them while
++# parsing the config, but they are not inherited by programs started in panes.
++%hidden THEME_BG="#111318"
++%hidden THEME_SURFACE="#181B22"
++%hidden THEME_SURFACE_ALT="#222732"
++%hidden THEME_BORDER="#303746"
++
++%hidden THEME_FG="#DDE3EC"
++%hidden THEME_FG_DIM="#B7C0CE"
++%hidden THEME_MUTED="#7C8797"
++
++%hidden THEME_SELECTION="#2B3545"
++
++%hidden THEME_RED="#D76D77"
++%hidden THEME_ORANGE="#C98B5A"
++%hidden THEME_YELLOW="#D5B66F"
++%hidden THEME_GREEN="#82B87A"
++%hidden THEME_CYAN="#65B8B3"
++%hidden THEME_BLUE="#6D9FD5"
++%hidden THEME_PURPLE="#A889D6"
++
++
++# ==============================================================================
++# Theme: reusable styles
++# ==============================================================================
++
++%hidden TMUX_STATUS_STYLE="fg=$THEME_FG_DIM,bg=$THEME_SURFACE"
++%hidden TMUX_WINDOW_STYLE="fg=$THEME_MUTED,bg=$THEME_SURFACE"
++%hidden TMUX_WINDOW_CURRENT_STYLE="fg=$THEME_BG,bg=$THEME_BLUE,bold"
++
++
++# ==============================================================================
++# Theme: pane borders
++# ==============================================================================
++
++# Show descriptive pane titles assigned by tools such as gdb-tmux.
++set -g pane-border-status top
++set -g pane-border-format \
++  " #[fg=#{?pane_active,$THEME_BLUE,$THEME_MUTED}]#{pane_title}#[default] "
++
++set -g pane-border-style \
++  "fg=$THEME_BORDER"
++
++set -g pane-active-border-style \
++  "fg=$THEME_BLUE"
++
++
++# ==============================================================================
++# Theme: modes, prompts, and popups
++# ==============================================================================
++
++set -g mode-style \
++  "fg=$THEME_BG,bg=$THEME_BLUE,bold"
++
++set -g message-style \
++  "fg=$THEME_BG,bg=$THEME_BLUE,bold"
++
++set -g message-command-style \
++  "fg=$THEME_FG,bg=$THEME_SURFACE_ALT"
++
++set -g popup-style \
++  "fg=$THEME_FG,bg=$THEME_SURFACE"
++
++set -g popup-border-style \
++  "fg=$THEME_BLUE,bg=$THEME_SURFACE"
++
++set -g copy-mode-selection-style \
++  "fg=$THEME_FG,bg=$THEME_SELECTION"
++
++set -g copy-mode-match-style \
++  "fg=$THEME_FG,bg=$THEME_SURFACE_ALT"
++
++set -g copy-mode-current-match-style \
++  "fg=$THEME_BG,bg=$THEME_YELLOW,bold"
++
++
++# ==============================================================================
++# Theme: status bar
++# ==============================================================================
+
+-# =====================================
+-# ===           Theme               ===
+-# =====================================
+-
+-# Feel free to NOT use this variables at all (remove, rename)
+-# this are named colors, just for convenience
+-color_orange="colour166" # 208, 166
+-color_purple="colour134" # 135, 134
+-color_green="colour076" # 070
+-color_blue="colour39"
+-color_yellow="colour220"
+-color_red="colour160"
+-color_black="colour232"
+-color_white="white" # 015
+-color_dark_grey="colour234"
+-
+-# This is a theme CONTRACT, you are required to define variables below
+-# Change values, but not remove/rename variables itself
+-color_dark="$color_black"
+-color_light="$color_white"
+-color_session_text="$color_blue"
+-color_status_text="colour245"
+-color_main="$color_yellow"
+-color_secondary="$color_purple"
+-color_level_ok="$color_green"
+-color_level_warn="$color_yellow"
+-color_level_stress="$color_red"
+-color_window_off_indicator="colour088"
+-color_window_off_status_bg="colour238"
+-color_window_off_status_current_bg="colour254"
+-
+-# =====================================
+-# ===    Appearence and status bar  ===
+-# ======================================
+-
+-set -g mode-style "fg=default,bg=$color_main"
+-
+-# command line style
+-set -g message-style "fg=$color_main,bg=$color_dark"
+-
+-# status line style
+-sf_status_style="fg=$color_status_text,bg=$color_dark_grey"
+-set -g status-style $sf_status_style
+-
+-# window segments in status line
++set -g status-interval 3
++set -g status-justify left
++set -g status-left-length 50
++set -g status-right-length 120
++
++set -g status-style "$TMUX_STATUS_STYLE"
++set -g status-left ""
+ set -g window-status-separator ""
+
+-sf_window_status_format='#[fg=#{?window_activity_flag,red,colour236},bg=colour180] #I #[fg=colour180,bg=colour236] #W '
+-sf_window_status_current_style="fg=$color_dark,bold,bg=$color_main"
+-sf_window_status_current_format='#[fg=#{?window_activity_flag,red,colour236},bg=colour180] #I #[default] #W '
+-set -g window-status-format $sf_window_status_format
+-set -g window-status-current-style $sf_window_status_current_style
+-set -g window-status-current-format $sf_window_status_current_format
++# Inactive windows.
++set -g window-status-format \
++  " #I #W "
++
++set -g window-status-style \
++  "$TMUX_WINDOW_STYLE"
++
++# Current window.
++set -g window-status-current-format \
++  " #I #W "
++
++set -g window-status-current-style \
++  "$TMUX_WINDOW_CURRENT_STYLE"
++
++# Alerts.
++set -g window-status-activity-style \
++  "fg=$THEME_YELLOW,bg=$THEME_SURFACE,bold"
++
++set -g window-status-bell-style \
++  "fg=$THEME_RED,bg=$THEME_SURFACE,bold"
++
++# Pane-number overlay shown by prefix + q.
++set -g display-panes-colour "$THEME_MUTED"
++set -g display-panes-active-colour "$THEME_BLUE"
++
++
++# ==============================================================================
++# Theme: status widgets
++# ==============================================================================
++
++wg_separator="#[fg=$THEME_BORDER]│#[default]"
++
++wg_battery="#{battery_status_fg}#{battery_icon} #{battery_percentage}%#[default]"
++
++wg_date="#[fg=$THEME_MUTED]%a %d %b #[fg=$THEME_FG_DIM]%H:%M#[default]"
+
+-# when window has monitoring notification
+-set -g window-status-activity-style "fg=$color_main"
++wg_is_zoomed="#[fg=$THEME_BG,bg=$THEME_PURPLE,bold]#{?window_zoomed_flag, ZOOM ,}#[default]"
+
+-# outline for active pane
+-set -g pane-border-style "fg=$color_dark,bg=$color_dark_grey"
+-set -g pane-active-border-style "fg=$color_main,bg=$color_dark_grey"
++wg_is_keys_off="#[fg=$THEME_BG,bg=$THEME_RED,bold]#([ \"$(tmux show-option -qv key-table)\" = 'off' ] && printf ' REMOTE SESSION ')#[default]"
+
+-# window style
+-#set -g window-style "bg=$color_dark_grey"
+-#set -g window-active-style "bg=$color_dark"
++set -g status-right \
++  "#{prefix_highlight} $wg_is_keys_off $wg_is_zoomed #{sysstat_cpu} $wg_separator #{sysstat_mem} $wg_separator #{sysstat_loadavg} $wg_separator $wg_date $wg_battery #{online_status}"
+
+-bind -T root F12  \
++
++# ==============================================================================
++# Theme: remote-session mode
++# ==============================================================================
++
++bind -T root F12 \
+   set prefix None \;\
+   set key-table off \;\
+-  set -g window-style "bg=$color_dark_grey" \;\
+-  set -g status-style "fg=$color_dark_grey,bg=$color_dark_grey" \;\
+-  set -g window-status-format "#[fg=$color_dark_grey,bg=$color_dark_grey] #I #[fg=$color_dark_grey,bg=$color_dark_grey] #W " \;\
+-  set -g window-status-current-style "fg=$color_dark_grey,bold,bg=$color_dark_grey" \;\
+-  set -g window-status-current-format "#[fg=$color_dark_grey,bg=$color_dark_grey] #I #[default] #W " \;\
++  set -g window-style "bg=$THEME_SURFACE" \;\
++  set -g status-style "fg=$THEME_SURFACE,bg=$THEME_SURFACE" \;\
++  set -g window-status-style "fg=$THEME_SURFACE,bg=$THEME_SURFACE" \;\
++  set -g window-status-current-style "fg=$THEME_SURFACE,bg=$THEME_SURFACE" \;\
+   if -F '#{pane_in_mode}' 'send-keys -X cancel' \;\
+   set -g status-position top \;\
+   refresh-client -S
+@@ -188,67 +264,64 @@ bind -T off F12 \
+   set -u prefix \;\
+   set -u key-table \;\
+   set -u window-style \;\
+-  set -g status-style $sf_status_style \;\
+-  set -g window-status-format $sf_window_status_format \;\
+-  set -g window-status-current-style $sf_window_status_current_style \;\
+-  set -g window-status-current-format $sf_window_status_current_format \;\
++  set -g status-style "$TMUX_STATUS_STYLE" \;\
++  set -g window-status-style "$TMUX_WINDOW_STYLE" \;\
++  set -g window-status-current-style "$TMUX_WINDOW_CURRENT_STYLE" \;\
+   set -g status-position bottom \;\
+   refresh-client -S
+
+-# general status bar settings
+-set -g status on
+-set -g status-interval 3
+-set -g status-position bottom
+-set -g status-justify left
+-set -g status-right-length 100
+-set -g status-bg $color_dark_grey
+-
+-# define widgets we're going to use in status bar
+-# note, that this is not the complete list, some of them are loaded from plugins
+-wg_battery="#{battery_status_fg} #{battery_icon} #{battery_percentage}%"
+-wg_date="#[fg=$color_secondary]%h %d %H:%M#[default]"
+-wg_user_host="#[fg=$color_secondary]#(whoami)#[default]@#H"
+-wg_is_zoomed="#[fg=$color_dark,bg=$color_secondary]#{?window_zoomed_flag,[Z],}#[default]"
+-# TODO: highlighted for nested local session as well
+-wg_is_keys_off="#[fg=$color_light,bg=$color_window_off_indicator]#([ $(tmux show-option -qv key-table) = 'off' ] && echo '                 ..--~~==[ REMOTE SESSION ]==~~--..                  ')#[default]"
+
+-set -g status-left ""
+-set -g status-right "#{prefix_highlight} $wg_is_keys_off $wg_is_zoomed #{sysstat_cpu} | #{sysstat_mem} | #{sysstat_loadavg} | $wg_date $wg_battery #{online_status}"
++# ==============================================================================
++# Theme: plugin colors
++# ==============================================================================
++
++# tmux-online-status
++set -g @online_icon \
++  "#[fg=$THEME_GREEN]●#[default]"
++
++set -g @offline_icon \
++  "#[fg=$THEME_RED]●#[default]"
+
+-# online and offline icon for tmux-online-status
+-set -g @online_icon "#[fg=$color_level_ok]●#[default]"
+-set -g @offline_icon "#[fg=$color_level_stress]●#[default]"
++# tmux-plugin-sysstat
++set -g @sysstat_mem_view_tmpl \
++  "MEM:#[fg=#{mem.color}]#{mem.pused}#[default] #{mem.used}"
+
+-# Configure view templates for tmux-plugin-sysstat "MEM" and "CPU" widget
+-set -g @sysstat_mem_view_tmpl 'MEM:#[fg=#{mem.color}]#{mem.pused}#[default] #{mem.used}'
++set -g @sysstat_cpu_color_low "$THEME_GREEN"
++set -g @sysstat_cpu_color_medium "$THEME_YELLOW"
++set -g @sysstat_cpu_color_stress "$THEME_RED"
+
+-# Configure colors for tmux-plugin-sysstat "MEM" and "CPU" widget
+-set -g @sysstat_cpu_color_low "$color_level_ok"
+-set -g @sysstat_cpu_color_medium "$color_level_warn"
+-set -g @sysstat_cpu_color_stress "$color_level_stress"
++set -g @sysstat_mem_color_low "$THEME_GREEN"
++set -g @sysstat_mem_color_medium "$THEME_YELLOW"
++set -g @sysstat_mem_color_stress "$THEME_RED"
+
+-set -g @sysstat_mem_color_low "$color_level_ok"
+-set -g @sysstat_mem_color_medium "$color_level_warn"
+-set -g @sysstat_mem_color_stress "$color_level_stress"
++set -g @sysstat_swap_color_low "$THEME_GREEN"
++set -g @sysstat_swap_color_medium "$THEME_YELLOW"
++set -g @sysstat_swap_color_stress "$THEME_RED"
+
+-set -g @sysstat_swap_color_low "$color_level_ok"
+-set -g @sysstat_swap_color_medium "$color_level_warn"
+-set -g @sysstat_swap_color_stress "$color_level_stress"
++# tmux-battery
++set -g @batt_color_full_charge \
++  "#[fg=$THEME_GREEN]"
+
+-# Configure tmux-battery widget colors
+-set -g @batt_color_full_charge "#[fg=$color_level_ok]"
+-set -g @batt_color_high_charge "#[fg=$color_level_ok]"
+-set -g @batt_color_medium_charge "#[fg=$color_level_warn]"
+-set -g @batt_color_low_charge "#[fg=$color_level_stress]"
++set -g @batt_color_high_charge \
++  "#[fg=$THEME_GREEN]"
+
+-# Configure tmux-prefix-highlight colors
++set -g @batt_color_medium_charge \
++  "#[fg=$THEME_YELLOW]"
++
++set -g @batt_color_low_charge \
++  "#[fg=$THEME_RED]"
++
++# tmux-prefix-highlight
+ set -g @prefix_highlight_output_prefix '['
+ set -g @prefix_highlight_output_suffix ']'
+-set -g @prefix_highlight_fg "$color_dark"
+-set -g @prefix_highlight_bg "$color_secondary"
++
++set -g @prefix_highlight_fg "$THEME_BG"
++set -g @prefix_highlight_bg "$THEME_PURPLE"
++
+ set -g @prefix_highlight_show_copy_mode 'on'
+-set -g @prefix_highlight_copy_mode_attr "fg=$color_dark,bg=$color_secondary"
+
++set -g @prefix_highlight_copy_mode_attr \
++  "fg=$THEME_BG,bg=$THEME_PURPLE"
+
+ # ============================
+ # ===       Plugins        ===
+diff --git a/home/dot_gdbinit b/home/dot_gdbinit
+index ab26090..8f7f3cb 100644
+--- a/home/dot_gdbinit
++++ b/home/dot_gdbinit
+@@ -1,16 +1,26 @@
+ set confirm off
+ set pagination off
++
+ set print pretty on
+ set print object on
+ set print static-members on
+ set print vtbl on
+ set print demangle on
++
+ set demangle-style auto
+ set disassemble-next-line on
++set disassembly-flavor intel
++
+ set history save on
+ set history size 10000
+ set history filename ~/.cache/gdb/history
+-set debuginfod enabled on
++
++python
++try:
++    gdb.execute("set debuginfod enabled on")
++except gdb.error:
++    pass
++end
+
+ define btfull
+     thread apply all bt full
+@@ -36,6 +46,7 @@ define hook-quit
+     set confirm off
+ end
+
++
+ document btfull
+ Show full backtraces for all threads.
+ end
+@@ -55,3 +66,17 @@ end
+ document cls
+ Clear the terminal.
+ end
++
++
++# ==============================================================================
++# GDB dashboard
++# ==============================================================================
++
++source ~/.local/share/gdb-dashboard/dashboard.gdb
++
++# The normal terminal should remain usable even when GDB is started outside
++# the tmux dashboard launcher.
++dashboard -layout source assembly registers stack threads expressions memory
++
++dashboard source -style height 15
++dashboard assembly -style height 15
+diff --git a/home/dot_local/bin/executable_gdb-tmux b/home/dot_local/bin/executable_gdb-tmux
+new file mode 100644
+index 0000000..2f16376
+--- /dev/null
++++ b/home/dot_local/bin/executable_gdb-tmux
+@@ -0,0 +1,196 @@
++#!/usr/bin/env bash
++
++set -euo pipefail
++
++die() {
++    printf 'gdb-tmux: %s\n' "$*" >&2
++    exit 1
++}
++
++cleanup_window() {
++    if [[ -n "${window_id:-}" ]]; then
++        tmux kill-window -t "$window_id" 2>/dev/null || true
++    fi
++}
++
++command -v tmux >/dev/null 2>&1 ||
++    die "tmux is not installed"
++
++command -v gdb >/dev/null 2>&1 ||
++    die "gdb is not installed"
++
++[[ -n "${TMUX:-}" ]] ||
++    die "must be run inside an existing tmux session"
++
++working_directory="$PWD"
++window_name="${GDB_TMUX_WINDOW_NAME:-gdb}"
++
++interaction_pane="$(
++    tmux new-window \
++        -d \
++        -P \
++        -F '#{pane_id}' \
++        -n "$window_name" \
++        -c "$working_directory"
++)"
++
++window_id="$(
++    tmux display-message \
++        -p \
++        -t "$interaction_pane" \
++        '#{window_id}'
++)"
++
++trap cleanup_window INT TERM
++
++# ------------------------------------------------------------------------------
++# Layout
++#
++# ┌──────────────────────────────┬──────────────────────────────┐
++# │                              │ Source                       │
++# │                              ├──────────────────────────────┤
++# │ GDB interaction              │ Assembly                     │
++# │                              ├──────────────────────────────┤
++# │                              │ Registers                    │
++# ├──────────────────────────────┼──────────────────────────────┤
++# │ Stack / threads              │ Memory                       │
++# └──────────────────────────────┴──────────────────────────────┘
++# ------------------------------------------------------------------------------
++
++source_pane="$(
++    tmux split-window \
++        -h \
++        -P \
++        -F '#{pane_id}' \
++        -t "$interaction_pane" \
++        -c "$working_directory" \
++        -l '45%'
++)"
++
++stack_pane="$(
++    tmux split-window \
++        -v \
++        -P \
++        -F '#{pane_id}' \
++        -t "$interaction_pane" \
++        -c "$working_directory" \
++        -l '28%'
++)"
++
++assembly_pane="$(
++    tmux split-window \
++        -v \
++        -P \
++        -F '#{pane_id}' \
++        -t "$source_pane" \
++        -c "$working_directory" \
++        -l '70%'
++)"
++
++registers_pane="$(
++    tmux split-window \
++        -v \
++        -P \
++        -F '#{pane_id}' \
++        -t "$assembly_pane" \
++        -c "$working_directory" \
++        -l '65%'
++)"
++
++memory_pane="$(
++    tmux split-window \
++        -v \
++        -P \
++        -F '#{pane_id}' \
++        -t "$registers_pane" \
++        -c "$working_directory" \
++        -l '50%'
++)"
++
++tmux select-pane -t "$interaction_pane" -T 'GDB'
++tmux select-pane -t "$source_pane"      -T 'Source'
++tmux select-pane -t "$assembly_pane"    -T 'Assembly'
++tmux select-pane -t "$registers_pane"   -T 'Registers'
++tmux select-pane -t "$memory_pane"      -T 'Memory'
++tmux select-pane -t "$stack_pane"       -T 'Stack / Threads'
++
++pane_tty() {
++    tmux display-message -p -t "$1" '#{pane_tty}'
++}
++
++source_tty="$(pane_tty "$source_pane")"
++assembly_tty="$(pane_tty "$assembly_pane")"
++registers_tty="$(pane_tty "$registers_pane")"
++memory_tty="$(pane_tty "$memory_pane")"
++stack_tty="$(pane_tty "$stack_pane")"
++
++runtime_directory="$(
++    mktemp -d "${TMPDIR:-/tmp}/gdb-tmux.XXXXXXXX"
++)"
++
++dashboard_commands="$runtime_directory/dashboard.gdb"
++
++cat >"$dashboard_commands" <<EOF
++dashboard -enabled off
++
++dashboard -layout source assembly registers stack threads expressions memory
++
++dashboard source -output $source_tty
++dashboard assembly -output $assembly_tty
++dashboard registers -output $registers_tty
++dashboard memory -output $memory_tty
++
++dashboard stack -output $stack_tty
++dashboard threads -output $stack_tty
++dashboard expressions -output $stack_tty
++
++dashboard source -style height 0
++dashboard assembly -style height 0
++EOF
++
++# Each dashboard pane only needs an attached terminal. GDB writes directly to
++# its TTY, so keep the shell process idle without generating output.
++for pane in \
++    "$source_pane" \
++    "$assembly_pane" \
++    "$registers_pane" \
++    "$memory_pane" \
++    "$stack_pane"
++do
++    tmux send-keys \
++        -t "$pane" \
++        "printf '\033[2J\033[H'; exec tail -f /dev/null" \
++        Enter
++done
++
++runner="$runtime_directory/run-gdb"
++
++{
++    printf '#!/usr/bin/env bash\n'
++    printf '\n'
++    printf 'set +e\n'
++    printf '\n'
++    printf 'gdb -x %q' "$dashboard_commands"
++
++    for argument in "$@"; do
++        printf ' %q' "$argument"
++    done
++
++    printf '\n'
++    printf 'gdb_status=$?\n'
++    printf 'rm -rf %q\n' "$runtime_directory"
++    printf 'tmux kill-window -t %q\n' "$window_id"
++    printf 'exit "$gdb_status"\n'
++} >"$runner"
++
++chmod 0700 "$runner"
++
++tmux respawn-pane \
++    -k \
++    -t "$interaction_pane" \
++    -c "$working_directory" \
++    "$runner"
++
++tmux select-pane -t "$interaction_pane"
++tmux select-window -t "$window_id"
++
+diff --git a/home/dot_zsh/functions/gdb-on-target.zsh b/home/dot_zsh/functions/gdb-on-target.zsh
+index 5a676b2..b32de14 100644
+--- a/home/dot_zsh/functions/gdb-on-target.zsh
++++ b/home/dot_zsh/functions/gdb-on-target.zsh
+@@ -87,9 +87,16 @@ gdb_on_target() {
+     remote_command="${env_command} ${remote_command}"
+   fi
+
+-  gdb -q "$file_path" \
++  local gdb_command=(gdb)
++
++  if [[ -n "${TMUX:-}" ]] && (( $+commands[gdb-tmux] )); then
++    gdb_command=(gdb-tmux)
++  fi
++
++  "$gdb_command[@]" -q "$file_path" \
+     -ex "set sysroot target:" \
+     -ex "set exec-file-mismatch off" \
+     -ex "target remote | ssh -T $remote_host \"$remote_command\"" \
++    -ex "dashboard -enabled on" \
+     "${gdb_extra_args[@]}"
+ }
 font-thicken=true
 font-thicken-strength=1
 adjust-cell-height=1
 font-family = JetBrains Mono
 
-theme                   = TokyoNight Moon
-cursor-style            = block
-term                    = xterm-256color
-unfocused-split-fill    = "black"
+cursor-style = block
+term = xterm-256color
 mouse-hide-while-typing = true
 
-copy-on-select           = clipboard
-clipboard-read           = allow
-clipboard-write          = allow
+copy-on-select = clipboard
+clipboard-read = allow
+clipboard-write = allow
 
 
 keybind = global:f12=toggle_quick_terminal

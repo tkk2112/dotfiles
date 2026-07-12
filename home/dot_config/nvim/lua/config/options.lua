@@ -68,3 +68,10 @@ vim.g.loaded_ruby_provider = 0
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
   command = "checktime",
 })
+
+vim.opt.guicursor = {
+  "n-v-c-sm:block-Cursor",
+  "i-ci-ve:block-CursorInsert",
+  "r-cr:block-CursorReplace",
+  "o:block-Cursor",
+}
