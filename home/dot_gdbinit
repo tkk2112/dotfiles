@@ -1,16 +1,26 @@
 set confirm off
 set pagination off
+
 set print pretty on
 set print object on
 set print static-members on
 set print vtbl on
 set print demangle on
+
 set demangle-style auto
 set disassemble-next-line on
+set disassembly-flavor intel
+
 set history save on
 set history size 10000
 set history filename ~/.cache/gdb/history
-set debuginfod enabled on
+
+python
+try:
+    gdb.execute("set debuginfod enabled on")
+except gdb.error:
+    pass
+end
 
 define btfull
     thread apply all bt full
@@ -36,6 +46,7 @@ define hook-quit
     set confirm off
 end
 
+
 document btfull
 Show full backtraces for all threads.
 end
@@ -55,3 +66,17 @@ end
 document cls
 Clear the terminal.
 end
+
+
+# ==============================================================================
+# GDB dashboard
+# ==============================================================================
+
+source ~/.local/share/gdb-dashboard/dashboard.gdb
+
+# The normal terminal should remain usable even when GDB is started outside
+# the tmux dashboard launcher.
+dashboard -layout source assembly registers stack threads expressions memory
+
+dashboard source -style height 15
+dashboard assembly -style height 15
