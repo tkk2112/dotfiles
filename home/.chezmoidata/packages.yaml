@@ -103,6 +103,10 @@ packages:
     - name: cmake
       group: development
 
+    - name: tree-sitter-cli
+      group: development
+      managers: [brew, dnf, pacman]
+
     - name: code-minimap
       group: development
       managers: [brew]
