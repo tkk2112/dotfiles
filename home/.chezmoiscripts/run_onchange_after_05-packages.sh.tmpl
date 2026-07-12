@@ -58,6 +58,13 @@ APT_PACKAGES="$(cat <<'EOF'
 EOF
 )"
 
+APT_PPAS="$(cat <<'EOF'
+{{- range (.packages.apt.ppas | default (list)) }}
+{{ . }}
+{{- end }}
+EOF
+)"
+
 DNF_PACKAGES="$(cat <<'EOF'
 {{ template "packageLines" (list "dnf" $profiles .packages.catalog) }}
 EOF
@@ -166,13 +173,58 @@ install_brew() {
     install_brew_casks
 }
 
+install_apt_ppas() {
+    ppas="$(normalize_packages "$APT_PPAS")"
+
+    if [ -z "$ppas" ]; then
+        printf 'No apt PPAs configured\n'
+        return 0
+    fi
+
+    if [ ! -r /etc/os-release ]; then
+        printf 'Cannot determine Linux distribution; skipping apt PPAs\n' >&2
+        return 0
+    fi
+
+    # shellcheck disable=SC1091
+    . /etc/os-release
+
+    # Launchpad PPAs are Ubuntu-specific. Do not attempt to add them on Debian
+    # or another distribution that happens to use apt.
+    if [ "${ID:-}" != "ubuntu" ]; then
+        printf 'Skipping Ubuntu PPAs on distribution: %s\n' "${ID:-unknown}"
+        return 0
+    fi
+
+    install_root_packages apt-bootstrap \
+        "software-properties-common" \
+        env DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y --no-install-recommends
+
+    print_packages "Ubuntu PPA" "$ppas"
+
+    while IFS= read -r ppa; do
+        [ -n "$ppa" ] || continue
+        run_as_root add-apt-repository -y "$ppa"
+    done <<EOF
+$ppas
+EOF
+
+    # Refresh metadata after adding the repositories.
+    run_as_root apt-get update
+}
+
 install_apt() {
     if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
         printf 'Skipping apt packages because owned profile is not enabled\n'
-        exit 0
+        return 0
     fi
 
+    # Initial metadata is needed to install software-properties-common.
     run_as_root apt-get update
+
+    # On Ubuntu, add configured PPAs before installing the package catalog.
+    install_apt_ppas
 
     install_root_packages apt "$APT_PACKAGES" \
         env DEBIAN_FRONTEND=noninteractive \

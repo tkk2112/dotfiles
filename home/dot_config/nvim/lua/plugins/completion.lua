@@ -1,6 +1,7 @@
 return {
   {
     "saghen/blink.cmp",
+    commit = "cfe100c",
     dependencies = {
       "saghen/blink.lib",
       "rafamadriz/friendly-snippets",
