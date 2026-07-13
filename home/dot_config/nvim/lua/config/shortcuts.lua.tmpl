@@ -1,0 +1,43 @@
+return {
+save = {
+    "<C-s>",
+{{ if eq .chezmoi.os "darwin" }}
+    "<D-s>",
+{{ end }}
+  },
+
+  close_buffer = {
+    "<C-w>",
+{{ if eq .chezmoi.os "darwin" }}
+    "<D-w>",
+{{ end }}
+  },
+
+  search_buffer = {
+    "<C-F>",
+{{ if eq .chezmoi.os "darwin" }}
+    "<D-f>",
+{{ end }}
+  },
+
+  search_project = {
+    "<C-S-F>",
+{{ if eq .chezmoi.os "darwin" }}
+    "<D-F>",
+{{ end }}
+  },
+
+  project_files = {
+    "<C-p>",
+{{ if eq .chezmoi.os "darwin" }}
+    "<D-p>",
+{{ end }}
+  },
+
+  home_files = {
+    "<C-o>",
+{{ if eq .chezmoi.os "darwin" }}
+    "<D-o>",
+{{ end }}
+  },
+}
