@@ -26,17 +26,23 @@
   "packageRules": [
     {
       "description": "Group GitHub Actions updates",
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "github actions"
     },
     {
       "description": "Group pre-commit hook updates",
-      "matchManagers": ["pre-commit"],
+      "matchManagers": [
+        "pre-commit"
+      ],
       "groupName": "pre-commit hooks"
     },
     {
       "description": "Group pinned bootstrap tool updates",
-      "matchManagers": ["custom.regex"],
+      "matchManagers": [
+        "custom.regex"
+      ],
       "groupName": "bootstrap tool versions"
     }
   ]
