@@ -66,11 +66,7 @@ local function jump_filtered(direction)
   local keys = direction == "back" and "<C-o>" or "<C-i>"
 
   for _ = 1, 20 do
-    vim.api.nvim_feedkeys(
-      vim.api.nvim_replace_termcodes(keys, true, false, true),
-      "n",
-      false
-    )
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), "n", false)
 
     vim.cmd("redraw")
 
@@ -92,12 +88,7 @@ map("n", "<leader>ww", "<cmd>write<cr>", { desc = "Write current file" })
 map("n", "<leader>wa", autosave.save_all, { desc = "Write all modified files" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 
-map_shortcuts(
-  { "n", "i" },
-  shortcuts.save,
-  "<cmd>write<cr>",
-  { desc = "Write current file" }
-)
+map_shortcuts({ "n", "i" }, shortcuts.save, "<cmd>write<cr>", { desc = "Write current file" })
 
 map("n", "<leader>aa", select_all, { desc = "Select all" })
 map("i", "<leader>aa", function()
@@ -106,50 +97,15 @@ map("i", "<leader>aa", function()
 end, { desc = "Select all" })
 
 -- Close buffer
-map_shortcuts(
-  "n",
-  shortcuts.close_buffer,
-  close_buffer,
-  { desc = "Close buffer" }
-)
-
-map_shortcuts(
-  "i",
-  shortcuts.close_buffer,
-  from_insert(close_buffer),
-  { desc = "Close buffer" }
-)
-
+map_shortcuts("n", shortcuts.close_buffer, close_buffer, { desc = "Close buffer" })
+map_shortcuts("i", shortcuts.close_buffer, from_insert(close_buffer), { desc = "Close buffer" })
 map("n", "<leader>bd", close_buffer, { desc = "Close buffer" })
 
 -- Search
-map_shortcuts(
-  "n",
-  shortcuts.search_buffer,
-  search.buffer,
-  { desc = "Search buffer" }
-)
-
-map_shortcuts(
-  "i",
-  shortcuts.search_buffer,
-  from_insert(search.buffer),
-  { desc = "Search buffer" }
-)
-
-map_shortcuts(
-  "n",
-  shortcuts.search_project,
-  search.project,
-  { desc = "Search project" }
-)
-
-map_shortcuts(
-  "i",
-  shortcuts.search_project,
-  from_insert(search.project),
-  { desc = "Search project" }
-)
+map_shortcuts("n", shortcuts.search_buffer, search.buffer, { desc = "Search buffer" })
+map_shortcuts("i", shortcuts.search_buffer, from_insert(search.buffer), { desc = "Search buffer" })
+map_shortcuts("n", shortcuts.search_project, search.project, { desc = "Search project" })
+map_shortcuts("i", shortcuts.search_project, from_insert(search.project), { desc = "Search project" })
 
 map("n", "<leader>/", search.buffer, { desc = "Search buffer" })
 map("n", "<leader>sg", search.project, { desc = "Search project" })
@@ -196,32 +152,11 @@ map("t", "<C-a>x", tmux_nav.close_window, { desc = "Close window" })
 -- Project/file pickers
 map("n", "<leader>pf", project.find_files, { desc = "Find file in project" })
 
-map_shortcuts(
-  "n",
-  shortcuts.project_files,
-  project.find_files,
-  { desc = "Find file in project" }
-)
+map_shortcuts("n", shortcuts.project_files, project.find_files, { desc = "Find file in project" })
+map_shortcuts("i", shortcuts.project_files, from_insert(project.find_files), { desc = "Find file in project" })
 
-map_shortcuts(
-  "i",
-  shortcuts.project_files,
-  from_insert(project.find_files),
-  { desc = "Find file in project" }
-)
-map_shortcuts(
-  "n",
-  shortcuts.home_files,
-  pickers.find_files_from_home,
-  { desc = "Find file from home" }
-)
-
-map_shortcuts(
-  "i",
-  shortcuts.home_files,
-  from_insert(pickers.find_files_from_home),
-  { desc = "Find file from home" }
-)
+map_shortcuts("n", shortcuts.home_files, pickers.find_files_from_home, { desc = "Find file from home" })
+map_shortcuts("i", shortcuts.home_files, from_insert(pickers.find_files_from_home), { desc = "Find file from home" })
 
 -- Project actions
 map("n", "<leader>pp", project.pick, { desc = "Pick project" })
@@ -242,13 +177,23 @@ map("n", "<leader>bd", close_buffer, { desc = "Close buffer" })
 map("n", "\27[27;5;9~", "<cmd>BufferLineCycleNext<cr>", { desc = "Next buffer" })
 map("n", "\27[27;6;9~", "<cmd>BufferLineCyclePrev<cr>", { desc = "Previous buffer" })
 
-map("i", "\27[27;5;9~", from_insert(function()
-  vim.cmd("BufferLineCycleNext")
-end), { desc = "Next buffer" })
+map(
+  "i",
+  "\27[27;5;9~",
+  from_insert(function()
+    vim.cmd("BufferLineCycleNext")
+  end),
+  { desc = "Next buffer" }
+)
 
-map("i", "\27[27;6;9~", from_insert(function()
-  vim.cmd("BufferLineCyclePrev")
-end), { desc = "Previous buffer" })
+map(
+  "i",
+  "\27[27;6;9~",
+  from_insert(function()
+    vim.cmd("BufferLineCyclePrev")
+  end),
+  { desc = "Previous buffer" }
+)
 
 -- Jump history
 map("n", "<M-Left>", function()

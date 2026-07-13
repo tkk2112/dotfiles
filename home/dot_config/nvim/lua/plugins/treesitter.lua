@@ -64,8 +64,7 @@ local query_dependencies = {
   "jsx",
 }
 
-local install_targets =
-  vim.list_extend(vim.deepcopy(languages), query_dependencies)
+local install_targets = vim.list_extend(vim.deepcopy(languages), query_dependencies)
 
 return {
   {
@@ -88,10 +87,7 @@ return {
     end,
 
     config = function()
-      local group = vim.api.nvim_create_augroup(
-        "dotfiles_treesitter",
-        { clear = true }
-      )
+      local group = vim.api.nvim_create_augroup("dotfiles_treesitter", { clear = true })
 
       -- XSLT uses the XML parser.
       vim.treesitter.language.register("xml", "xslt")

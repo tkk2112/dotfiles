@@ -1,3 +1,3 @@
 return {
-  'saghen/blink.indent',
+  "saghen/blink.indent",
 }
