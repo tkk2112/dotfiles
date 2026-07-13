@@ -1,0 +1,14 @@
+---
+line_ending: lf
+match_type: doublestar
+gitignore_excludes: true
+
+exclude:
+  - "**/*.tmpl"
+
+formatter:
+  type: basic
+  indent: 2
+  retain_line_breaks_single: true
+  trim_trailing_whitespace: true
+  eof_newline: true
