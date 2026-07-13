@@ -3,6 +3,16 @@
 
 local M = {}
 
+local function buffer_dir(bufnr)
+  local filename = vim.api.nvim_buf_get_name(bufnr)
+
+  if filename == "" then
+    return nil
+  end
+
+  return vim.fs.dirname(filename)
+end
+
 local external_formatters = {
   lua = {
     cmd = "stylua",
@@ -10,6 +20,15 @@ local external_formatters = {
       return {
         "--stdin-filepath",
         vim.api.nvim_buf_get_name(bufnr),
+        "-",
+      }
+    end,
+  },
+  yaml = {
+    cmd = "yamlfmt",
+    cwd = buffer_dir,
+    args = function()
+      return {
         "-",
       }
     end,
@@ -32,6 +51,14 @@ local external_formatters = {
     end,
   },
 }
+
+local function formatter_cwd(formatter, bufnr)
+  if type(formatter.cwd) == "function" then
+    return formatter.cwd(bufnr)
+  end
+
+  return formatter.cwd
+end
 
 local function is_real_file_buffer(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -122,6 +149,7 @@ local function format_with_external(bufnr, formatter, notify_missing)
 
   local result = vim
     .system(formatter_command(formatter, bufnr), {
+      cwd = formatter_cwd(formatter, bufnr),
       stdin = buffer_text(bufnr),
       text = true,
     })

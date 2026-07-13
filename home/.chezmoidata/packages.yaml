@@ -1,4 +1,3 @@
----
 # Package catalog for the chezmoi package bootstrap script.
 #
 
@@ -30,6 +29,9 @@ packages:
     - name: stylua
       group: development
       package: git+https://github.com/johnnymorganz/stylua@v2.5.2
+    - name: yamlfmt
+      group: development
+      package: google-yamlfmt==0.21.0
 
   # Rules:
   # - Packages without a group belong to the always-installed core set.
