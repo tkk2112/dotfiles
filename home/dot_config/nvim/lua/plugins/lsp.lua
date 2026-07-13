@@ -26,9 +26,13 @@ return {
   {
     "neovim/nvim-lspconfig",
     config = function()
-      -- Homebrew path avoids GUI/Neovide PATH differences on macOS.
+      local executables = require("config.executables")
+      local cmake_language_server = executables.find("cmake-language-server", {
+        "/opt/homebrew/bin/cmake-language-server",
+      })
+
       vim.lsp.config("cmake", {
-        cmd = { "/opt/homebrew/bin/cmake-language-server" },
+        cmd = { cmake_language_server },
         filetypes = { "cmake" },
         root_markers = {
           "CMakePresets.json",

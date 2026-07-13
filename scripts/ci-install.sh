@@ -63,7 +63,15 @@ fi
 
 export DOTFILES_CI=true
 export DOTFILES_LOCATION="${DOTFILES_LOCATION:-${GITHUB_WORKSPACE:-$(git rev-parse --show-toplevel)}}"
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+
+if command -v apt-get >/dev/null 2>&1; then
+    section "Installing tree-sitter CLI"
+    run "$DOTFILES_LOCATION/scripts/install-tree-sitter-cli.sh"
+
+    section "Ensuring a supported Neovim version"
+    run "$DOTFILES_LOCATION/scripts/install-neovim.sh"
+fi
 
 section "Running setup.sh"
 run sh "$DOTFILES_LOCATION/setup.sh"

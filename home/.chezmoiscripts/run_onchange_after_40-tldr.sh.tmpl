@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list "base") }}
+{{ $profiles := .profiles | default (list) }}
 PROFILE_SERVER="{{ if has "server" $profiles }}true{{ else }}false{{ end }}"
 PROFILE_WORKSTATION="{{ if has "workstation" $profiles }}true{{ else }}false{{ end }}"
 

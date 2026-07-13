@@ -226,8 +226,13 @@ vim.api.nvim_create_autocmd("LspAttach", {
 })
 
 vim.api.nvim_create_user_command("LspCheck", function()
+  local executables = require("config.executables")
+  local cmake_language_server = executables.find("cmake-language-server", {
+    "/opt/homebrew/bin/cmake-language-server",
+  })
+
   print("filetype: " .. vim.bo.filetype)
-  print("cmake-language-server executable: " .. vim.fn.executable("/opt/homebrew/bin/cmake-language-server"))
+  print("cmake-language-server: " .. cmake_language_server)
 
   local clients = vim.lsp.get_clients({ bufnr = 0 })
   if vim.tbl_isempty(clients) then

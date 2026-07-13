@@ -31,7 +31,7 @@ jobs:
 
   install-linux:
     needs: check
-    name: install on ubuntu / base,workstation,development,owned
+    name: install on ubuntu / workstation,development,owned
     runs-on: ubuntu-latest
 
     container:
@@ -44,12 +44,12 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: base,workstation,development,owned
+          DOTFILES_PROFILES: workstation,development,owned
         run: ./scripts/ci-install.sh
 
   install-macos:
     needs: check
-    name: install on macos:latest / base,workstation,development,owned
+    name: install on macos:latest / workstation,laptop,development,owned
     runs-on: macos-latest
 
     steps:
@@ -59,7 +59,7 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: base,workstation,development,owned
+          DOTFILES_PROFILES: workstation,laptop,development,owned
         run: ./scripts/ci-install.sh
 
   bootstrap-url-check:
