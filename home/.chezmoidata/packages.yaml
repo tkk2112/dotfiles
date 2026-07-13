@@ -35,6 +35,11 @@ packages:
     - name: taplo
       group: development
       package: taplo==0.9.3
+    - name: mdformat
+      group: development
+      package: mdformat==1.0.0
+      with:
+        - mdformat-gfm==1.0.0
 
   # Rules:
   # - Packages without a group belong to the always-installed core set.
