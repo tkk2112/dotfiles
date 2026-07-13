@@ -72,6 +72,9 @@ packages:
     - name: git-gui
       managers: [brew, apt, dnf]
 
+    - name: tree-sitter-cli
+      managers: [brew, dnf, pacman]
+
     - name: rsync
       managers: [apt, dnf, pacman]
 
@@ -106,10 +109,6 @@ packages:
 
     - name: cmake
       group: development
-
-    - name: tree-sitter-cli
-      group: development
-      managers: [brew, dnf, pacman]
 
     - name: code-minimap
       group: development
