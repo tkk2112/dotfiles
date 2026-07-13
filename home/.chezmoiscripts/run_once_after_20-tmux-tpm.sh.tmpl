@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+{{ $profiles := .profiles | default (list) }}
+PROFILE_LAPTOP="{{ if has "laptop" $profiles }}true{{ else }}false{{ end }}"
+
 command -v git >/dev/null 2>&1 || exit 0
 
 tpm_dir="$HOME/.config/tmux/plugins/tpm"
@@ -10,6 +13,7 @@ if [ ! -d "$tpm_dir/.git" ]; then
 fi
 
 if command -v tmux >/dev/null 2>&1 && [ -x "$tpm_dir/bin/install_plugins" ]; then
+    printf 'Installing tmux plugins (laptop profile: %s)\n' "$PROFILE_LAPTOP"
     tmux source "$HOME/.config/tmux/tmux.conf" || true
     "$tpm_dir/bin/install_plugins" || true
 fi

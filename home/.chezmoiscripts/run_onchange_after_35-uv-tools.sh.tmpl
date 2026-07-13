@@ -1,17 +1,17 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list "base") }}
+{{ $profiles := .profiles | default (list) }}
 {{ define "uvToolLines" }}
 {{- $profiles := index . 0 -}}
 {{- $tools := index . 1 | default (list) -}}
 {{- range $tool := $tools -}}
 {{- $name := get $tool "name" -}}
-{{- $group := get $tool "group" | default "base" -}}
+{{- $group := get $tool "group" | default "core" -}}
 {{- $package := get $tool "package" | default $name -}}
 {{- $command := get $tool "command" | default $name -}}
 {{- $with := get $tool "with" | default (list) -}}
-{{- $enabledGroup := or (eq $group "base") (has $group $profiles) -}}
+{{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
 {{- if and $name $enabledGroup -}}
 {{ printf "%s|%s" $package $command }}
 {{- range $dep := $with -}}

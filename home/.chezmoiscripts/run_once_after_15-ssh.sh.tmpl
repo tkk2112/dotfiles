@@ -4,16 +4,27 @@ set -eu
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 
+keys_dir="$HOME/.ssh/keys"
 keys_target="$HOME/ProtonDrive/unixprofile/.ssh/keys"
 
-if [ ! -e "$HOME/.ssh/keys" ]; then
-  if [ -d "$keys_target" ]; then
-    ln -s "$keys_target" "$HOME/.ssh/keys"
-  else
-    mkdir -p "$HOME/.ssh/keys"
-  fi
+if [ -L "$keys_dir" ] && [ ! -e "$keys_dir" ]; then
+    rm "$keys_dir"
 fi
-chmod 700 "$HOME/.ssh/keys"
+
+if [ ! -e "$keys_dir" ]; then
+    if [ -d "$keys_target" ]; then
+        ln -s "$keys_target" "$keys_dir"
+    else
+        mkdir -p "$keys_dir"
+    fi
+fi
+
+if [ ! -d "$keys_dir" ]; then
+    printf 'SSH keys path is not a directory: %s\n' "$keys_dir" >&2
+    exit 1
+fi
+
+chmod 700 "$keys_dir"
 
 touch "$HOME/.ssh/config.pre.local"
 touch "$HOME/.ssh/config.post.local"

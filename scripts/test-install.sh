@@ -288,7 +288,7 @@ check_development_tools() {
         return 0
     fi
 
-    if [ "$(chezmoi data | jq -r '.development')" != "true" ]; then
+    if ! chezmoi data | jq -e '.profiles | index("development") != null' >/dev/null; then
         skip "development tool checks; development profile not enabled"
         return 0
     fi
@@ -361,7 +361,7 @@ print_environment() {
     if command -v chezmoi >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
         log ""
         log "Chezmoi profile data:"
-        chezmoi data | jq '{os, osid, hostname, profiles, owned, hasRoot, base, headless, workstation, development, gaming, server}'
+        chezmoi data | jq '{os, osid, hostname, machine, profiles, git}'
     fi
 
     log ""

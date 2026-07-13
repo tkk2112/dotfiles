@@ -5,7 +5,9 @@ export DISABLE_UPDATE_PROMPT=true
 ZSH_CUSTOM_AUTOUPDATE_QUIET=true
 ZSH_CUSTOM_AUTOUPDATE_NUM_WORKERS=8
 
-zstyle :omz:plugins:ssh-agent agent-forwarding yes
+if [[ -n ${SSH_CONNECTION:-} ]]; then
+  zstyle :omz:plugins:ssh-agent agent-forwarding yes
+fi
 zstyle :omz:plugins:ssh-agent quiet yes
 zstyle :omz:plugins:ssh-agent lazy yes
 
@@ -52,7 +54,7 @@ if darwin; then
 fi
 
 ZSH_THEME="powerlevel10k/powerlevel10k"
-source $ZSH/oh-my-zsh.sh
+source "$ZSH/oh-my-zsh.sh"
 
 # Load options
 source ~/.zsh/options.zsh

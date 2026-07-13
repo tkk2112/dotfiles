@@ -43,8 +43,8 @@ repos:
       - id: shell-syntax
         name: shell syntax
         language: system
-        entry: sh -c 'sh -n setup.sh && find home/.chezmoiscripts -type f -name "*.sh" -exec sh -n {} +'
-        files: '(^setup\.sh$|^home/\.chezmoiscripts/.*\.sh$)'
+        entry: sh -c 'for file in setup.sh scripts/*.sh; do sh -n "$file" || exit 1; done'
+        files: '(^setup\.sh$|^scripts/.*\.sh$)'
         pass_filenames: false
 
       - id: chezmoi-verify-root

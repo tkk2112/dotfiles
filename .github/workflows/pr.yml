@@ -37,29 +37,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu/Debian: normal workstation and server/headless coverage.
+          # Ubuntu/Debian: workstation and headless role coverage.
           - image: ubuntu:26.04
-            profiles: base,workstation,development,owned
+            profiles: workstation,development,owned
           - image: ubuntu:latest
-            profiles: base,workstation,development,owned
+            profiles: workstation,development,owned
           - image: debian:13
-            profiles: base,headless,server,owned
+            profiles: headless,server,owned
           - image: debian:sid
-            profiles: base,development
+            profiles: headless,development
 
-          # Fedora: owned workstation, server, and gaming coverage.
+          # Fedora: owned workstation, headless server, and gaming coverage.
           - image: fedora:latest
-            profiles: base,workstation,development,owned
+            profiles: workstation,development,owned
           - image: fedora:latest
-            profiles: base,headless,server,owned
+            profiles: headless,server,owned
           - image: fedora:latest
-            profiles: base,workstation,development,gaming,server,owned
+            profiles: workstation,development,gaming,server,owned
 
           # Arch/CachyOS: rolling workstation/development coverage.
           - image: archlinux:latest
-            profiles: base,workstation,development,owned
+            profiles: workstation,development,owned
           - image: cachyos/cachyos:latest
-            profiles: base,workstation,development,owned
+            profiles: workstation,development,owned
 
     container:
       image: ${{ matrix.image }}
@@ -76,7 +76,7 @@ jobs:
 
   install-macos:
     needs: check
-    name: install on macos:latest / base,workstation,development,owned
+    name: install on macos:latest / workstation,laptop,development,owned
     runs-on: macos-latest
 
     steps:
@@ -86,7 +86,7 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: base,workstation,development,owned
+          DOTFILES_PROFILES: workstation,laptop,development,owned
         run: ./scripts/ci-install.sh
 
   test:

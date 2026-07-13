@@ -1,3 +1,5 @@
+{{- $profiles := .profiles | default (list) }}
+{{- $laptop := has "laptop" $profiles }}
 {{- $palette := .theme.dark }}
 
 # ==============================================================================
@@ -231,16 +233,17 @@ set -g display-panes-active-colour "$THEME_BLUE"
 
 wg_separator="#[fg=$THEME_BORDER]│#[default]"
 
-wg_battery="#{battery_status_fg}#{battery_icon} #{battery_percentage}%#[default]"
-
 wg_date="#[fg=$THEME_MUTED]%a %d %b #[fg=$THEME_FG_DIM]%H:%M#[default]"
+{{ if $laptop }}
+wg_battery="#{battery_status_fg}#{battery_icon} #{battery_percentage}%#[default]"
+{{ end }}
 
 wg_is_zoomed="#[fg=$THEME_BG,bg=$THEME_PURPLE,bold]#{?window_zoomed_flag, ZOOM ,}#[default]"
 
 wg_is_keys_off="#[fg=$THEME_BG,bg=$THEME_RED,bold]#([ \"$(tmux show-option -qv key-table)\" = 'off' ] && printf ' REMOTE SESSION ')#[default]"
 
 set -g status-right \
-  "#{prefix_highlight} $wg_is_keys_off $wg_is_zoomed #{sysstat_cpu} $wg_separator #{sysstat_mem} $wg_separator #{sysstat_loadavg} $wg_separator $wg_date $wg_battery #{online_status}"
+  "#{prefix_highlight} $wg_is_keys_off $wg_is_zoomed #{sysstat_cpu} $wg_separator #{sysstat_mem} $wg_separator #{sysstat_loadavg} $wg_separator $wg_date{{ if $laptop }} $wg_separator $wg_battery{{ end }} #{online_status}"
 
 
 # ==============================================================================
@@ -296,6 +299,7 @@ set -g @sysstat_swap_color_low "$THEME_GREEN"
 set -g @sysstat_swap_color_medium "$THEME_YELLOW"
 set -g @sysstat_swap_color_stress "$THEME_RED"
 
+{{ if $laptop }}
 # tmux-battery
 set -g @batt_color_full_charge \
   "#[fg=$THEME_GREEN]"
@@ -309,6 +313,7 @@ set -g @batt_color_medium_charge \
 set -g @batt_color_low_charge \
   "#[fg=$THEME_RED]"
 
+{{ end }}
 # tmux-prefix-highlight
 set -g @prefix_highlight_output_prefix '['
 set -g @prefix_highlight_output_suffix ']'
@@ -325,7 +330,9 @@ set -g @prefix_highlight_copy_mode_attr \
 # ===       Plugins        ===
 # ============================
 set -g @plugin 'tmux-plugins/tpm'
+{{ if $laptop }}
 set -g @plugin 'tmux-plugins/tmux-battery'
+{{ end }}
 set -g @plugin 'tmux-plugins/tmux-copycat'
 set -g @plugin 'tmux-plugins/tmux-online-status'
 set -g @plugin 'tmux-plugins/tmux-prefix-highlight'

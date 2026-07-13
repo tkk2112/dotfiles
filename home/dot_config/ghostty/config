@@ -1,17 +1,17 @@
-# Start from an empty keymap so Ghostty defaults do not conflict with Neovim/tmux.
 keybind = clear
 
-# Font size
+# Font size.
 keybind = super+plus=increase_font_size:1
 keybind = super+equal=increase_font_size:1
 keybind = super+minus=decrease_font_size:1
 keybind = super+zero=reset_font_size
 
-# Window/app actions
+# Window and application actions.
 keybind = super+n=new_window
 keybind = super+q=quit
+keybind = global:f12=toggle_quick_terminal
 
-# Clipboard
+# Clipboard.
 keybind = super+c=copy_to_clipboard:mixed
 keybind = ctrl+shift+c=copy_to_clipboard:mixed
 keybind = super+v=paste_from_clipboard
@@ -20,15 +20,15 @@ keybind = copy=copy_to_clipboard:mixed
 keybind = paste=paste_from_clipboard
 
 # Send distinct terminal sequences so Neovim can map these reliably.
-# Alt-Left/Right: jump back/forward
+# Alt-Left/Right: jump back/forward.
 keybind = alt+left=csi:1;3D
 keybind = alt+right=csi:1;3C
 
-# Ctrl-Tab/Ctrl-Shift-Tab: next/previous buffer
+# Ctrl-Tab/Ctrl-Shift-Tab: next/previous buffer.
 keybind = ctrl+tab=csi:27;5;9~
 keybind = ctrl+shift+tab=csi:27;6;9~
 
-# Cmd/Super mappings for Neovim-through-tmux.
+# Cmd/Super mappings for Neovim through tmux.
 keybind = super+a=text:\x01
 keybind = super+f=text:\x06
 keybind = super+o=text:\x0f
@@ -37,29 +37,29 @@ keybind = super+s=text:\x13
 keybind = super+shift+f=csi:70;6u
 keybind = super+w=text:\x17
 
-# aesthetics
+# Theme and appearance.
 theme = DotfilesDark
-background-blur=16
-macos-titlebar-style = hidden
+background-blur = 16
 background-opacity = 0.95
+macos-titlebar-style = hidden
 scrollbar = never
 
-# typography
-font-size=14
-font-thicken=true
-font-thicken-strength=1
-adjust-cell-height=1
+# Typography.
 font-family = JetBrains Mono
+font-size = 14
+font-thicken = true
+font-thicken-strength = 1
+adjust-cell-height = 1
 
+# Terminal behavior.
 cursor-style = block
 term = xterm-256color
 mouse-hide-while-typing = true
-
 copy-on-select = clipboard
 clipboard-read = allow
 clipboard-write = allow
 
-keybind = global:f12=toggle_quick_terminal
+# Quick terminal.
 quick-terminal-position = top
 quick-terminal-screen = mouse
 quick-terminal-animation-duration = 0.1

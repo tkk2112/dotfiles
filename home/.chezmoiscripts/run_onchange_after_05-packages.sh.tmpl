@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list "base") }}
+{{ $profiles := .profiles | default (list) }}
 {{ $owned := has "owned" $profiles }}
 {{ define "packageLines" }}
 {{- $manager := index . 0 -}}
@@ -10,10 +10,10 @@ set -eu
 {{- $defaultManagers := list "brew" "apt" "dnf" "pacman" -}}
 {{- range $pkg := $catalog -}}
 {{- $name := get $pkg "name" -}}
-{{- $group := get $pkg "group" | default "base" -}}
+{{- $group := get $pkg "group" | default "core" -}}
 {{- $managers := get $pkg "managers" | default $defaultManagers -}}
 {{- $names := get $pkg "names" | default (dict) -}}
-{{- $enabledGroup := or (eq $group "base") (has $group $profiles) -}}
+{{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
 {{- $enabledManager := has $manager $managers -}}
 {{- if and $name $enabledGroup $enabledManager -}}
 {{- $packageName := get $names $manager | default $name -}}
@@ -27,10 +27,10 @@ set -eu
 {{- $casks := index . 1 | default (list) -}}
 {{- range $cask := $casks -}}
 {{- $name := get $cask "name" -}}
-{{- $group := get $cask "group" | default "base" -}}
+{{- $group := get $cask "group" | default "core" -}}
 {{- $tap := get $cask "tap" | default "" -}}
 {{- $caskName := get $cask "cask" | default $name -}}
-{{- $enabledGroup := or (eq $group "base") (has $group $profiles) -}}
+{{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
 {{- if and $name $enabledGroup -}}
 {{- if $tap -}}
 {{- printf "%s/%s\n" $tap $caskName -}}
@@ -234,7 +234,7 @@ install_apt() {
 install_dnf() {
     if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
         printf 'Skipping dnf packages because owned profile is not enabled\n'
-        exit 0
+        return 0
     fi
 
     install_root_packages dnf "$DNF_PACKAGES" dnf install -y
@@ -243,7 +243,7 @@ install_dnf() {
 install_pacman() {
     if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
         printf 'Skipping pacman packages because owned profile is not enabled\n'
-        exit 0
+        return 0
     fi
 
     install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed

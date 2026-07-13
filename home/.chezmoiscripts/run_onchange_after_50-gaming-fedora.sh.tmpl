@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list "base") }}
+{{ $profiles := .profiles | default (list) }}
 PROFILE_GAMING="{{ if has "gaming" $profiles }}true{{ else }}false{{ end }}"
 PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
 
