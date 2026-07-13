@@ -89,7 +89,7 @@ gdb_on_target() {
 
   local gdb_command=(gdb)
 
-  if [[ -n "${TMUX:-}" ]] && (( $+commands[gdb-tmux] )); then
+  if [[ -n ${TMUX:-} ]] && command -v gdb-tmux >/dev/null 2>&1; then
     gdb_command=(gdb-tmux)
   fi
 

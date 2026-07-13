@@ -54,6 +54,13 @@ repos:
         args: [--check]
         exclude: \.tmpl$
 
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
+    hooks:
+      - id: shfmt
+        args: [-d]
+        exclude: ^home/dot_p10k\.zsh$|\.tmpl$
+
   - repo: https://github.com/hukkin/mdformat
     rev: 1.0.0
     hooks:

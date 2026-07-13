@@ -3,42 +3,42 @@
 set -euo pipefail
 
 die() {
-    printf 'gdb-tmux: %s\n' "$*" >&2
-    exit 1
+  printf 'gdb-tmux: %s\n' "$*" >&2
+  exit 1
 }
 
 cleanup_window() {
-    if [[ -n "${window_id:-}" ]]; then
-        tmux kill-window -t "$window_id" 2>/dev/null || true
-    fi
+  if [[ -n "${window_id:-}" ]]; then
+    tmux kill-window -t "$window_id" 2>/dev/null || true
+  fi
 }
 
-command -v tmux >/dev/null 2>&1 ||
-    die "tmux is not installed"
+command -v tmux >/dev/null 2>&1 \
+  || die "tmux is not installed"
 
-command -v gdb >/dev/null 2>&1 ||
-    die "gdb is not installed"
+command -v gdb >/dev/null 2>&1 \
+  || die "gdb is not installed"
 
-[[ -n "${TMUX:-}" ]] ||
-    die "must be run inside an existing tmux session"
+[[ -n "${TMUX:-}" ]] \
+  || die "must be run inside an existing tmux session"
 
 working_directory="$PWD"
 window_name="${GDB_TMUX_WINDOW_NAME:-gdb}"
 
 interaction_pane="$(
-    tmux new-window \
-        -d \
-        -P \
-        -F '#{pane_id}' \
-        -n "$window_name" \
-        -c "$working_directory"
+  tmux new-window \
+    -d \
+    -P \
+    -F '#{pane_id}' \
+    -n "$window_name" \
+    -c "$working_directory"
 )"
 
 window_id="$(
-    tmux display-message \
-        -p \
-        -t "$interaction_pane" \
-        '#{window_id}'
+  tmux display-message \
+    -p \
+    -t "$interaction_pane" \
+    '#{window_id}'
 )"
 
 trap cleanup_window INT TERM
@@ -58,64 +58,64 @@ trap cleanup_window INT TERM
 # ------------------------------------------------------------------------------
 
 source_pane="$(
-    tmux split-window \
-        -h \
-        -P \
-        -F '#{pane_id}' \
-        -t "$interaction_pane" \
-        -c "$working_directory" \
-        -l '45%'
+  tmux split-window \
+    -h \
+    -P \
+    -F '#{pane_id}' \
+    -t "$interaction_pane" \
+    -c "$working_directory" \
+    -l '45%'
 )"
 
 stack_pane="$(
-    tmux split-window \
-        -v \
-        -P \
-        -F '#{pane_id}' \
-        -t "$interaction_pane" \
-        -c "$working_directory" \
-        -l '28%'
+  tmux split-window \
+    -v \
+    -P \
+    -F '#{pane_id}' \
+    -t "$interaction_pane" \
+    -c "$working_directory" \
+    -l '28%'
 )"
 
 assembly_pane="$(
-    tmux split-window \
-        -v \
-        -P \
-        -F '#{pane_id}' \
-        -t "$source_pane" \
-        -c "$working_directory" \
-        -l '70%'
+  tmux split-window \
+    -v \
+    -P \
+    -F '#{pane_id}' \
+    -t "$source_pane" \
+    -c "$working_directory" \
+    -l '70%'
 )"
 
 registers_pane="$(
-    tmux split-window \
-        -v \
-        -P \
-        -F '#{pane_id}' \
-        -t "$assembly_pane" \
-        -c "$working_directory" \
-        -l '65%'
+  tmux split-window \
+    -v \
+    -P \
+    -F '#{pane_id}' \
+    -t "$assembly_pane" \
+    -c "$working_directory" \
+    -l '65%'
 )"
 
 memory_pane="$(
-    tmux split-window \
-        -v \
-        -P \
-        -F '#{pane_id}' \
-        -t "$registers_pane" \
-        -c "$working_directory" \
-        -l '50%'
+  tmux split-window \
+    -v \
+    -P \
+    -F '#{pane_id}' \
+    -t "$registers_pane" \
+    -c "$working_directory" \
+    -l '50%'
 )"
 
 tmux select-pane -t "$interaction_pane" -T 'GDB'
-tmux select-pane -t "$source_pane"      -T 'Source'
-tmux select-pane -t "$assembly_pane"    -T 'Assembly'
-tmux select-pane -t "$registers_pane"   -T 'Registers'
-tmux select-pane -t "$memory_pane"      -T 'Memory'
-tmux select-pane -t "$stack_pane"       -T 'Stack / Threads'
+tmux select-pane -t "$source_pane" -T 'Source'
+tmux select-pane -t "$assembly_pane" -T 'Assembly'
+tmux select-pane -t "$registers_pane" -T 'Registers'
+tmux select-pane -t "$memory_pane" -T 'Memory'
+tmux select-pane -t "$stack_pane" -T 'Stack / Threads'
 
 pane_tty() {
-    tmux display-message -p -t "$1" '#{pane_tty}'
+  tmux display-message -p -t "$1" '#{pane_tty}'
 }
 
 source_tty="$(pane_tty "$source_pane")"
@@ -125,7 +125,7 @@ memory_tty="$(pane_tty "$memory_pane")"
 stack_tty="$(pane_tty "$stack_pane")"
 
 runtime_directory="$(
-    mktemp -d "${TMPDIR:-/tmp}/gdb-tmux.XXXXXXXX"
+  mktemp -d "${TMPDIR:-/tmp}/gdb-tmux.XXXXXXXX"
 )"
 
 dashboard_commands="$runtime_directory/dashboard.gdb"
@@ -153,45 +153,44 @@ EOF
 # Each dashboard pane only needs an attached terminal. GDB writes directly to
 # its TTY, so keep the shell process idle without generating output.
 for pane in \
-    "$source_pane" \
-    "$assembly_pane" \
-    "$registers_pane" \
-    "$memory_pane" \
-    "$stack_pane"
-do
-    tmux send-keys \
-        -t "$pane" \
-        "printf '\033[2J\033[H'; exec tail -f /dev/null" \
-        Enter
+  "$source_pane" \
+  "$assembly_pane" \
+  "$registers_pane" \
+  "$memory_pane" \
+  "$stack_pane"; do
+  tmux send-keys \
+    -t "$pane" \
+    "printf '\033[2J\033[H'; exec tail -f /dev/null" \
+    Enter
 done
 
 runner="$runtime_directory/run-gdb"
 
 {
-    printf '#!/usr/bin/env bash\n'
-    printf '\n'
-    printf 'set +e\n'
-    printf '\n'
-    printf 'gdb -x %q' "$dashboard_commands"
+  printf '#!/usr/bin/env bash\n'
+  printf '\n'
+  printf 'set +e\n'
+  printf '\n'
+  printf 'gdb -x %q' "$dashboard_commands"
 
-    for argument in "$@"; do
-        printf ' %q' "$argument"
-    done
+  for argument in "$@"; do
+    printf ' %q' "$argument"
+  done
 
-    printf '\n'
-    printf 'gdb_status=$?\n'
-    printf 'rm -rf %q\n' "$runtime_directory"
-    printf 'tmux kill-window -t %q\n' "$window_id"
-    printf 'exit "$gdb_status"\n'
+  printf '\n'
+  printf 'gdb_status=$?\n'
+  printf 'rm -rf %q\n' "$runtime_directory"
+  printf 'tmux kill-window -t %q\n' "$window_id"
+  printf 'exit "$gdb_status"\n'
 } >"$runner"
 
 chmod 0700 "$runner"
 
 tmux respawn-pane \
-    -k \
-    -t "$interaction_pane" \
-    -c "$working_directory" \
-    "$runner"
+  -k \
+  -t "$interaction_pane" \
+  -c "$working_directory" \
+  "$runner"
 
 tmux select-pane -t "$interaction_pane"
 tmux select-window -t "$window_id"
