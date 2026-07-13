@@ -90,7 +90,7 @@ fi
 # Add Python's argcomplete bash completion directory to zsh completion paths (fpath)
 # This enables tab completion for Python scripts using argcomplete
 if [ -d /usr/lib/python3/dist-packages/argcomplete/bash_completion.d ]; then
-  fpath=( /usr/lib/python3/dist-packages/argcomplete/bash_completion.d "${fpath[@]}" )
+  fpath=(/usr/lib/python3/dist-packages/argcomplete/bash_completion.d "${fpath[@]}")
 fi
 
 # Source additional environment variables or scripts
