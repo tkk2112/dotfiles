@@ -1,0 +1,118 @@
+keybind = clear
+
+# ==============================================================================
+# Font size
+# ==============================================================================
+
+{{ if eq .chezmoi.os "darwin" -}}
+keybind = super+plus=increase_font_size:1
+keybind = super+equal=increase_font_size:1
+keybind = super+minus=decrease_font_size:1
+keybind = super+zero=reset_font_size
+{{ else if eq .chezmoi.os "linux" -}}
+keybind = ctrl+plus=increase_font_size:1
+keybind = ctrl+equal=increase_font_size:1
+keybind = ctrl+minus=decrease_font_size:1
+keybind = ctrl+zero=reset_font_size
+{{ end }}
+
+# ==============================================================================
+# Window and application actions
+# ==============================================================================
+
+{{ if eq .chezmoi.os "darwin" -}}
+keybind = super+n=new_window
+keybind = super+q=quit
+{{ else if eq .chezmoi.os "linux" -}}
+keybind = ctrl+shift+n=new_window
+keybind = ctrl+shift+q=quit
+{{ end }}
+
+keybind = global:f12=toggle_quick_terminal
+
+# ==============================================================================
+# Clipboard
+# ==============================================================================
+
+# Conventional terminal clipboard bindings on all platforms.
+keybind = ctrl+shift+c=copy_to_clipboard:mixed
+keybind = ctrl+shift+v=paste_from_clipboard
+keybind = copy=copy_to_clipboard:mixed
+keybind = paste=paste_from_clipboard
+
+{{ if eq .chezmoi.os "darwin" -}}
+keybind = super+c=copy_to_clipboard:mixed
+keybind = super+v=paste_from_clipboard
+{{ end }}
+
+# ==============================================================================
+# Terminal sequences
+# ==============================================================================
+
+# Alt-Left/Right: jump backward/forward.
+keybind = alt+left=csi:1;3D
+keybind = alt+right=csi:1;3C
+
+# Ctrl-Tab/Ctrl-Shift-Tab: next/previous buffer.
+keybind = ctrl+tab=csi:27;5;9~
+keybind = ctrl+shift+tab=csi:27;6;9~
+
+# Ensure Ctrl-Shift-F remains distinguishable from Ctrl-F.
+keybind = ctrl+shift+f=csi:70;6u
+
+{{ if eq .chezmoi.os "darwin" -}}
+# Translate macOS Command shortcuts into the same Ctrl sequences that Linux
+# sends natively. Neovim therefore only needs platform-neutral Ctrl mappings.
+keybind = super+a=text:\x01
+keybind = super+f=text:\x06
+keybind = super+o=text:\x0f
+keybind = super+p=text:\x10
+keybind = super+s=text:\x13
+keybind = super+shift+f=csi:70;6u
+keybind = super+w=text:\x17
+{{ end }}
+
+# ==============================================================================
+# Theme and appearance
+# ==============================================================================
+
+theme = DotfilesDark
+background-blur = 16
+background-opacity = 0.95
+scrollbar = never
+
+{{ if eq .chezmoi.os "darwin" -}}
+macos-titlebar-style = hidden
+{{ end }}
+
+# ==============================================================================
+# Typography
+# ==============================================================================
+
+font-family = JetBrains Mono
+font-size = 14
+adjust-cell-height = 1
+
+{{ if eq .chezmoi.os "darwin" -}}
+font-thicken = true
+font-thicken-strength = 1
+{{ end }}
+
+# ==============================================================================
+# Terminal behavior
+# ==============================================================================
+
+cursor-style = block
+term = xterm-256color
+mouse-hide-while-typing = true
+copy-on-select = clipboard
+clipboard-read = allow
+clipboard-write = allow
+
+# ==============================================================================
+# Quick terminal
+# ==============================================================================
+
+quick-terminal-position = top
+quick-terminal-screen = mouse
+quick-terminal-animation-duration = 0.1

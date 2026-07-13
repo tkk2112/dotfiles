@@ -9,8 +9,13 @@ local terminal = require("config.terminal")
 local theme = require("config.theme")
 local tmux_nav = require("config.tmux_nav")
 local search = require("config.search")
+local shortcuts = require("config.shortcuts")
 
-local is_macos = vim.uv.os_uname().sysname == "Darwin"
+local function map_shortcuts(modes, lhses, rhs, opts)
+  for _, lhs in ipairs(lhses) do
+    map(modes, lhs, rhs, opts)
+  end
+end
 
 local function from_insert(callback)
   return function()
@@ -87,10 +92,12 @@ map("n", "<leader>ww", "<cmd>write<cr>", { desc = "Write current file" })
 map("n", "<leader>wa", autosave.save_all, { desc = "Write all modified files" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 
-map({ "n", "i" }, "<C-s>", "<cmd>write<cr>", { desc = "Write current file" })
-if is_macos then
-  map({ "n", "i" }, "<D-s>", "<cmd>write<cr>", { desc = "Write current file" })
-end
+map_shortcuts(
+  { "n", "i" },
+  shortcuts.save,
+  "<cmd>write<cr>",
+  { desc = "Write current file" }
+)
 
 map("n", "<leader>aa", select_all, { desc = "Select all" })
 map("i", "<leader>aa", function()
@@ -99,28 +106,50 @@ map("i", "<leader>aa", function()
 end, { desc = "Select all" })
 
 -- Close buffer
-map("n", "<C-w>", close_buffer, { desc = "Close buffer" })
-map("i", "<C-w>", from_insert(close_buffer), { desc = "Close buffer" })
-if is_macos then
-  map("n", "<D-w>", close_buffer, { desc = "Close buffer" })
-  map("i", "<D-w>", from_insert(close_buffer), { desc = "Close buffer" })
-end
+map_shortcuts(
+  "n",
+  shortcuts.close_buffer,
+  close_buffer,
+  { desc = "Close buffer" }
+)
+
+map_shortcuts(
+  "i",
+  shortcuts.close_buffer,
+  from_insert(close_buffer),
+  { desc = "Close buffer" }
+)
 
 map("n", "<leader>bd", close_buffer, { desc = "Close buffer" })
 
 -- Search
-map("n", "<C-F>", search.buffer, { desc = "Search buffer" })
-map("i", "<C-F>", from_insert(search.buffer), { desc = "Search buffer" })
+map_shortcuts(
+  "n",
+  shortcuts.search_buffer,
+  search.buffer,
+  { desc = "Search buffer" }
+)
 
-map("n", "<C-S-F>", search.project, { desc = "Search project" })
-map("i", "<C-S-F>", from_insert(search.project), { desc = "Search project" })
-if is_macos then
-  map("n", "<D-f>", search.buffer, { desc = "Search buffer" })
-  map("i", "<D-f>", from_insert(search.buffer), { desc = "Search buffer" })
+map_shortcuts(
+  "i",
+  shortcuts.search_buffer,
+  from_insert(search.buffer),
+  { desc = "Search buffer" }
+)
 
-  map("n", "<D-F>", search.project, { desc = "Search project" })
-  map("i", "<D-F>", from_insert(search.project), { desc = "Search project" })
-end
+map_shortcuts(
+  "n",
+  shortcuts.search_project,
+  search.project,
+  { desc = "Search project" }
+)
+
+map_shortcuts(
+  "i",
+  shortcuts.search_project,
+  from_insert(search.project),
+  { desc = "Search project" }
+)
 
 map("n", "<leader>/", search.buffer, { desc = "Search buffer" })
 map("n", "<leader>sg", search.project, { desc = "Search project" })
@@ -167,16 +196,32 @@ map("t", "<C-a>x", tmux_nav.close_window, { desc = "Close window" })
 -- Project/file pickers
 map("n", "<leader>pf", project.find_files, { desc = "Find file in project" })
 
-map("n", "<C-p>", project.find_files, { desc = "Find file in project" })
-map("i", "<C-p>", from_insert(project.find_files), { desc = "Find file in project" })
-map("n", "<C-o>", pickers.find_files_from_home, { desc = "Find file from home" })
-map("i", "<C-o>", from_insert(pickers.find_files_from_home), { desc = "Find file from home" })
-if is_macos then
-  map("n", "<D-p>", project.find_files, { desc = "Find file in project" })
-  map("i", "<D-p>", from_insert(project.find_files), { desc = "Find file in project" })
-  map("n", "<D-o>", pickers.find_files_from_home, { desc = "Find file from home" })
-  map("i", "<D-o>", from_insert(pickers.find_files_from_home), { desc = "Find file from home" })
-end
+map_shortcuts(
+  "n",
+  shortcuts.project_files,
+  project.find_files,
+  { desc = "Find file in project" }
+)
+
+map_shortcuts(
+  "i",
+  shortcuts.project_files,
+  from_insert(project.find_files),
+  { desc = "Find file in project" }
+)
+map_shortcuts(
+  "n",
+  shortcuts.home_files,
+  pickers.find_files_from_home,
+  { desc = "Find file from home" }
+)
+
+map_shortcuts(
+  "i",
+  shortcuts.home_files,
+  from_insert(pickers.find_files_from_home),
+  { desc = "Find file from home" }
+)
 
 -- Project actions
 map("n", "<leader>pp", project.pick, { desc = "Pick project" })
