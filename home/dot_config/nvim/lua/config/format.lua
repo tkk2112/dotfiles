@@ -34,6 +34,17 @@ local external_formatters = {
     end,
   },
 
+  toml = {
+    cmd = "taplo",
+    cwd = buffer_dir,
+    args = function()
+      return {
+        "fmt",
+        "-",
+      }
+    end,
+  },
+
   json = {
     cmd = "jq",
     args = function(bufnr)

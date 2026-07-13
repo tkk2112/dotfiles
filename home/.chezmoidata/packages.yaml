@@ -32,6 +32,9 @@ packages:
     - name: yamlfmt
       group: development
       package: google-yamlfmt==0.21.0
+    - name: taplo
+      group: development
+      package: taplo==0.9.3
 
   # Rules:
   # - Packages without a group belong to the always-installed core set.
