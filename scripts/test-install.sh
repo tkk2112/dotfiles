@@ -174,28 +174,103 @@ check_tmux_config() {
 
     run tmux -V
 
+    tmux_test_socket="dotfiles-test-$$"
+    tmux_test_session="config-test"
+
+    cleanup_tmux_test_server() {
+        env TMUX= tmux \
+            -L "$tmux_test_socket" \
+            kill-server \
+            >/dev/null 2>&1 || :
+    }
+    trap 'cleanup_tmux_test_server' 0 1 2 15
+
     for file in $TMUX_CONFIG_FILES; do
         log "Checking tmux config: $file"
-        run tmux -f "$file" start-server \; source-file "$file" \; kill-server \
+
+        cleanup_tmux_test_server
+
+        # Start an isolated server with no configuration loaded.
+        run env TMUX= tmux \
+            -L "$tmux_test_socket" \
+            -f /dev/null \
+            new-session \
+            -d \
+            -s "$tmux_test_session" \
+            || fail "failed to start isolated tmux server: $file"
+
+        # Source the configuration once and propagate any parsing error.
+        run env TMUX= tmux \
+            -L "$tmux_test_socket" \
+            source-file "$file" \
             || fail "tmux config failed: $file"
+
+        cleanup_tmux_test_server
         pass "tmux config ok: $file"
     done
+
+    trap - 0 1 2 15
 }
 
 check_nvim_config() {
     section "Checking nvim config"
 
     if ! command -v nvim >/dev/null 2>&1; then
-        skip "nvim config checks; nvim not installed"
-        return 0
+        fail "nvim is required but was not installed"
     fi
 
     run nvim --version
 
+    if ! nvim \
+        --headless \
+        --clean \
+        "+lua if vim.fn.has('nvim-0.12') ~= 1 then vim.cmd('cquit 1') end" \
+        +qa \
+        >/dev/null 2>&1
+    then
+        fail "Neovim 0.12 or newer is required"
+    fi
+
+    if ! command -v tree-sitter >/dev/null 2>&1; then
+        fail "tree-sitter CLI is required but was not installed"
+    fi
+
+    run tree-sitter --version
+
     for file in $NVIM_LUA_FILES; do
-        log "Checking nvim Lua file: $file"
-        run nvim --headless "+luafile $file" +qa \
-            || fail "nvim config failed: $file"
+        log "Checking nvim config: $file"
+
+        output_file="$(mktemp)"
+
+        set +e
+        nvim \
+            --headless \
+            -u "$file" \
+            "+lua vim.wait(1000)" \
+            +qa \
+            >"$output_file" 2>&1
+        nvim_status=$?
+        set -e
+
+        cat "$output_file"
+
+        if [ "$nvim_status" -ne 0 ]; then
+            rm -f "$output_file"
+            fail "nvim exited with status $nvim_status: $file"
+        fi
+
+        # lazy.nvim catches many plugin errors internally, which means Neovim
+        # may still exit with status zero. Treat the emitted errors as failures.
+        if grep -E \
+            'Error detected while processing|Failed to source|Failed to run `config`|Failed to run `build`|loop or previous error loading module|stack traceback:|E[0-9][0-9][0-9]+:|\[nvim-treesitter/install/[^]]+\] error:|Error during "tree-sitter build"' \
+            "$output_file" \
+            >/dev/null
+        then
+            rm -f "$output_file"
+            fail "nvim reported startup or plugin errors: $file"
+        fi
+
+        rm -f "$output_file"
         pass "nvim config ok: $file"
     done
 }
