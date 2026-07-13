@@ -61,6 +61,16 @@ local external_formatters = {
       return { "--indent", tostring(shiftwidth), "." }
     end,
   },
+
+  markdown = {
+    cmd = "mdformat",
+    cwd = buffer_dir,
+    args = function()
+      return {
+        "-",
+      }
+    end,
+  },
 }
 
 local function formatter_cwd(formatter, bufnr)
