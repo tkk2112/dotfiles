@@ -102,6 +102,14 @@ packages:
         dnf: python3-argcomplete
         brew: python-argcomplete
 
+    - name: libxml2
+      group: development
+      managers: [apt, dnf, pacman]
+      names:
+        apt: libxml2-utils
+        dnf: libxml2
+        pacman: libxml2
+
     # --------------------------------------------------------------------------
     # Development: build tools, language tooling, LSPs, git helpers.
     # --------------------------------------------------------------------------

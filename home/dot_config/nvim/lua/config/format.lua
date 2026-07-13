@@ -13,6 +13,16 @@ local function buffer_dir(bufnr)
   return vim.fs.dirname(filename)
 end
 
+local xml_formatter = {
+  cmd = "xmllint",
+  args = function()
+    return {
+      "--format",
+      "-",
+    }
+  end,
+}
+
 local external_formatters = {
   lua = {
     cmd = "stylua",
@@ -71,6 +81,9 @@ local external_formatters = {
       }
     end,
   },
+
+  xml = xml_formatter,
+  xslt = xml_formatter,
 }
 
 local function formatter_cwd(formatter, bufnr)
