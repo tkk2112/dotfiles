@@ -54,6 +54,14 @@ repos:
         args: [--check]
         exclude: \.tmpl$
 
+  - repo: https://github.com/hukkin/mdformat
+    rev: 1.0.0
+    hooks:
+      - id: mdformat
+        args: [--check]
+        additional_dependencies:
+          - mdformat-gfm
+
   - repo: local
     hooks:
       - id: shell-syntax
