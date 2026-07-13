@@ -55,6 +55,17 @@ local external_formatters = {
     end,
   },
 
+  sh = {
+    cmd = "shfmt",
+    args = function(bufnr)
+      return {
+        "--filename",
+        vim.api.nvim_buf_get_name(bufnr),
+        "-",
+      }
+    end,
+  },
+
   json = {
     cmd = "jq",
     args = function(bufnr)
