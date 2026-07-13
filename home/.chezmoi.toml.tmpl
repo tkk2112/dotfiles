@@ -4,21 +4,40 @@
 {{- end -}}
 
 {{- $hostProfiles := dict
-  "void" (list "base" "workstation" "development" "owned")
-  "beastbox" (list "base" "workstation" "development" "gaming" "server" "owned")
+  "void" (list "workstation" "laptop" "development" "owned")
+  "beastbox" (list "workstation" "development" "gaming" "server" "owned")
 -}}
 
-{{- $profileChoices := list "base" "headless" "workstation" "development" "gaming" "server" "owned" -}}
-{{- $defaultProfiles := get $hostProfiles .chezmoi.hostname | default (list "base" "development") -}}
+{{- $roleProfiles := list "workstation" "headless" -}}
+{{- $capabilityProfiles := list "development" "gaming" "server" "laptop" "owned" -}}
+{{- $profileChoices := concat $roleProfiles $capabilityProfiles -}}
+{{- $defaultProfiles := get $hostProfiles .chezmoi.hostname | default (list "workstation" "development") -}}
 {{- $profiles := $defaultProfiles -}}
+{{- $profilesFromEnv := false -}}
 
 {{- if env "DOTFILES_PROFILES" -}}
 {{-   $profiles = splitList "," (env "DOTFILES_PROFILES") -}}
+{{-   $profilesFromEnv = true -}}
 {{- else -}}
 {{-   $profiles = promptMultichoiceOnce . "profiles" "profiles" $profileChoices $defaultProfiles -}}
 {{- end -}}
 
-{{- $hasRoot := has "owned" $profiles -}}
+{{- range $profile := $profiles -}}
+{{-   if not (has $profile $profileChoices) -}}
+{{-     fail (printf "unknown dotfiles profile %q; valid profiles: %s" $profile (join ", " $profileChoices)) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- if ne (len $profiles) (len (uniq $profiles)) -}}
+{{-   fail "dotfiles profiles must not contain duplicates" -}}
+{{- end -}}
+
+{{- $workstation := has "workstation" $profiles -}}
+{{- $headless := has "headless" $profiles -}}
+{{- if eq $workstation $headless -}}
+{{-   fail "select exactly one machine role: workstation or headless" -}}
+{{- end -}}
+
 {{- $gitName := promptStringOnce . "git.name" "git user name" "Thomas Kristensen" -}}
 {{- $gitEmail := promptStringOnce . "git.email" "git user email" "" -}}
 
@@ -35,18 +54,6 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
     hostname = {{ .chezmoi.hostname | quote }}
     machine = {{ promptStringOnce . "machine" "machine name" .chezmoi.hostname | quote }}
     profiles = {{ $profiles | toToml }}
-
-    # Compatibility / privilege flags.
-    hasRoot = {{ $hasRoot }}
-    owned = {{ has "owned" $profiles }}
-
-    # Profile flags.
-    base = {{ has "base" $profiles }}
-    headless = {{ has "headless" $profiles }}
-    workstation = {{ has "workstation" $profiles }}
-    development = {{ has "development" $profiles }}
-    gaming = {{ has "gaming" $profiles }}
-    server = {{ has "server" $profiles }}
 
 [data.git]
     name = {{ $gitName | quote }}

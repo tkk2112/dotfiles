@@ -29,10 +29,10 @@ if ! command -v chezmoi >/dev/null 2>&1; then
 
     if command -v curl >/dev/null 2>&1; then
         log "Installing chezmoi with curl into $bin_dir"
-        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$bin_dir"
+        sh -c "$(curl -fsLS https://get.chezmoi.io)" -- -b "$bin_dir"
     elif command -v wget >/dev/null 2>&1; then
         log "Installing chezmoi with wget into $bin_dir"
-        sh -c "$(wget -qO- get.chezmoi.io)" -- -b "$bin_dir"
+        sh -c "$(wget -qO- https://get.chezmoi.io)" -- -b "$bin_dir"
     else
         printf "chezmoi is not installed and neither curl nor wget is available.\n" >&2
         exit 1
