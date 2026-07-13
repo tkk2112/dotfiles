@@ -25,10 +25,7 @@ function M.apply(name)
   local ok, err = pcall(vim.cmd.colorscheme, name)
 
   if not ok then
-    vim.notify(
-      "Failed to load colorscheme: " .. name .. "\n" .. err,
-      vim.log.levels.WARN
-    )
+    vim.notify("Failed to load colorscheme: " .. name .. "\n" .. err, vim.log.levels.WARN)
   end
 end
 
@@ -57,21 +54,22 @@ M.apply(default_schemes.dark)
 -- Theme development
 -- =============================================================================
 
-local theme_target =
-  vim.fn.expand("~/.config/nvim/lua/theme/colorscheme.lua")
+local theme_target = vim.fn.expand("~/.config/nvim/lua/theme/colorscheme.lua")
 
 local function normalize_path(path)
   return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
 end
 
 local function resolve_chezmoi_source(target)
-  local result = vim.system({
-    "chezmoi",
-    "source-path",
-    target,
-  }, {
-    text = true,
-  }):wait()
+  local result = vim
+    .system({
+      "chezmoi",
+      "source-path",
+      target,
+    }, {
+      text = true,
+    })
+    :wait()
 
   if result.code ~= 0 then
     return nil, vim.trim(result.stderr or "")
@@ -86,8 +84,7 @@ local function resolve_chezmoi_source(target)
   return normalize_path(source)
 end
 
-local theme_source, theme_source_error =
-  resolve_chezmoi_source(theme_target)
+local theme_source, theme_source_error = resolve_chezmoi_source(theme_target)
 
 local apply_in_progress = false
 local apply_again = false
@@ -96,9 +93,7 @@ function M.reload()
   local scheme = vim.g.colors_name
 
   -- Keep whichever custom variant is currently active.
-  if scheme ~= default_schemes.dark
-    and scheme ~= default_schemes.light
-  then
+  if scheme ~= default_schemes.dark and scheme ~= default_schemes.light then
     scheme = default_schemes[vim.o.background]
   end
 
@@ -130,21 +125,13 @@ local function apply_and_reload()
       apply_in_progress = false
 
       if result.code ~= 0 then
-        local message = vim.trim(
-          result.stderr or result.stdout or "Unknown chezmoi error"
-        )
+        local message = vim.trim(result.stderr or result.stdout or "Unknown chezmoi error")
 
-        vim.notify(
-          "Theme apply failed:\n" .. message,
-          vim.log.levels.ERROR
-        )
+        vim.notify("Theme apply failed:\n" .. message, vim.log.levels.ERROR)
       else
         M.reload()
 
-        vim.notify(
-          "Theme applied and reloaded",
-          vim.log.levels.INFO
-        )
+        vim.notify("Theme applied and reloaded", vim.log.levels.INFO)
       end
 
       -- Do not lose a second save made while chezmoi was still running.
@@ -171,8 +158,7 @@ end, {
 vim.api.nvim_create_user_command("ThemeEdit", function()
   if not theme_source then
     vim.notify(
-      "Could not resolve chezmoi theme source:\n"
-        .. (theme_source_error or "Unknown error"),
+      "Could not resolve chezmoi theme source:\n" .. (theme_source_error or "Unknown error"),
       vim.log.levels.ERROR
     )
     return
@@ -184,16 +170,12 @@ end, {
 })
 
 if theme_source then
-  local theme_group = vim.api.nvim_create_augroup(
-    "dotfiles_theme_live_reload",
-    { clear = true }
-  )
+  local theme_group = vim.api.nvim_create_augroup("dotfiles_theme_live_reload", { clear = true })
 
   vim.api.nvim_create_autocmd("BufWritePost", {
     group = theme_group,
     callback = function(event)
-      local filename =
-        normalize_path(vim.api.nvim_buf_get_name(event.buf))
+      local filename = normalize_path(vim.api.nvim_buf_get_name(event.buf))
 
       if filename == theme_source then
         apply_and_reload()

@@ -22,8 +22,18 @@ return {
 
         ["<Up>"] = { "select_prev", "fallback" },
         ["<Down>"] = { "select_next", "fallback" },
-        ["<PageUp>"] = { function(cmp) return cmp.select_prev({ count = 12 }) end, "fallback" },
-        ["<PageDown>"] = { function(cmp) return cmp.select_next({ count = 12 }) end, "fallback" },
+        ["<PageUp>"] = {
+          function(cmp)
+            return cmp.select_prev({ count = 12 })
+          end,
+          "fallback",
+        },
+        ["<PageDown>"] = {
+          function(cmp)
+            return cmp.select_next({ count = 12 })
+          end,
+          "fallback",
+        },
       },
 
       cmdline = {

@@ -4,6 +4,17 @@
 local M = {}
 
 local external_formatters = {
+  lua = {
+    cmd = "stylua",
+    args = function(bufnr)
+      return {
+        "--stdin-filepath",
+        vim.api.nvim_buf_get_name(bufnr),
+        "-",
+      }
+    end,
+  },
+
   json = {
     cmd = "jq",
     args = function(bufnr)
@@ -109,10 +120,12 @@ local function format_with_external(bufnr, formatter, notify_missing)
     return false
   end
 
-  local result = vim.system(formatter_command(formatter, bufnr), {
-    stdin = buffer_text(bufnr),
-    text = true,
-  }):wait()
+  local result = vim
+    .system(formatter_command(formatter, bufnr), {
+      stdin = buffer_text(bufnr),
+      text = true,
+    })
+    :wait()
 
   if result.code ~= 0 then
     vim.notify("Formatter failed: " .. formatter.cmd .. "\n" .. vim.trim(result.stderr or ""), vim.log.levels.WARN)
