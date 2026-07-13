@@ -47,6 +47,13 @@ repos:
     hooks:
       - id: stylua-github
 
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+        args: [--check]
+        exclude: \.tmpl$
+
   - repo: local
     hooks:
       - id: shell-syntax
