@@ -11,10 +11,10 @@ export XDG_STATE_HOME="$HOME/.local/state"
 
 # User-local executables.
 for dir in "$HOME/.local/bin" "$HOME/bin"; do
-    case ":$PATH:" in
-        *":$dir:"*) ;;
-        *) PATH="$dir:$PATH" ;;
-    esac
+  case ":$PATH:" in
+    *":$dir:"*) ;;
+    *) PATH="$dir:$PATH" ;;
+  esac
 done
 export PATH
 
