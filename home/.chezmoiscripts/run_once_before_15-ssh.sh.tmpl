@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+
+ssh_dir="$HOME/.ssh"
+keys_dir="$ssh_dir/keys"
+
+mkdir -p "$ssh_dir"
+chmod 700 "$ssh_dir"
+
+# Remove the old keys link without touching its target.
+if [ -L "$keys_dir" ]; then
+    printf 'Removing old SSH keys symlink: %s\n' "$keys_dir"
+    rm "$keys_dir"
+fi
+
+if [ -e "$keys_dir" ] && [ ! -d "$keys_dir" ]; then
+    printf 'SSH keys path is not a directory: %s\n' "$keys_dir" >&2
+    exit 1
+fi
+
+mkdir -p "$keys_dir"
+chmod 700 "$keys_dir"
+
+touch "$ssh_dir/config.pre.local"
+touch "$ssh_dir/config.post.local"
+chmod 600 \
+    "$ssh_dir/config.pre.local" \
+    "$ssh_dir/config.post.local"
+
+if [ ! -f "$ssh_dir/authorized_keys" ]; then
+    : > "$ssh_dir/authorized_keys"
+{{- with .ssh.defaultAuthorizedKey }}
+    printf '%s\n' {{ . | quote }} > "$ssh_dir/authorized_keys"
+{{- end }}
+fi
+
+chmod 600 "$ssh_dir/authorized_keys"
