@@ -1,6 +1,13 @@
 #!/bin/sh
 set -eu
 
+case ${DOTFILES_CI:-${CI:-}} in
+    1|true|TRUE|yes|YES)
+        printf '%s\n' 'Skipping chezmoi age identity provisioning in CI'
+        exit 0
+        ;;
+esac
+
 key_dir="$HOME/.config/chezmoi"
 key_file="$key_dir/key.txt"
 
