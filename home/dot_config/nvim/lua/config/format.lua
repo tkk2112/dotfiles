@@ -13,6 +13,17 @@ local function buffer_dir(bufnr)
   return vim.fs.dirname(filename)
 end
 
+local shell_formatter = {
+  cmd = "shfmt",
+  args = function(bufnr)
+    return {
+      "--filename",
+      vim.api.nvim_buf_get_name(bufnr),
+      "-",
+    }
+  end,
+}
+
 local xml_formatter = {
   cmd = "xmllint",
   args = function()
@@ -55,16 +66,8 @@ local external_formatters = {
     end,
   },
 
-  sh = {
-    cmd = "shfmt",
-    args = function(bufnr)
-      return {
-        "--filename",
-        vim.api.nvim_buf_get_name(bufnr),
-        "-",
-      }
-    end,
-  },
+  sh = shell_formatter,
+  zsh = shell_formatter,
 
   json = {
     cmd = "jq",
