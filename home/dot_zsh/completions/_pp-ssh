@@ -1,0 +1,118 @@
+#compdef pp-ssh-help pp-ssh-list pp-ssh-public pp-ssh-fingerprint pp-ssh-check pp-ssh-generate pp-ssh-import pp-ssh-export pp-ssh-update pp-ssh-rotate pp-ssh-status
+
+_pp_ssh_completion_key_types() {
+  _values 'key type' \
+    'ed25519[Ed25519 (default)]' \
+    'rsa2048[RSA 2048-bit]' \
+    'rsa4096[RSA 4096-bit]'
+}
+
+_pp_ssh_completion_titles() {
+  local vault=${PROTON_PASS_SSH_VAULT:-Keys}
+  local output
+  local -a titles
+
+  output=$(
+    command pass-cli item list \
+      --output json \
+      --filter-type ssh-key \
+      --filter-state active \
+      "$vault" 2>/dev/null |
+      command jq -r '.items | sort_by(.title)[] | .title' 2>/dev/null
+  ) || return 1
+
+  titles=("${(@f)output}")
+  (( ${#titles} )) || return 1
+
+  _describe -t proton-pass-ssh-keys 'Proton Pass SSH key' titles
+}
+
+_pp_ssh_completion_import_title() {
+  if (( $+opt_args[--update] )); then
+    _pp_ssh_completion_titles
+  else
+    _message 'new Proton Pass item title'
+  fi
+}
+
+local curcontext="$curcontext" state line
+local -A opt_args
+
+case $service in
+  pp-ssh-help)
+    _message 'no arguments'
+    ;;
+
+  pp-ssh-list)
+    _arguments -s -S \
+      '-l[show managed metadata and modification time]'
+    ;;
+
+  pp-ssh-public)
+    _arguments -s -S \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles'
+    ;;
+
+  pp-ssh-fingerprint)
+    _arguments -s -S \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles'
+    ;;
+
+  pp-ssh-check)
+    _arguments -s -S \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles'
+    ;;
+
+  pp-ssh-generate)
+    _arguments -s -S \
+      '-p[protect the private key with a passphrase]' \
+      '-t+[select key type]:key type:_pp_ssh_completion_key_types' \
+      '-C+[set public-key comment]:comment:' \
+      '-o+[export the generated pair]:destination:_files' \
+      '1:new Proton Pass item title:'
+    ;;
+
+  pp-ssh-import)
+    _arguments -s -S \
+      '--update[replace the key pair in an existing item]' \
+      '-p[mark or force the imported key as passphrase protected]' \
+      '-P+[verify against an explicit public key]:public key file:_files' \
+      '1:private key file:_files' \
+      '2:Proton Pass item title:_pp_ssh_completion_import_title'
+    ;;
+
+  pp-ssh-export)
+    _arguments -s -S \
+      '(-f --force)-f[overwrite existing destination files]' \
+      '(-f --force)--force[overwrite existing destination files]' \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles' \
+      '2:destination private-key path:_files'
+    ;;
+
+  pp-ssh-update)
+    _arguments -s -S \
+      '-P+[verify against an explicit public key]:public key file:_files' \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles' \
+      '2:replacement private key file:_files'
+    ;;
+
+  pp-ssh-rotate)
+    _arguments -s -S \
+      '-f[overwrite existing exported destination files]' \
+      '-p[prompt for a passphrase for the replacement key]' \
+      '-t+[select replacement key type]:key type:_pp_ssh_completion_key_types' \
+      '-C+[set public-key comment]:comment:' \
+      '-o+[export the rotated pair]:destination:_files' \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles'
+    ;;
+
+  pp-ssh-status)
+    _arguments -s -S \
+      '1:Proton Pass SSH key:_pp_ssh_completion_titles' \
+      '2:local private key file:_files'
+    ;;
+
+  *)
+    _message 'unknown pp-ssh command'
+    ;;
+esac

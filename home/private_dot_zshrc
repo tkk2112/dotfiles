@@ -30,6 +30,12 @@ if darwin; then
   )
 fi
 
+# Custom completions must be in fpath before Oh My Zsh runs compinit
+fpath=(
+  ~/.zsh/completions
+  $fpath
+)
+
 # Oh-My-Zsh configuration
 plugins=(
   aliases
