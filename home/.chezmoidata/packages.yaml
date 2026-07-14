@@ -86,6 +86,9 @@ packages:
     - name: git-gui
       managers: [brew, apt, dnf]
 
+    - name: proton-pass-cli
+      managers: [brew]
+
     - name: tree-sitter-cli
       managers: [brew, dnf, pacman]
 
