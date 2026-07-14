@@ -90,18 +90,6 @@ fi
 # Load Powerlevel10k configuration
 [[ -r ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
-# Load local overrides if available
-[[ -r ~/.zshrc_local ]] && source ~/.zshrc_local
-
-# Add Python's argcomplete bash completion directory to zsh completion paths (fpath)
-# This enables tab completion for Python scripts using argcomplete
-if [ -d /usr/lib/python3/dist-packages/argcomplete/bash_completion.d ]; then
-  fpath=(/usr/lib/python3/dist-packages/argcomplete/bash_completion.d "${fpath[@]}")
-fi
-
-# Source additional environment variables or scripts
-[ -f "$HOME/.local/bin/env" ] && source "$HOME/.local/bin/env"
-
 # Load additional work functions from ProtonDrive
 if [[ -d ~/ProtonDrive/work/zsh ]]; then
   for func_file in ~/ProtonDrive/work/zsh/*.zsh; do
@@ -110,3 +98,6 @@ if [[ -d ~/ProtonDrive/work/zsh ]]; then
     fi
   done
 fi
+
+# Load local overrides if available
+[[ -r ~/.zshrc_local ]] && source ~/.zshrc_local
