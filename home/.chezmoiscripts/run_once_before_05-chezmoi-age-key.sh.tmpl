@@ -1,0 +1,85 @@
+#!/bin/sh
+set -eu
+
+key_dir="$HOME/.config/chezmoi"
+key_file="$key_dir/key.txt"
+
+share_id='YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g=='
+item_id='q8yaWsBIELv92Xe6troismiMCCB_7v03jKoW2dqsFoNDoN7siGVoBJGjKYEq_ZcA-ZiU76rSRYIBPgaTacs1Qg=='
+
+tmp=
+
+cleanup() {
+    if [ -n "${tmp:-}" ]; then
+        rm -f -- "$tmp"
+    fi
+}
+
+trap cleanup 0 1 2 15
+
+mkdir -p "$key_dir"
+chmod 700 "$key_dir"
+
+command -v pass-cli >/dev/null 2>&1 || {
+    printf '%s\n' 'pass-cli is required to provision the chezmoi age identity' >&2
+    exit 127
+}
+
+command -v age-keygen >/dev/null 2>&1 || {
+    printf '%s\n' 'age-keygen is required to validate the chezmoi age identity' >&2
+    exit 127
+}
+
+# Preserve an already-migrated real identity file.
+if [ -f "$key_file" ] && [ ! -L "$key_file" ]; then
+    chmod 600 "$key_file"
+    age-keygen -y "$key_file" >/dev/null
+    exit 0
+fi
+
+# Refuse to replace an unexpected non-symlink object.
+if [ -e "$key_file" ] && [ ! -L "$key_file" ]; then
+    printf 'chezmoi age identity is not a regular file: %s\n' \
+        "$key_file" >&2
+    exit 1
+fi
+
+umask 077
+tmp=$(mktemp "${key_file}.tmp.XXXXXX")
+
+pass-cli item view \
+    --share-id "$share_id" \
+    --item-id "$item_id" \
+    --field note >"$tmp"
+
+chmod 600 "$tmp"
+
+if [ ! -s "$tmp" ]; then
+    printf '%s\n' 'Proton Pass returned an empty age identity' >&2
+    exit 1
+fi
+
+fetched_recipient=$(age-keygen -y "$tmp")
+
+# Before replacing a working symlink, verify both identities match.
+if [ -f "$key_file" ]; then
+    current_recipient=$(age-keygen -y "$key_file")
+
+    if [ "$current_recipient" != "$fetched_recipient" ]; then
+        printf '%s\n' \
+            'Proton Pass identity does not match the current identity' >&2
+        exit 1
+    fi
+fi
+
+if [ -L "$key_file" ]; then
+    printf 'Replacing Proton Drive age-key symlink: %s\n' \
+        "$key_file"
+    rm -- "$key_file"
+fi
+
+mv -f -- "$tmp" "$key_file"
+tmp=
+
+chmod 600 "$key_file"
+trap - 0 1 2 15
