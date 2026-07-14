@@ -1,0 +1,24 @@
+{
+  "vim.opt.expandtab": true,
+  "vim.opt.tabstop": 2,
+  "save_on_focus": true,
+  "vim.opt.softtabstop": 2,
+  "files": {
+    "home/private_dot_zshrc": {
+      "filetype": "zsh"
+    },
+    "home/dot_zshenv": {
+      "filetype": "zsh"
+    }
+  },
+  "languages": {
+    "lua": {
+      "format_on_save": true
+    },
+    "zsh": {
+      "format_on_save": false
+    }
+  },
+  "format_on_save": true,
+  "vim.opt.shiftwidth": 2
+}
