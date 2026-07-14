@@ -1,21 +1,30 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list) }}
+{{- $profiles := .profiles | default (list) -}}
+{{- $packages := .packages | default (dict) -}}
+{{- $uvTools := get $packages "uv_tools" | default (list) -}}
+
 {{ define "uvToolLines" }}
 {{- $profiles := index . 0 -}}
 {{- $tools := index . 1 | default (list) -}}
+{{- $os := index . 2 -}}
+
 {{- range $tool := $tools -}}
 {{- $name := get $tool "name" -}}
 {{- $group := get $tool "group" | default "core" -}}
 {{- $package := get $tool "package" | default $name -}}
 {{- $command := get $tool "command" | default $name -}}
 {{- $with := get $tool "with" | default (list) -}}
+{{- $skip := get $tool "skip" | default (list) -}}
+
 {{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
-{{- if and $name $enabledGroup -}}
+{{- $enabledOS := not (has $os $skip) -}}
+
+{{- if and $name $enabledGroup $enabledOS -}}
 {{ printf "%s|%s" $package $command }}
-{{- range $dep := $with -}}
-{{ printf "|%s" $dep }}
+{{- range $dependency := $with -}}
+{{ printf "|%s" $dependency }}
 {{- end }}
 {{ printf "\n" }}
 {{- end -}}
@@ -23,12 +32,18 @@ set -eu
 {{ end }}
 
 UV_TOOLS="$(cat <<'EOF'
-{{ template "uvToolLines" (list $profiles .packages.uv_tools) }}
+{{ template "uvToolLines" (list $profiles $uvTools .chezmoi.os) }}
 EOF
 )"
 
 if [ "${DOTFILES_SKIP_UV_TOOLS:-}" = "1" ]; then
     printf 'Skipping uv tools because DOTFILES_SKIP_UV_TOOLS=1\n'
+    exit 0
+fi
+
+
+if ! printf '%s\n' "$UV_TOOLS" | awk 'NF { found = 1 } END { exit !found }'; then
+    printf '%s\n' 'No uv tools selected for this platform'
     exit 0
 fi
 
