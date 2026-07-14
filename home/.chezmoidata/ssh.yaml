@@ -1,0 +1,35 @@
+ssh:
+  revision: 2
+  keys:
+    acme_deploy_key_ed25519:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/qp_otqz1NPCkaGtM54oGZsmVaXaAEIDTFPz2oky04ct82pLgNKtYprZC5h6QK7x_MooRmIAOua2G76kSkD7jOw=="
+      machines:
+        - void
+
+    github_id_ed25519:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/_QAst3ISflswWAt70zJDSrYwOMfftrkBGNv38asGNySy8HhIXOyXetpk6hFO2tPzkpHh316Rl-FJ99B2Dr4wHw=="
+      machines:
+        - void
+
+    london_ymera_com_rsa:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/ocCQUV5na3_HK7_XXGyIaHL6YBwbz587-qozRDoQeMi-8ACQQweyJmZ4cSEKKebAyKL7LP5H2YAd27nl2eCqww=="
+      machines:
+        - void
+
+    m04r.space:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/crLE7RI4W1DWp9DfP1XcCKENwoCMnyO_My29nOdNiwR8LDVAoBL43mFMOVWdvS9GBaVo2v-Jm6SUI2FULe8qfg=="
+      machines:
+        - void
+
+    remarkable_id:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/ggq7gJ3zVZ6UYw9FtO12ocLUhG-6bHKQm-b3nQmTqXwMLeMrdD8iuPOZtS0IN21prQCh6mxERhpZi8v0702g1w=="
+      machines: []
+
+    usg_id_rsa:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/A7EfGxzTZW1Hm1kJ5JrTZ4mRb6avje_4nW5T-g4zbPK3UDiKEIJjhHjW4uf97ChdhdfQ_-_ertSvIjGCS-HFfg=="
+      machines: []
+
+    vacuum_rsa:
+      uri: "pass://YFLxiFLqHtI4cHxHOvrribJQB9peu4Qo_qqu3iGxekbMvFq1uqJ0xkgOxnglnYC3X5DBrjbo7hTH85MHcTII1g==/tczzV1gjdO2EY5AZ3_lRQUTk09lPCBhV4ft3qTE2IY_EAcmb4qlCFyj0rmBbpt6oOq-czphtyzkYArlTG4EhoQ=="
+      machines:
+        - void
