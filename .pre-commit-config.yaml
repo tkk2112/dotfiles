@@ -69,6 +69,11 @@ repos:
         additional_dependencies:
           - mdformat-gfm
 
+  - repo: https://github.com/thoughtworks/talisman
+    rev: 'v1.37.0'
+    hooks:
+      - id: talisman-commit
+
   - repo: local
     hooks:
       - id: shell-syntax

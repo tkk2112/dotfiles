@@ -1,1 +1,39 @@
-threshold: medium
+threshold: high
+
+version: "1.0"
+
+fileignoreconfig:
+  - filename: home/private_dot_ssh/conf.d/*.age
+    checksum: c8ce56fe0d7b75029a7673f54aa2d6ff8acae484e3d3e542e6b20de219de1a47
+
+  - filename: home/dot_zshenv
+    ignore_detectors:
+      - filename
+
+  - filename: home/dot_direnvrc
+    ignore_detectors:
+      - filename
+
+  - filename: .github/workflows/main.yml
+    allowed_patterns:
+      - 'uses:[[:space:]]+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}'
+
+  - filename: .github/workflows/pr.yml
+    allowed_patterns:
+      - 'uses:[[:space:]]+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}'
+
+  - filename: home/.chezmoiscripts/run_once_before_05-chezmoi-age-key.sh.tmpl
+    allowed_patterns:
+      - "share_id='[A-Za-z0-9_-]+'"
+
+  - filename: home/.chezmoidata.yaml
+    allowed_patterns:
+      - 'defaultAuthorizedKey:[[:space:]]+ssh-ed25519[[:space:]]+[A-Za-z0-9+/]+([[:space:]]+[^[:space:]]+)?'
+
+  - filename: home/.chezmoidata/ssh.yaml
+    allowed_patterns:
+      - 'pass://[A-Za-z0-9_-]+={0,2}/[A-Za-z0-9_-]+={0,2}'
+
+  - filename: home/.chezmoi.toml.tmpl
+    allowed_patterns:
+      - 'age1[023456789acdefghjklmnpqrstuvwxyz]+'
