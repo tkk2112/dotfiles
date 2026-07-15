@@ -88,13 +88,20 @@ map("n", "<leader>ww", "<cmd>write<cr>", { desc = "Write current file" })
 map("n", "<leader>wa", autosave.save_all, { desc = "Write all modified files" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 
-map_shortcuts({ "n", "i" }, shortcuts.save, "<cmd>write<cr>", { desc = "Write current file" })
+map_shortcuts({ "n", "i", "x" }, shortcuts.save, "<cmd>write<cr>", { desc = "Write current file" })
 
 map("n", "<leader>aa", select_all, { desc = "Select all" })
-map("i", "<leader>aa", function()
-  vim.cmd("stopinsert")
-  select_all()
-end, { desc = "Select all" })
+
+-- Visual editing. Preserve the selection after each operation.
+map("x", "<Tab>", ">gv", { desc = "Indent selection" })
+map("x", "<S-Tab>", "<gv", { desc = "Outdent selection" })
+
+-- IDE-style line/block movement.
+map("n", "<M-Up>", "<cmd>move .-2<cr>==", { desc = "Move line up" })
+map("n", "<M-Down>", "<cmd>move .+1<cr>==", { desc = "Move line down" })
+
+map("x", "<M-Up>", ":move '<-2<cr>gv=gv", { desc = "Move selection up" })
+map("x", "<M-Down>", ":move '>+1<cr>gv=gv", { desc = "Move selection down" })
 
 -- Close buffer
 map_shortcuts("n", shortcuts.close_buffer, close_buffer, { desc = "Close buffer" })
@@ -171,15 +178,12 @@ map("n", "<leader>pS", project.edit_config, { desc = "Edit project settings" })
 -- Buffer tabs
 map("n", "<leader>bn", "<cmd>BufferLineCycleNext<cr>", { desc = "Next buffer" })
 map("n", "<leader>bp", "<cmd>BufferLineCyclePrev<cr>", { desc = "Previous buffer" })
-map("n", "<leader>bd", close_buffer, { desc = "Close buffer" })
-
--- Ghostty sends these for Ctrl-Tab / Ctrl-Shift-Tab.
-map("n", "\27[27;5;9~", "<cmd>BufferLineCycleNext<cr>", { desc = "Next buffer" })
-map("n", "\27[27;6;9~", "<cmd>BufferLineCyclePrev<cr>", { desc = "Previous buffer" })
+map("n", "<C-Tab>", "<cmd>BufferLineCycleNext<cr>", { desc = "Next buffer" })
+map("n", "<C-S-Tab>", "<cmd>BufferLineCyclePrev<cr>", { desc = "Previous buffer" })
 
 map(
   "i",
-  "\27[27;5;9~",
+  "<C-Tab>",
   from_insert(function()
     vim.cmd("BufferLineCycleNext")
   end),
@@ -188,7 +192,7 @@ map(
 
 map(
   "i",
-  "\27[27;6;9~",
+  "<C-S-Tab>",
   from_insert(function()
     vim.cmd("BufferLineCyclePrev")
   end),
