@@ -50,9 +50,7 @@ vim.api.nvim_create_autocmd({ "BufEnter", "DirChanged" }, {
 
 M.apply(default_schemes.dark)
 
--- =============================================================================
 -- Theme development
--- =============================================================================
 
 local theme_target = vim.fn.expand("~/.config/nvim/lua/theme/colorscheme.lua")
 
