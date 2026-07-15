@@ -73,16 +73,25 @@ local external_formatters = {
     cmd = "jq",
     args = function(bufnr)
       local ok, project_settings = pcall(require, "config.project_settings")
-      local settings = ok and project_settings.resolved(bufnr) or {}
 
-      local expandtab = settings["vim.opt.expandtab"]
-      local shiftwidth = settings["vim.opt.shiftwidth"] or vim.bo[bufnr].shiftwidth
+      local expandtab = vim.bo[bufnr].expandtab
+      local shiftwidth = vim.bo[bufnr].shiftwidth
+
+      if ok then
+        expandtab = project_settings.get_option(bufnr, "expandtab", expandtab)
+
+        shiftwidth = project_settings.get_option(bufnr, "shiftwidth", shiftwidth)
+      end
 
       if expandtab == false then
         return { "--tab", "." }
       end
 
-      return { "--indent", tostring(shiftwidth), "." }
+      return {
+        "--indent",
+        tostring(math.max(1, shiftwidth)),
+        ".",
+      }
     end,
   },
 

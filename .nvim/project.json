@@ -1,15 +1,15 @@
 {
-  "vim.opt.expandtab": true,
-  "vim.opt.tabstop": 2,
-  "save_on_focus": true,
-  "vim.opt.softtabstop": 2,
-  "files": {
-    "home/private_dot_zshrc": {
-      "filetype": "zsh"
+  "global": {
+    "vim": {
+      "opt": {
+        "expandtab": true,
+        "shiftwidth": 2,
+        "softtabstop": 2,
+        "tabstop": 2
+      }
     },
-    "home/dot_zshenv": {
-      "filetype": "zsh"
-    }
+    "save_on_focus": true,
+    "format_on_save": true
   },
   "languages": {
     "lua": {
@@ -19,6 +19,15 @@
       "format_on_save": false
     }
   },
-  "format_on_save": true,
-  "vim.opt.shiftwidth": 2
+  "files": {
+    ".talismanrc": {
+      "filetype": "yaml"
+    },
+    "home/private_dot_zshrc": {
+      "filetype": "zsh"
+    },
+    "home/dot_zshenv": {
+      "filetype": "zsh"
+    }
+  }
 }
