@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Neovim project settings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "global"
+  ],
+  "properties": {
+    "global": {
+      "$ref": "#/$defs/settings"
+    },
+    "languages": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/settings"
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "$ref": "#/$defs/fileSettings"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "optionValue": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ]
+          }
+        }
+      ]
+    },
+    "vimSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "opt": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/optionValue"
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vim": {
+          "$ref": "#/$defs/vimSettings"
+        },
+        "save_on_focus": {
+          "type": "boolean"
+        },
+        "format_on_save": {
+          "type": "boolean"
+        }
+      }
+    },
+    "fileSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filetype": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vim": {
+          "$ref": "#/$defs/vimSettings"
+        },
+        "save_on_focus": {
+          "type": "boolean"
+        },
+        "format_on_save": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

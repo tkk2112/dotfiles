@@ -28,6 +28,20 @@ repos:
           - "2"
           - --no-sort-keys
 
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.37.4
+    hooks:
+      - id: check-metaschema
+        name: validate Neovim project schema
+        files: '^home/dot_config/nvim/schemas/project\.schema\.json$'
+
+      - id: check-jsonschema
+        name: validate Neovim project settings
+        files: '(^|/)\.nvim/project\.json$'
+        args:
+          - --schemafile
+          - home/dot_config/nvim/schemas/project.schema.json
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
     hooks:
