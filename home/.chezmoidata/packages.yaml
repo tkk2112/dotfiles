@@ -1,6 +1,3 @@
-# Package catalog for the chezmoi package bootstrap script.
-#
-
 packages:
   apt:
     ppas:
@@ -24,212 +21,98 @@ packages:
       group: development
       package: cmake-language-server
       command: cmake-language-server
-      with:
-        - pygls==1.3.1
+      with: [pygls==1.3.1]
       skip: [darwin]
-
+    - name: mdformat
+      group: development
+      package: mdformat==1.0.0
+      with: [mdformat-gfm==1.0.0]
+      skip: [darwin]
     - name: stylua
       group: development
       package: git+https://github.com/johnnymorganz/stylua@v2.5.2
       skip: [darwin]
-
+    - name: taplo
+      group: development
+      package: taplo==0.9.3
+      skip: [darwin]
     - name: yamlfmt
       group: development
       package: google-yamlfmt==0.21.0
       skip: [darwin]
 
-    - name: taplo
-      group: development
-      package: taplo==0.9.3
-      skip: [darwin]
-
-    - name: mdformat
-      group: development
-      package: mdformat==1.0.0
-      with:
-        - mdformat-gfm==1.0.0
-      skip: [darwin]
-
-  # Rules:
-  # - Packages without a group belong to the always-installed core set.
-  # - Packages with a group are selected when the matching profile is enabled.
-  # - managers omitted means: brew, apt, dnf, and pacman all use the same package name.
-  # - managers restricts a package to specific package managers.
-  # - names overrides package names where managers disagree.
   catalog:
-    # --------------------------------------------------------------------------
-    # Core: safe default CLI foundation (not a selectable profile).
-    # --------------------------------------------------------------------------
-    - name: bat
-    - name: btop
-    - name: direnv
-    - name: fzf
-    - name: git
-    - name: git-lfs
-    - name: jq
-    - name: lsd
-    - name: neovim
-    - name: ripgrep
-    - name: shellcheck
-    - name: shfmt
-    - name: tmux
-    - name: tree
-    - name: yamllint
-    - name: zsh
-
+    # Core: Always-installed CLI foundation.
     - name: age
       managers: [apt, dnf, pacman, brew]
-
-    - name: build-essential
-      managers: [apt]
-
-    - name: ca-certificates
-      managers: [apt, dnf, pacman]
-
-    - name: curl
-      managers: [apt, dnf, pacman]
-
-    - name: fontconfig
-      managers: [apt, dnf, pacman]
-
-    - name: git-gui
-      managers: [brew, apt, dnf]
-
-    - name: proton-pass-cli
-      managers: [brew]
-
-    - name: tree-sitter-cli
-      managers: [brew, dnf, pacman]
-
-    - name: rsync
-      managers: [apt, dnf, pacman]
-
-    - name: unzip
-      managers: [apt, dnf, pacman, brew]
-
     - name: argcomplete
       managers: [apt, dnf, brew]
       names:
         apt: python3-argcomplete
         dnf: python3-argcomplete
         brew: python-argcomplete
-
-    - name: libxml2
-      group: development
+    - name: bat
+    - name: btop
+    - name: build-essential
+      managers: [apt]
+    - name: ca-certificates
       managers: [apt, dnf, pacman]
-      names:
-        apt: libxml2-utils
-        dnf: libxml2
-        pacman: libxml2
+    - name: curl
+      managers: [apt, dnf, pacman]
+    - name: direnv
+    - name: fontconfig
+      managers: [apt, dnf, pacman]
+    - name: fzf
+    - name: git
+    - name: git-gui
+      managers: [brew, apt, dnf]
+    - name: git-lfs
+    - name: jq
+    - name: lsd
+    - name: neovim
+    - name: proton-pass-cli
+      managers: [brew]
+    - name: ripgrep
+    - name: rsync
+      managers: [apt, dnf, pacman]
+    - name: shellcheck
+    - name: shfmt
+    - name: tmux
+    - name: tree
+    - name: tree-sitter-cli
+      managers: [brew, dnf, pacman]
+    - name: unzip
+      managers: [apt, dnf, pacman, brew]
+    - name: yamllint
+    - name: zsh
 
-    # --------------------------------------------------------------------------
-    # Development: build tools, language tooling, LSPs, git helpers.
-    # --------------------------------------------------------------------------
+    # Development: Build tools, language tooling, LSPs, and debuggers.
     - name: ast-grep
       group: development
       managers: [brew, pacman]
-
     - name: base-devel
       group: development
       managers: [pacman]
-
-    - name: build-essential
-      group: development
-      managers: [apt]
-
-    - name: clang
-      group: development
-      managers: [apt, dnf, pacman]
-
-    - name: cmake
-      group: development
-
-    - name: taplo
-      group: development
-      managers: [brew]
-
-    - name: yamlfmt
-      group: development
-      managers: [brew]
-
-    - name: stylua
-      group: development
-      managers: [brew]
-
-    - name: cmake-language-server
-      group: development
-      managers: [brew]
-
-    - name: mdformat
-      group: development
-      managers: [brew]
-
-    - name: code-minimap
-      group: development
-      managers: [brew]
-
-    - name: git-delta
-      group: development
-      managers: [brew, dnf, pacman]
-
-    - name: lazygit
-      group: development
-      managers: [brew, dnf, pacman]
-
-    - name: llvm
-      group: development
-
-    - name: meson
-      group: development
-
-    - name: ninja
-      group: development
-      managers: [apt, dnf, pacman]
-      names:
-        apt: ninja-build
-        dnf: ninja-build
-        pacman: ninja
-
-    - name: pkg-config
-      group: development
-      managers: [apt]
-
-    - name: python-lsp-server
-      group: development
-      managers: [brew, pacman]
-
-    - name: uv
-      group: development
-      managers: [brew, dnf, pacman]
-
-    - name: zig
-      group: development
-      managers: [brew, dnf, pacman]
-
-    - name: zls
-      group: development
-      managers: [brew, pacman]
-
-    - name: gdb
-      group: development
-      managers: [apt, dnf, pacman, brew]
-
     - name: cgdb
       group: development
       managers: [apt, dnf, pacman, brew]
-
-    - name: rr
-      group: development
-      managers: [apt, dnf]
-
-    - name: strace
+    - name: clang
       group: development
       managers: [apt, dnf, pacman]
-
-    - name: ltrace
+    - name: cmake
       group: development
-      managers: [apt, dnf, pacman]
-
+    - name: cmake-language-server
+      group: development
+      managers: [brew]
+    - name: code-minimap
+      group: development
+      managers: [brew]
+    - name: gdb
+      group: development
+      managers: [apt, dnf, pacman, brew]
+    - name: git-delta
+      group: development
+      managers: [brew, dnf, pacman]
     - name: gnupg
       group: development
       names:
@@ -237,71 +120,93 @@ packages:
         dnf: gnupg2
         pacman: gnupg
         brew: gnupg
+    - name: lazygit
+      group: development
+      managers: [brew, dnf, pacman]
+    - name: libxml2
+      group: development
+      managers: [apt, dnf, pacman]
+      names:
+        apt: libxml2-utils
+        dnf: libxml2
+        pacman: libxml2
+    - name: llvm
+      group: development
+    - name: ltrace
+      group: development
+      managers: [apt, dnf, pacman]
+    - name: mdformat
+      group: development
+      managers: [brew]
+    - name: meson
+      group: development
+    - name: ninja
+      group: development
+      managers: [apt, dnf, pacman]
+      names:
+        apt: ninja-build
+        dnf: ninja-build
+        pacman: ninja
+    - name: pkg-config
+      group: development
+      managers: [apt]
+    - name: python-lsp-server
+      group: development
+      managers: [brew, pacman]
+    - name: rr
+      group: development
+      managers: [apt, dnf]
+    - name: strace
+      group: development
+      managers: [apt, dnf, pacman]
+    - name: stylua
+      group: development
+      managers: [brew]
+    - name: taplo
+      group: development
+      managers: [brew]
+    - name: uv
+      group: development
+      managers: [brew, dnf, pacman]
+    - name: yamlfmt
+      group: development
+      managers: [brew]
+    - name: zig
+      group: development
+      managers: [brew, dnf, pacman]
+    - name: zls
+      group: development
+      managers: [brew, pacman]
 
-    # --------------------------------------------------------------------------
-    # Workstation: interactive local-machine tools.
-    # --------------------------------------------------------------------------
+    # Workstation: Interactive local-machine tools.
     - name: duf
       group: workstation
       managers: [brew, dnf, pacman]
-
     - name: gping
       group: workstation
       managers: [brew, dnf, pacman]
-
     - name: htop
       group: workstation
       managers: [apt, dnf, pacman]
-
     - name: icdiff
       group: workstation
       managers: [apt, brew]
-
     - name: imagemagick
       group: workstation
       names:
         dnf: ImageMagick
-
     - name: nmap
       group: workstation
-
     - name: nvtop
       group: workstation
       managers: [apt, dnf, pacman]
-
+    - name: opensc
+      group: workstation
+      managers: [apt, dnf, pacman, brew]
     - name: p7zip
       group: workstation
       names:
         apt: p7zip-full
-
-    - name: the_silver_searcher
-      group: workstation
-      names:
-        apt: silversearcher-ag
-
-    - name: tio
-      group: workstation
-      managers: [apt, dnf]
-
-    - name: yt-dlp
-      group: workstation
-
-    - name: pinentry
-      group: workstation
-      names:
-        apt: pinentry-curses
-        dnf: pinentry
-        pacman: pinentry
-        brew: pinentry-mac
-
-    - name: pcsc-lite
-      group: workstation
-      managers: [apt, dnf, pacman]
-      names:
-        apt: pcscd
-        dnf: pcsc-lite
-        pacman: pcsclite
-
     - name: pcsc-ccid
       group: workstation
       managers: [apt, dnf, pacman]
@@ -309,11 +214,29 @@ packages:
         apt: libccid
         dnf: pcsc-lite-ccid
         pacman: ccid
-
-    - name: opensc
+    - name: pcsc-lite
       group: workstation
-      managers: [apt, dnf, pacman, brew]
-
+      managers: [apt, dnf, pacman]
+      names:
+        apt: pcscd
+        dnf: pcsc-lite
+        pacman: pcsclite
+    - name: pinentry
+      group: workstation
+      names:
+        apt: pinentry-curses
+        dnf: pinentry
+        pacman: pinentry
+        brew: pinentry-mac
+    - name: the_silver_searcher
+      group: workstation
+      names:
+        apt: silversearcher-ag
+    - name: tio
+      group: workstation
+      managers: [apt, dnf]
+    - name: yt-dlp
+      group: workstation
     - name: yubikey-manager
       group: workstation
       managers: [apt, dnf, pacman, brew]
@@ -323,9 +246,25 @@ packages:
         pacman: yubikey-manager
         brew: ykman
 
-    # --------------------------------------------------------------------------
-    # Server: service and remote-administration tooling.
-    # --------------------------------------------------------------------------
+    # Server: Service and remote-administration tools.
+    - name: bind-utils
+      group: server
+      managers: [dnf]
+    - name: debian-goodies
+      group: server
+      managers: [apt]
+    - name: dnf-utils
+      group: server
+      managers: [dnf]
+    - name: dnsutils
+      group: server
+      managers: [apt]
+    - name: dracut-sshd
+      group: server
+      managers: [dnf]
+    - name: moreutils
+      group: server
+      managers: [apt, dnf]
     - name: openssh
       group: server
       managers: [apt, dnf, pacman]
@@ -333,69 +272,34 @@ packages:
         apt: openssh-server
         dnf: openssh-server
         pacman: openssh
-
-    - name: moreutils
-      group: server
-      managers: [apt, dnf]
-
-    - name: debian-goodies
-      group: server
-      managers: [apt]
-
-    - name: dnsutils
-      group: server
-      managers: [apt]
-
-    - name: bind-utils
-      group: server
-      managers: [dnf]
-
-    - name: dnf-utils
-      group: server
-      managers: [dnf]
-
-    - name: dracut-sshd
-      group: server
-      managers: [dnf]
-
     - name: perl
       group: server
       managers: [dnf]
-
     - name: tldr
       group: server
       managers: [dnf]
-
     - name: which
       group: server
       managers: [dnf]
 
-    # --------------------------------------------------------------------------
-    # macOS/Homebrew-only helpers.
-    # --------------------------------------------------------------------------
+    # macOS: Homebrew-only workstation helpers.
     - name: coreutils
       group: workstation
       managers: [brew]
-
     - name: zsh-completions
       group: workstation
       managers: [brew]
 
-    # --------------------------------------------------------------------------
-    # Gaming: currently Fedora-focused.
-    # --------------------------------------------------------------------------
-    - name: steam
+    # Gaming: Fedora-focused gaming tools.
+    - name: gamemode
       group: gaming
       managers: [dnf]
-
-    - name: mangohud
-      group: gaming
-      managers: [dnf]
-
     - name: goverlay
       group: gaming
       managers: [dnf]
-
-    - name: gamemode
+    - name: mangohud
+      group: gaming
+      managers: [dnf]
+    - name: steam
       group: gaming
       managers: [dnf]
