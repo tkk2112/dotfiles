@@ -425,7 +425,7 @@ end
 function M.apply_options(bufnr)
   bufnr = bufnr or 0
 
-  if not is_real_file_buffer(bufnr) then
+  if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
 
@@ -438,7 +438,14 @@ function M.apply_options(bufnr)
   end
 
   for option, value in pairs(options) do
-    apply_project_option(option, value)
+    if option ~= "shiftwidth" and option ~= "softtabstop" then
+      apply_project_option(option, value)
+    end
+  end
+
+  if options.tabstop ~= nil then
+    apply_project_option("shiftwidth", 0)
+    apply_project_option("softtabstop", -1)
   end
 end
 
