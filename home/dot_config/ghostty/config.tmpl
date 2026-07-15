@@ -54,8 +54,8 @@ keybind = alt+left=csi:1;3D
 keybind = alt+right=csi:1;3C
 
 # Ctrl-Tab/Ctrl-Shift-Tab: next/previous buffer.
-keybind = ctrl+tab=csi:27;5;9~
-keybind = ctrl+shift+tab=csi:27;6;9~
+keybind = ctrl+tab=csi:9;5u
+keybind = ctrl+shift+tab=csi:9;6u
 
 # Ensure Ctrl-Shift-F remains distinguishable from Ctrl-F.
 keybind = ctrl+shift+f=csi:70;6u
@@ -63,7 +63,6 @@ keybind = ctrl+shift+f=csi:70;6u
 {{ if eq .chezmoi.os "darwin" -}}
 # Translate macOS Command shortcuts into the same Ctrl sequences that Linux
 # sends natively. Neovim therefore only needs platform-neutral Ctrl mappings.
-keybind = super+a=text:\x01
 keybind = super+f=text:\x06
 keybind = super+o=text:\x0f
 keybind = super+p=text:\x10
