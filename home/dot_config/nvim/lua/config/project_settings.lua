@@ -1,4 +1,18 @@
--- Loads .nvim/project.json and applies safe vim.opt.* keys buffer-locally.
+-- Loads .nvim/project.json and applies safe project settings buffer-locally.
+--
+-- Settings are resolved in this order:
+--   global -> language -> file
+--
+-- Each layer uses the same nested structure:
+--   {
+--     vim = {
+--       opt = {
+--         shiftwidth = 2,
+--       },
+--     },
+--     save_on_focus = true,
+--     format_on_save = false,
+--   }
 
 local M = {}
 
@@ -6,7 +20,8 @@ local project_marker = ".nvim"
 local project_config = "project.json"
 local config_cache = {}
 
--- Project config is data, not code; deny global/environment options anyway.
+-- Project configuration is data, not code. Deny options that affect command
+-- execution, runtime loading, persistent paths, or the surrounding environment.
 local denied_options = {
   runtimepath = true,
   packpath = true,
@@ -21,13 +36,6 @@ local denied_options = {
   viewdir = true,
   secure = true,
   exrc = true,
-}
-
--- These keys control project-settings behavior and are not Vim options.
-local structural_keys = {
-  languages = true,
-  files = true,
-  filetype = true,
 }
 
 local function normalize(path)
@@ -105,7 +113,12 @@ local function format_json(config)
   local encoded = vim.json.encode(config)
 
   if vim.fn.executable("jq") == 1 then
-    local formatted = vim.fn.system({ "jq", "." }, encoded)
+    local formatted = vim.fn.system({
+      "jq",
+      "--indent",
+      "2",
+      ".",
+    }, encoded)
 
     if vim.v.shell_error == 0 then
       return vim.split(formatted, "\n", {
@@ -155,6 +168,7 @@ local function get_config(root)
   end
 
   local config = read_json(path)
+
   config_cache[path] = {
     mtime = mtime,
     config = config,
@@ -163,30 +177,50 @@ local function get_config(root)
   return config
 end
 
-local function shallow_merge(base, override)
-  local result = {}
-
-  for key, value in pairs(base or {}) do
-    if not structural_keys[key] then
-      result[key] = value
-    end
+-- Empty tables are treated as objects. This is useful because JSON objects and
+-- arrays both decode to Lua tables, and an empty settings object should not
+-- erase an earlier settings layer.
+local function is_object(value)
+  if type(value) ~= "table" then
+    return false
   end
 
-  for key, value in pairs(override or {}) do
-    if not structural_keys[key] then
-      result[key] = value
+  return next(value) == nil or not vim.islist(value)
+end
+
+-- Objects merge recursively. Scalars and arrays replace the earlier value.
+local function deep_merge(base, override)
+  if override == nil then
+    return vim.deepcopy(base)
+  end
+
+  if not is_object(base) or not is_object(override) then
+    return vim.deepcopy(override)
+  end
+
+  local result = vim.deepcopy(base)
+
+  for key, value in pairs(override) do
+    if is_object(result[key]) and is_object(value) then
+      result[key] = deep_merge(result[key], value)
+    else
+      result[key] = vim.deepcopy(value)
     end
   end
 
   return result
 end
 
-local function apply_project_option(key, value)
-  local option = key:match("^vim%.opt%.(.+)$")
+local function table_or_empty(value)
+  return type(value) == "table" and value or {}
+end
 
-  if not option then
+local function apply_project_option(option, value)
+  if type(option) ~= "string" or option == "" then
     return
   end
+
+  local key = "vim.opt." .. option
 
   if denied_options[option] then
     vim.notify("Project setting denied: " .. key, vim.log.levels.WARN)
@@ -243,6 +277,11 @@ function M.file_settings(bufnr)
 
   local settings = config.files[relative]
 
+  -- Preserve the existing shorthand:
+  --
+  --   "files": {
+  --     ".talismanrc": "yaml"
+  --   }
   if type(settings) == "string" then
     return {
       filetype = settings,
@@ -267,14 +306,25 @@ function M.resolved(bufnr)
 
   local config = M.get(bufnr)
   local file_settings = M.file_settings(bufnr)
+
+  -- A file-level filetype override determines which language settings apply.
   local filetype = M.filetype(bufnr) or vim.bo[bufnr].filetype
+
+  local global_settings = table_or_empty(config.global)
   local language_settings = {}
 
   if type(config.languages) == "table" and filetype ~= "" then
-    language_settings = config.languages[filetype] or {}
+    language_settings = table_or_empty(config.languages[filetype])
   end
 
-  return shallow_merge(shallow_merge(config, language_settings), file_settings)
+  local resolved = deep_merge(global_settings, language_settings)
+  resolved = deep_merge(resolved, file_settings)
+
+  -- filetype controls resolution and buffer detection. It is not itself a
+  -- runtime project setting.
+  resolved.filetype = nil
+
+  return resolved
 end
 
 function M.get_bool(bufnr, key, default)
@@ -285,6 +335,18 @@ function M.get_bool(bufnr, key, default)
   end
 
   return value == true
+end
+
+function M.get_option(bufnr, option, default)
+  local settings = M.resolved(bufnr or 0)
+  local vim_settings = settings.vim
+  local options = type(vim_settings) == "table" and vim_settings.opt or nil
+
+  if type(options) ~= "table" or options[option] == nil then
+    return default
+  end
+
+  return options[option]
 end
 
 function M.save_on_focus(bufnr)
@@ -351,7 +413,7 @@ function M.set_filetype(bufnr, filetype)
     return
   end
 
-  -- Force the updated file to be read next time.
+  -- Force the updated configuration to be read next time.
   config_cache[path] = nil
 
   -- Apply immediately to the current buffer.
@@ -367,8 +429,16 @@ function M.apply_options(bufnr)
     return
   end
 
-  for key, value in pairs(M.resolved(bufnr)) do
-    apply_project_option(key, value)
+  local settings = M.resolved(bufnr)
+  local vim_settings = settings.vim
+  local options = type(vim_settings) == "table" and vim_settings.opt or nil
+
+  if type(options) ~= "table" then
+    return
+  end
+
+  for option, value in pairs(options) do
+    apply_project_option(option, value)
   end
 end
 
@@ -379,6 +449,7 @@ function M.apply(bufnr)
     return
   end
 
+  -- Filetype must be applied first because it selects the language layer.
   M.apply_filetype(bufnr)
   M.apply_options(bufnr)
 end
@@ -397,13 +468,16 @@ function M.print()
     config_path = M.config_path(bufnr),
     relative_path = M.relative_path(bufnr),
     filetype = vim.bo[bufnr].filetype,
+    configured_filetype = M.filetype(bufnr),
     file_settings = M.file_settings(bufnr),
     config = M.get(bufnr),
     resolved = M.resolved(bufnr),
   })
 end
 
-local project_settings_group = vim.api.nvim_create_augroup("dotfiles_project_settings", { clear = true })
+local project_settings_group = vim.api.nvim_create_augroup("dotfiles_project_settings", {
+  clear = true,
+})
 
 vim.api.nvim_create_autocmd({
   "BufReadPost",
