@@ -2,21 +2,15 @@
 {{- $laptop := has "laptop" $profiles }}
 {{- $palette := .theme.dark }}
 
-# ==============================================================================
-# Theme palette
-# ==============================================================================
-
+# Palette
 %hidden THEME_BG="{{ $palette.background }}"
 %hidden THEME_SURFACE="{{ $palette.surface }}"
 %hidden THEME_SURFACE_ALT="{{ $palette.surface_alt }}"
 %hidden THEME_BORDER="{{ $palette.border }}"
-
 %hidden THEME_FG="{{ $palette.foreground }}"
 %hidden THEME_FG_DIM="{{ $palette.foreground_dim }}"
 %hidden THEME_MUTED="{{ $palette.muted }}"
-
 %hidden THEME_SELECTION="{{ $palette.selection }}"
-
 %hidden THEME_RED="{{ $palette.red }}"
 %hidden THEME_ORANGE="{{ $palette.orange }}"
 %hidden THEME_YELLOW="{{ $palette.yellow }}"
@@ -25,103 +19,62 @@
 %hidden THEME_BLUE="{{ $palette.blue }}"
 %hidden THEME_PURPLE="{{ $palette.purple }}"
 
-
-# ==============================================================================
-# Prefix
-# ==============================================================================
-
-unbind C-b
-set -g prefix C-a
-bind C-a send-prefix
-
-
-# ==============================================================================
-# Shell / terminal
-# ==============================================================================
-
+# Terminal
 set -g default-terminal "tmux-256color"
-
-# Keep this matched to the OUTER terminal, not the TERM inside tmux.
 set -as terminal-features ',xterm-*:RGB:extkeys:clipboard:focus:title'
-
-# Modified keys. Useful for Neovim and terminal apps that understand CSI-u.
 set -s extended-keys always
 set -g extended-keys-format csi-u
-
-# Legacy xterm key handling. Still harmless/useful for many terminals.
 set -g xterm-keys on
-
-# Clipboard integration.
 set -s set-clipboard on
 
-
-# ==============================================================================
 # Behavior
-# ==============================================================================
-
 set -g base-index 1
 setw -g pane-base-index 1
 set -g renumber-windows on
-
 set -g history-limit 50000
 set -sg escape-time 0
 set -g repeat-time 0
-
 set -g detach-on-destroy off
 set -g remain-on-exit off
 set -g aggressive-resize on
-
-set -g set-titles on
-set -g set-titles-string '#{session_name}:#{window_index}.#{pane_index} #{pane_current_command}'
-
 set -g focus-events on
 set -g visual-activity off
 set -g status on
 set -g status-position bottom
-
-setw -g mode-keys vi
 set -g status-keys vi
-
+setw -g mode-keys vi
 setw -g mouse on
 
+# Prefix
+unbind C-b
+set -g prefix C-a
+bind C-a send-prefix
 
-# ==============================================================================
-# Key bindings
-# ==============================================================================
-
-bind-key : command-prompt
-
-# Reload / edit config.
+# Configuration
+bind : command-prompt
 bind C-r source-file ~/.config/tmux/tmux.conf \; display-message "tmux config reloaded"
+bind C-e new-window -n tmux.conf "sh -c '\${EDITOR:-nvim} ~/.config/tmux/tmux.conf && tmux source ~/.config/tmux/tmux.conf && tmux display \"Config reloaded\"'"
 
-bind C-e new-window -n 'tmux.conf' "sh -c '\${EDITOR:-nvim} ~/.config/tmux/tmux.conf && tmux source ~/.config/tmux/tmux.conf && tmux display \"Config reloaded\"'"
-
-# New windows / splits keep current directory.
+# Windows
 bind c new-window -c "#{pane_current_path}"
-
-# Pane / window basics.
-bind X confirm-before -p "killw-window #W? (y/n)" kill-window
-bind z resize-pane -Z
-bind q display-panes
-bind a last-pane
+bind X confirm-before -p "kill-window #W? (y/n)" kill-window
 bind Space next-window
 bind BSpace previous-window
+
+# Panes
+bind a last-pane
 bind Enter next-layout
 bind L clear-history
+bind q display-panes
 bind r refresh-client
+bind z resize-pane -Z
 
-# Copy / paste.
+# Copy and mouse
 bind [ copy-mode
 bind ] paste-buffer
-
-# Mouse toggle.
 bind m set -gF mouse "#{?mouse,off,on}" \; display-message "#{?mouse,Mouse: ON,Mouse: OFF}"
 
-
-# ==============================================================================
-# Vim / Neovim-aware pane navigation
-# ==============================================================================
-
+# Neovim-aware navigation
 is_vim="ps -o state= -o comm= -t '#{pane_tty}' | grep -iqE '^[^TXZ ]+ +(\\S+/)?g?\\.?(view|l?n?vim?x?|fzf)(diff)?(-wrapped)?$'"
 
 bind Left  if-shell "$is_vim" "send-keys C-a Left"  "select-pane -L"
@@ -129,206 +82,112 @@ bind Down  if-shell "$is_vim" "send-keys C-a Down"  "select-pane -D"
 bind Up    if-shell "$is_vim" "send-keys C-a Up"    "select-pane -U"
 bind Right if-shell "$is_vim" "send-keys C-a Right" "select-pane -R"
 
-# use vim-like keys for splits and windows
-bind-key v if-shell "$is_vim" 'send-keys C-a v' 'split-window -h -c "#{pane_current_path}"'
-bind-key s if-shell "$is_vim" 'send-keys C-a s' 'split-window -v -c "#{pane_current_path}"'
-bind-key x if-shell "$is_vim" 'send-keys C-a x' 'confirm-before -p "kill-pane #P? (y/n)" kill-pane'
+bind v if-shell "$is_vim" 'send-keys C-a v' 'split-window -h -c "#{pane_current_path}"'
+bind s if-shell "$is_vim" 'send-keys C-a s' 'split-window -v -c "#{pane_current_path}"'
+bind x if-shell "$is_vim" 'send-keys C-a x' 'confirm-before -p "kill-pane #P? (y/n)" kill-pane'
 
-# ==============================================================================
-# Theme: reusable styles
-# ==============================================================================
-
+# Theme
 %hidden TMUX_STATUS_STYLE="fg=$THEME_FG_DIM,bg=$THEME_SURFACE"
 %hidden TMUX_WINDOW_STYLE="fg=$THEME_MUTED,bg=$THEME_SURFACE"
 %hidden TMUX_WINDOW_CURRENT_STYLE="fg=$THEME_BG,bg=$THEME_BLUE,bold"
 
-
-# ==============================================================================
-# Theme: pane borders
-# ==============================================================================
-
-# Show descriptive pane titles assigned by tools such as gdb-tmux.
 set -g pane-border-status top
 set -g pane-border-format \
-  " #[fg=#{?pane_active,$THEME_BLUE,$THEME_MUTED}]#{pane_title}#[default] "
+  "#[fg=$THEME_YELLOW,bold]#{?pane_active, ┌∩┐(◣_◢)┌∩┐ ,}#[default]"
 
 set -g pane-border-style \
   "fg=$THEME_BORDER"
-
 set -g pane-active-border-style \
-  "fg=$THEME_BLUE"
-
-
-# ==============================================================================
-# Theme: modes, prompts, and popups
-# ==============================================================================
+  "fg=$THEME_BLUE,bold"
 
 set -g mode-style \
   "fg=$THEME_BG,bg=$THEME_BLUE,bold"
-
 set -g message-style \
   "fg=$THEME_BG,bg=$THEME_BLUE,bold"
-
 set -g message-command-style \
   "fg=$THEME_FG,bg=$THEME_SURFACE_ALT"
-
 set -g popup-style \
   "fg=$THEME_FG,bg=$THEME_SURFACE"
-
 set -g popup-border-style \
   "fg=$THEME_BLUE,bg=$THEME_SURFACE"
-
 set -g copy-mode-selection-style \
   "fg=$THEME_FG,bg=$THEME_SELECTION"
-
 set -g copy-mode-match-style \
   "fg=$THEME_FG,bg=$THEME_SURFACE_ALT"
-
 set -g copy-mode-current-match-style \
   "fg=$THEME_BG,bg=$THEME_YELLOW,bold"
-
-
-# ==============================================================================
-# Theme: status bar
-# ==============================================================================
 
 set -g status-interval 3
 set -g status-justify left
 set -g status-left-length 50
 set -g status-right-length 120
-
 set -g status-style "$TMUX_STATUS_STYLE"
 set -g status-left ""
 set -g window-status-separator ""
-
-# Inactive windows.
 set -g window-status-format \
   " #I #W "
-
 set -g window-status-style \
   "$TMUX_WINDOW_STYLE"
-
-# Current window.
 set -g window-status-current-format \
   " #I #W "
-
 set -g window-status-current-style \
   "$TMUX_WINDOW_CURRENT_STYLE"
-
-# Alerts.
 set -g window-status-activity-style \
   "fg=$THEME_YELLOW,bg=$THEME_SURFACE,bold"
-
 set -g window-status-bell-style \
   "fg=$THEME_RED,bg=$THEME_SURFACE,bold"
-
-# Pane-number overlay shown by prefix + q.
 set -g display-panes-colour "$THEME_MUTED"
 set -g display-panes-active-colour "$THEME_BLUE"
 
-
-# ==============================================================================
-# Theme: status widgets
-# ==============================================================================
-
 wg_separator="#[fg=$THEME_BORDER]│#[default]"
-
 wg_date="#[fg=$THEME_MUTED]%a %d %b #[fg=$THEME_FG_DIM]%H:%M#[default]"
 {{ if $laptop }}
 wg_battery="#{battery_status_fg}#{battery_icon} #{battery_percentage}%#[default]"
 {{ end }}
-
 wg_is_zoomed="#[fg=$THEME_BG,bg=$THEME_PURPLE,bold]#{?window_zoomed_flag, ZOOM ,}#[default]"
-
 wg_is_keys_off="#[fg=$THEME_BG,bg=$THEME_RED,bold]#([ \"$(tmux show-option -qv key-table)\" = 'off' ] && printf ' REMOTE SESSION ')#[default]"
 
 set -g status-right \
   "#{prefix_highlight} $wg_is_keys_off $wg_is_zoomed #{sysstat_cpu} $wg_separator #{sysstat_mem} $wg_separator #{sysstat_loadavg} $wg_separator $wg_date{{ if $laptop }} $wg_separator $wg_battery{{ end }} #{online_status}"
 
-
-# ==============================================================================
-# Theme: remote-session mode
-# ==============================================================================
-
-bind -T root F12 \
-  set prefix None \;\
-  set key-table off \;\
-  set -g window-style "bg=$THEME_SURFACE" \;\
-  set -g status-style "fg=$THEME_SURFACE,bg=$THEME_SURFACE" \;\
-  set -g window-status-style "fg=$THEME_SURFACE,bg=$THEME_SURFACE" \;\
-  set -g window-status-current-style "fg=$THEME_SURFACE,bg=$THEME_SURFACE" \;\
-  if -F '#{pane_in_mode}' 'send-keys -X cancel' \;\
-  set -g status-position top \;\
-  refresh-client -S
-
-bind -T off F12 \
-  set -u prefix \;\
-  set -u key-table \;\
-  set -u window-style \;\
-  set -g status-style "$TMUX_STATUS_STYLE" \;\
-  set -g window-status-style "$TMUX_WINDOW_STYLE" \;\
-  set -g window-status-current-style "$TMUX_WINDOW_CURRENT_STYLE" \;\
-  set -g status-position bottom \;\
-  refresh-client -S
-
-
-# ==============================================================================
-# Theme: plugin colors
-# ==============================================================================
-
-# tmux-online-status
+# Plugin settings
 set -g @online_icon \
   "#[fg=$THEME_GREEN]●#[default]"
-
 set -g @offline_icon \
   "#[fg=$THEME_RED]●#[default]"
 
-# tmux-plugin-sysstat
 set -g @sysstat_mem_view_tmpl \
   "MEM:#[fg=#{mem.color}]#{mem.pused}#[default] #{mem.used}"
-
 set -g @sysstat_cpu_color_low "$THEME_GREEN"
 set -g @sysstat_cpu_color_medium "$THEME_YELLOW"
 set -g @sysstat_cpu_color_stress "$THEME_RED"
-
 set -g @sysstat_mem_color_low "$THEME_GREEN"
 set -g @sysstat_mem_color_medium "$THEME_YELLOW"
 set -g @sysstat_mem_color_stress "$THEME_RED"
-
 set -g @sysstat_swap_color_low "$THEME_GREEN"
 set -g @sysstat_swap_color_medium "$THEME_YELLOW"
 set -g @sysstat_swap_color_stress "$THEME_RED"
 
 {{ if $laptop }}
-# tmux-battery
 set -g @batt_color_full_charge \
   "#[fg=$THEME_GREEN]"
-
 set -g @batt_color_high_charge \
   "#[fg=$THEME_GREEN]"
-
 set -g @batt_color_medium_charge \
   "#[fg=$THEME_YELLOW]"
-
 set -g @batt_color_low_charge \
   "#[fg=$THEME_RED]"
-
 {{ end }}
-# tmux-prefix-highlight
+
 set -g @prefix_highlight_output_prefix '['
 set -g @prefix_highlight_output_suffix ']'
-
 set -g @prefix_highlight_fg "$THEME_BG"
 set -g @prefix_highlight_bg "$THEME_PURPLE"
-
 set -g @prefix_highlight_show_copy_mode 'on'
-
 set -g @prefix_highlight_copy_mode_attr \
   "fg=$THEME_BG,bg=$THEME_PURPLE"
 
-# ============================
-# ===       Plugins        ===
-# ============================
+# Plugins
 set -g @plugin 'tmux-plugins/tpm'
 {{ if $laptop }}
 set -g @plugin 'tmux-plugins/tmux-battery'
@@ -339,6 +198,5 @@ set -g @plugin 'tmux-plugins/tmux-prefix-highlight'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-yank'
 set -g @plugin 'samoshkin/tmux-plugin-sysstat'
-
 
 run-shell '~/.config/tmux/plugins/tpm/tpm'

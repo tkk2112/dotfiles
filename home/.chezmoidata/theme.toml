@@ -51,7 +51,6 @@ muted = "#6E7681"
 selection = "#ADD6FF"
 cursor = "#000000"
 
-# General application colors.
 red = "#CD3131"
 orange = "#A31515"
 yellow = "#795E26"

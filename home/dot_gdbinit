@@ -46,7 +46,6 @@ define hook-quit
     set confirm off
 end
 
-
 document btfull
 Show full backtraces for all threads.
 end
@@ -67,11 +66,7 @@ document cls
 Clear the terminal.
 end
 
-
-# ==============================================================================
 # GDB dashboard
-# ==============================================================================
-
 source ~/.local/share/gdb-dashboard/dashboard.gdb
 
 # The normal terminal should remain usable even when GDB is started outside
