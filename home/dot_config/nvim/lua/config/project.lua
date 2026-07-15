@@ -26,8 +26,6 @@ local function default_project_settings()
       vim = {
         opt = {
           expandtab = vim.bo.expandtab,
-          shiftwidth = vim.bo.shiftwidth,
-          softtabstop = vim.bo.softtabstop,
           tabstop = vim.bo.tabstop,
         },
       },
@@ -49,8 +47,6 @@ local function encode_project_json(data)
     '    "vim": {',
     '      "opt": {',
     '        "expandtab": ' .. tostring(options.expandtab) .. ",",
-    '        "shiftwidth": ' .. tostring(options.shiftwidth) .. ",",
-    '        "softtabstop": ' .. tostring(options.softtabstop) .. ",",
     '        "tabstop": ' .. tostring(options.tabstop),
     "      }",
     "    },",

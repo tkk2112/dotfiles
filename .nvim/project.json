@@ -3,8 +3,6 @@
     "vim": {
       "opt": {
         "expandtab": true,
-        "shiftwidth": 2,
-        "softtabstop": 2,
         "tabstop": 2
       }
     },
