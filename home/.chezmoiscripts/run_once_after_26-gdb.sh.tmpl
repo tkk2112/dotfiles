@@ -5,24 +5,24 @@ set -eu
 PROFILE_DEVELOPMENT="{{ if has "development" $profiles }}true{{ else }}false{{ end }}"
 
 if [ "$PROFILE_DEVELOPMENT" != "true" ]; then
-    printf 'Skipping gdb setup because development profile is not enabled\n'
-    exit 0
+  printf 'Skipping gdb setup because development profile is not enabled\n'
+  exit 0
 fi
 
 dashboard_dir="$HOME/.local/share/gdb-dashboard"
 dashboard_file="$dashboard_dir/dashboard.gdb"
 
 mkdir -p \
-    "$HOME/.cache/gdb" \
-    "$HOME/.local/bin" \
-    "$dashboard_dir"
+  "$HOME/.cache/gdb" \
+  "$HOME/.local/bin" \
+  "$dashboard_dir"
 
 curl \
-    --fail \
-    --location \
-    --silent \
-    --show-error \
-    --output "$dashboard_file" \
-    'https://raw.githubusercontent.com/cyrus-and/gdb-dashboard/master/.gdbinit'
+  --fail \
+  --location \
+  --silent \
+  --show-error \
+  --output "$dashboard_file" \
+  'https://raw.githubusercontent.com/cyrus-and/gdb-dashboard/master/.gdbinit'
 
 chmod 0644 "$dashboard_file"

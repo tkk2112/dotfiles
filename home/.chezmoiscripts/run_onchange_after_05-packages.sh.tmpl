@@ -76,197 +76,197 @@ EOF
 )"
 
 if [ "${DOTFILES_SKIP_PACKAGES:-}" = "1" ]; then
-    printf 'Skipping package install because DOTFILES_SKIP_PACKAGES=1\n'
-    exit 0
+  printf 'Skipping package install because DOTFILES_SKIP_PACKAGES=1\n'
+  exit 0
 fi
 
 run() {
-    printf '+ %s\n' "$*"
+  printf '+ %s\n' "$*"
 
-    if [ "${DOTFILES_PACKAGES_DRY_RUN:-}" = "1" ]; then
-        return 0
-    fi
+  if [ "${DOTFILES_PACKAGES_DRY_RUN:-}" = "1" ]; then
+    return 0
+  fi
 
-    "$@"
+  "$@"
 }
 
 run_as_root() {
-    if [ "$(id -u)" -eq 0 ]; then
-        run "$@"
-    elif command -v sudo >/dev/null 2>&1; then
-        run sudo "$@"
-    else
-        printf 'Need root or sudo to install packages\n' >&2
-        exit 1
-    fi
+  if [ "$(id -u)" -eq 0 ]; then
+    run "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    run sudo "$@"
+  else
+    printf 'Need root or sudo to install packages\n' >&2
+    exit 1
+  fi
 }
 
 normalize_packages() {
-    printf '%s\n' "$1" | awk 'NF && !seen[$0]++ { print }'
+  printf '%s\n' "$1" | awk 'NF && !seen[$0]++ { print }'
 }
 
 print_packages() {
-    label="$1"
-    packages="$2"
+  label="$1"
+  packages="$2"
 
-    printf 'Installing %s packages:\n' "$label"
-    printf '%s\n' "$packages" | sed 's/^/  - /'
+  printf 'Installing %s packages:\n' "$label"
+  printf '%s\n' "$packages" | sed 's/^/  - /'
 }
 
 install_user_packages() {
-    label="$1"
-    package_block="$2"
-    shift 2
+  label="$1"
+  package_block="$2"
+  shift 2
 
-    packages="$(normalize_packages "$package_block")"
+  packages="$(normalize_packages "$package_block")"
 
-    if [ -z "$packages" ]; then
-        printf 'No %s packages selected\n' "$label"
-        return 0
-    fi
+  if [ -z "$packages" ]; then
+    printf 'No %s packages selected\n' "$label"
+    return 0
+  fi
 
-    print_packages "$label" "$packages"
+  print_packages "$label" "$packages"
 
-    # shellcheck disable=SC2086
-    run "$@" $packages
+  # shellcheck disable=SC2086
+  run "$@" $packages
 }
 
 install_root_packages() {
-    label="$1"
-    package_block="$2"
-    shift 2
+  label="$1"
+  package_block="$2"
+  shift 2
 
-    packages="$(normalize_packages "$package_block")"
+  packages="$(normalize_packages "$package_block")"
 
-    if [ -z "$packages" ]; then
-        printf 'No %s packages selected\n' "$label"
-        return 0
-    fi
+  if [ -z "$packages" ]; then
+    printf 'No %s packages selected\n' "$label"
+    return 0
+  fi
 
-    print_packages "$label" "$packages"
+  print_packages "$label" "$packages"
 
-    # shellcheck disable=SC2086
-    run_as_root "$@" $packages
+  # shellcheck disable=SC2086
+  run_as_root "$@" $packages
 }
 
 install_brew_casks() {
-    casks="$(normalize_packages "$BREW_CASKS")"
+  casks="$(normalize_packages "$BREW_CASKS")"
 
-    if [ -z "$casks" ]; then
-        printf 'No Homebrew casks selected\n'
-        return 0
-    fi
+  if [ -z "$casks" ]; then
+    printf 'No Homebrew casks selected\n'
+    return 0
+  fi
 
-    print_packages "Homebrew cask" "$casks"
+  print_packages "Homebrew cask" "$casks"
 
-    # shellcheck disable=SC2086
-    run brew install --cask $casks
+  # shellcheck disable=SC2086
+  run brew install --cask $casks
 }
 
 install_brew() {
-    if ! command -v brew >/dev/null 2>&1; then
-        printf 'Homebrew is not installed; skipping packages\n' >&2
-        exit 0
-    fi
+  if ! command -v brew >/dev/null 2>&1; then
+    printf 'Homebrew is not installed; skipping packages\n' >&2
+    exit 0
+  fi
 
-    install_user_packages Homebrew "$BREW_PACKAGES" brew install
-    install_brew_casks
+  install_user_packages Homebrew "$BREW_PACKAGES" brew install
+  install_brew_casks
 }
 
 install_apt_ppas() {
-    ppas="$(normalize_packages "$APT_PPAS")"
+  ppas="$(normalize_packages "$APT_PPAS")"
 
-    if [ -z "$ppas" ]; then
-        printf 'No apt PPAs configured\n'
-        return 0
-    fi
+  if [ -z "$ppas" ]; then
+    printf 'No apt PPAs configured\n'
+    return 0
+  fi
 
-    if [ ! -r /etc/os-release ]; then
-        printf 'Cannot determine Linux distribution; skipping apt PPAs\n' >&2
-        return 0
-    fi
+  if [ ! -r /etc/os-release ]; then
+    printf 'Cannot determine Linux distribution; skipping apt PPAs\n' >&2
+    return 0
+  fi
 
-    # shellcheck disable=SC1091
-    . /etc/os-release
+  # shellcheck disable=SC1091
+  . /etc/os-release
 
-    # Launchpad PPAs are Ubuntu-specific. Do not attempt to add them on Debian
-    # or another distribution that happens to use apt.
-    if [ "${ID:-}" != "ubuntu" ]; then
-        printf 'Skipping Ubuntu PPAs on distribution: %s\n' "${ID:-unknown}"
-        return 0
-    fi
+  # Launchpad PPAs are Ubuntu-specific. Do not attempt to add them on Debian
+  # or another distribution that happens to use apt.
+  if [ "${ID:-}" != "ubuntu" ]; then
+    printf 'Skipping Ubuntu PPAs on distribution: %s\n' "${ID:-unknown}"
+    return 0
+  fi
 
-    install_root_packages apt-bootstrap \
-        "software-properties-common" \
-        env DEBIAN_FRONTEND=noninteractive \
-        apt-get install -y --no-install-recommends
+  install_root_packages apt-bootstrap \
+    "software-properties-common" \
+    env DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends
 
-    print_packages "Ubuntu PPA" "$ppas"
+  print_packages "Ubuntu PPA" "$ppas"
 
-    while IFS= read -r ppa; do
-        [ -n "$ppa" ] || continue
-        run_as_root add-apt-repository -y "$ppa"
-    done <<EOF
+  while IFS= read -r ppa; do
+    [ -n "$ppa" ] || continue
+    run_as_root add-apt-repository -y "$ppa"
+  done <<EOF
 $ppas
 EOF
 
-    # Refresh metadata after adding the repositories.
-    run_as_root apt-get update
+  # Refresh metadata after adding the repositories.
+  run_as_root apt-get update
 }
 
 install_apt() {
-    if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
-        printf 'Skipping apt packages because owned profile is not enabled\n'
-        return 0
-    fi
+  if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
+    printf 'Skipping apt packages because owned profile is not enabled\n'
+    return 0
+  fi
 
-    # Initial metadata is needed to install software-properties-common.
-    run_as_root apt-get update
+  # Initial metadata is needed to install software-properties-common.
+  run_as_root apt-get update
 
-    # On Ubuntu, add configured PPAs before installing the package catalog.
-    install_apt_ppas
+  # On Ubuntu, add configured PPAs before installing the package catalog.
+  install_apt_ppas
 
-    install_root_packages apt "$APT_PACKAGES" \
-        env DEBIAN_FRONTEND=noninteractive \
-        apt-get install -y --no-install-recommends
+  install_root_packages apt "$APT_PACKAGES" \
+    env DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends
 }
 
 install_dnf() {
-    if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
-        printf 'Skipping dnf packages because owned profile is not enabled\n'
-        return 0
-    fi
+  if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
+    printf 'Skipping dnf packages because owned profile is not enabled\n'
+    return 0
+  fi
 
-    install_root_packages dnf "$DNF_PACKAGES" dnf install -y
+  install_root_packages dnf "$DNF_PACKAGES" dnf install -y
 }
 
 install_pacman() {
-    if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
-        printf 'Skipping pacman packages because owned profile is not enabled\n'
-        return 0
-    fi
+  if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
+    printf 'Skipping pacman packages because owned profile is not enabled\n'
+    return 0
+  fi
 
-    install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed
+  install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed
 }
 
 case "{{ .chezmoi.os }}" in
 darwin)
-    install_brew
-    ;;
+  install_brew
+  ;;
 
 linux)
-    if command -v apt-get >/dev/null 2>&1; then
-        install_apt
-    elif command -v dnf >/dev/null 2>&1; then
-        install_dnf
-    elif command -v pacman >/dev/null 2>&1; then
-        install_pacman
-    else
-        printf 'No supported package manager found; skipping packages\n' >&2
-    fi
-    ;;
+  if command -v apt-get >/dev/null 2>&1; then
+    install_apt
+  elif command -v dnf >/dev/null 2>&1; then
+    install_dnf
+  elif command -v pacman >/dev/null 2>&1; then
+    install_pacman
+  else
+    printf 'No supported package manager found; skipping packages\n' >&2
+  fi
+  ;;
 
 *)
-    printf 'Unsupported OS for package install: %s\n' "{{ .chezmoi.os }}" >&2
-    ;;
+  printf 'Unsupported OS for package install: %s\n' "{{ .chezmoi.os }}" >&2
+  ;;
 esac

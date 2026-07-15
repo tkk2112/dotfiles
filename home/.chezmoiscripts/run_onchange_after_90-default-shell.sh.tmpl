@@ -5,55 +5,55 @@ set -eu
 PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
 
 if [ "${DOTFILES_SKIP_DEFAULT_SHELL:-}" = "1" ]; then
-    printf 'Skipping default shell change because DOTFILES_SKIP_DEFAULT_SHELL=1\n'
-    exit 0
+  printf 'Skipping default shell change because DOTFILES_SKIP_DEFAULT_SHELL=1\n'
+  exit 0
 fi
 
 if [ "${DOTFILES_CI:-}" = "true" ]; then
-    printf 'Skipping default shell change in CI\n'
-    exit 0
+  printf 'Skipping default shell change in CI\n'
+  exit 0
 fi
 
 if [ "$PROFILE_OWNED" != "true" ]; then
-    printf 'Skipping default shell change because owned profile is not enabled\n'
-    exit 0
+  printf 'Skipping default shell change because owned profile is not enabled\n'
+  exit 0
 fi
 
 if [ "$(id -u)" -eq 0 ]; then
-    printf 'Skipping default shell change for root\n'
-    exit 0
+  printf 'Skipping default shell change for root\n'
+  exit 0
 fi
 
 if ! command -v zsh >/dev/null 2>&1; then
-    printf 'Skipping default shell change because zsh is not installed\n'
-    exit 0
+  printf 'Skipping default shell change because zsh is not installed\n'
+  exit 0
 fi
 
 if ! command -v chsh >/dev/null 2>&1; then
-    printf 'Skipping default shell change because chsh is not installed\n'
-    exit 0
+  printf 'Skipping default shell change because chsh is not installed\n'
+  exit 0
 fi
 
 run() {
-    printf '+ %s\n' "$*"
+  printf '+ %s\n' "$*"
 
-    if [ "${DOTFILES_DEFAULT_SHELL_DRY_RUN:-}" = "1" ]; then
-        return 0
-    fi
+  if [ "${DOTFILES_DEFAULT_SHELL_DRY_RUN:-}" = "1" ]; then
+    return 0
+  fi
 
-    "$@"
+  "$@"
 }
 
 zsh_path="$(command -v zsh)"
 current_shell="${SHELL:-}"
 
 if [ "$current_shell" = "$zsh_path" ]; then
-    printf 'Default shell already appears to be zsh: %s\n' "$zsh_path"
-    exit 0
+  printf 'Default shell already appears to be zsh: %s\n' "$zsh_path"
+  exit 0
 fi
 
 if command -v sudo >/dev/null 2>&1; then
-    run sudo chsh -s "$zsh_path" "$USER"
+  run sudo chsh -s "$zsh_path" "$USER"
 else
-    run chsh -s "$zsh_path"
+  run chsh -s "$zsh_path"
 fi
