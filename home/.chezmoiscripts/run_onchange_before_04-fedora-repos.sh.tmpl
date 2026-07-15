@@ -14,88 +14,88 @@ EOF
 )"
 
 if [ "${DOTFILES_SKIP_REPOS:-}" = "1" ]; then
-    printf 'Skipping repository bootstrap because DOTFILES_SKIP_REPOS=1\n'
-    exit 0
+  printf 'Skipping repository bootstrap because DOTFILES_SKIP_REPOS=1\n'
+  exit 0
 fi
 
 if [ "{{ .chezmoi.os }}" != "linux" ]; then
-    printf 'Skipping Fedora repositories on non-Linux OS\n'
-    exit 0
+  printf 'Skipping Fedora repositories on non-Linux OS\n'
+  exit 0
 fi
 
 if [ "$PROFILE_OWNED" != "true" ]; then
-    printf 'Skipping Fedora repositories because owned profile is not enabled\n'
-    exit 0
+  printf 'Skipping Fedora repositories because owned profile is not enabled\n'
+  exit 0
 fi
 
 if [ ! -r /etc/os-release ]; then
-    printf 'Skipping Fedora repositories because /etc/os-release is missing\n'
-    exit 0
+  printf 'Skipping Fedora repositories because /etc/os-release is missing\n'
+  exit 0
 fi
 
 # shellcheck disable=SC1091
 . /etc/os-release
 
 if [ "${ID:-}" != "fedora" ]; then
-    printf 'Skipping Fedora repositories on distro: %s\n' "${ID:-unknown}"
-    exit 0
+  printf 'Skipping Fedora repositories on distro: %s\n' "${ID:-unknown}"
+  exit 0
 fi
 
 run() {
-    printf '+ %s\n' "$*"
+  printf '+ %s\n' "$*"
 
-    if [ "${DOTFILES_REPOS_DRY_RUN:-}" = "1" ]; then
-        return 0
-    fi
+  if [ "${DOTFILES_REPOS_DRY_RUN:-}" = "1" ]; then
+    return 0
+  fi
 
-    "$@"
+  "$@"
 }
 
 run_as_root() {
-    if [ "$(id -u)" -eq 0 ]; then
-        run "$@"
-    elif command -v sudo >/dev/null 2>&1; then
-        run sudo "$@"
-    else
-        printf 'Need root or sudo to configure Fedora repositories\n' >&2
-        exit 1
-    fi
+  if [ "$(id -u)" -eq 0 ]; then
+    run "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    run sudo "$@"
+  else
+    printf 'Need root or sudo to configure Fedora repositories\n' >&2
+    exit 1
+  fi
 }
 
 repo_exists() {
-    repo_file="$1"
-    [ -e "$repo_file" ]
+  repo_file="$1"
+  [ -e "$repo_file" ]
 }
 
 enable_copr() {
-    repo="$1"
-    repo_file="/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:${repo%/*}:${repo#*/}.repo"
+  repo="$1"
+  repo_file="/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:${repo%/*}:${repo#*/}.repo"
 
-    if repo_exists "$repo_file"; then
-        printf 'COPR already enabled: %s\n' "$repo"
-        return 0
-    fi
+  if repo_exists "$repo_file"; then
+    printf 'COPR already enabled: %s\n' "$repo"
+    return 0
+  fi
 
-    run_as_root dnf copr enable -y "$repo"
+  run_as_root dnf copr enable -y "$repo"
 }
 
 enable_rpmfusion() {
-    kind="$1"
-    repo_file="/etc/yum.repos.d/rpmfusion-${kind}.repo"
+  kind="$1"
+  repo_file="/etc/yum.repos.d/rpmfusion-${kind}.repo"
 
-    if repo_exists "$repo_file"; then
-        printf 'RPM Fusion already enabled: %s\n' "$kind"
-        return 0
-    fi
+  if repo_exists "$repo_file"; then
+    printf 'RPM Fusion already enabled: %s\n' "$kind"
+    return 0
+  fi
 
-    run_as_root dnf install -y \
-        "https://mirrors.rpmfusion.org/${kind}/fedora/rpmfusion-${kind}-release-${VERSION_ID}.noarch.rpm"
+  run_as_root dnf install -y \
+    "https://mirrors.rpmfusion.org/${kind}/fedora/rpmfusion-${kind}-release-${VERSION_ID}.noarch.rpm"
 }
 
 run_as_root dnf install -y dnf-plugins-core
 
 printf '%s\n' "$COPR_REPOS" | awk 'NF && !seen[$0]++ { print }' | while IFS= read -r repo; do
-    enable_copr "$repo"
+  enable_copr "$repo"
 done
 
 enable_rpmfusion free

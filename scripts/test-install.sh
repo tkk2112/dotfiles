@@ -260,6 +260,7 @@ check_nvim_config() {
 
     # lazy.nvim catches many plugin errors internally, which means Neovim
     # may still exit with status zero. Treat the emitted errors as failures.
+    # shellcheck disable=SC2016
     if grep -E \
       'Error detected while processing|Failed to source|Failed to run `config`|Failed to run `build`|loop or previous error loading module|stack traceback:|E[0-9][0-9][0-9]+:|\[nvim-treesitter/install/[^]]+\] error:|Error during "tree-sitter build"' \
       "$output_file" \

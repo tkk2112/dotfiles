@@ -14,18 +14,18 @@ tmpdir=
 fetch_tools_checked=0
 
 cleanup() {
-    rc=$?
-    trap - 0 1 2 15
+  rc=$?
+  trap - 0 1 2 15
 
-    if [ -n "${manifest_tmp:-}" ]; then
-        rm -f -- "$manifest_tmp"
-    fi
+  if [ -n "${manifest_tmp:-}" ]; then
+    rm -f -- "$manifest_tmp"
+  fi
 
-    if [ -n "${tmpdir:-}" ]; then
-        rm -rf -- "$tmpdir"
-    fi
+  if [ -n "${tmpdir:-}" ]; then
+    rm -rf -- "$tmpdir"
+  fi
 
-    exit "$rc"
+  exit "$rc"
 }
 
 trap cleanup 0 1 2 15
@@ -34,14 +34,14 @@ mkdir -p "$ssh_dir" "$state_dir"
 chmod 700 "$ssh_dir" "$state_dir"
 
 if [ -L "$keys_dir" ]; then
-    printf 'SSH keys path is still a symlink: %s\n' "$keys_dir" >&2
-    printf '%s\n' 'Run the SSH migration script before this provisioner.' >&2
-    exit 1
+  printf 'SSH keys path is still a symlink: %s\n' "$keys_dir" >&2
+  printf '%s\n' 'Run the SSH migration script before this provisioner.' >&2
+  exit 1
 fi
 
 if [ -e "$keys_dir" ] && [ ! -d "$keys_dir" ]; then
-    printf 'SSH keys path is not a directory: %s\n' "$keys_dir" >&2
-    exit 1
+  printf 'SSH keys path is not a directory: %s\n' "$keys_dir" >&2
+  exit 1
 fi
 
 mkdir -p "$keys_dir"
@@ -53,108 +53,108 @@ desired_manifest="$tmpdir/manifest"
 : > "$desired_manifest"
 
 require_fetch_tools() {
-    if [ "$fetch_tools_checked" -eq 1 ]; then
-        return 0
-    fi
+  if [ "$fetch_tools_checked" -eq 1 ]; then
+    return 0
+  fi
 
-    command -v pass-cli >/dev/null 2>&1 || {
-        printf '%s\n' 'pass-cli is required to provision SSH keys' >&2
-        return 127
-    }
+  command -v pass-cli >/dev/null 2>&1 || {
+    printf '%s\n' 'pass-cli is required to provision SSH keys' >&2
+    return 127
+  }
 
-    command -v jq >/dev/null 2>&1 || {
-        printf '%s\n' 'jq is required to provision SSH keys' >&2
-        return 127
-    }
+  command -v jq >/dev/null 2>&1 || {
+    printf '%s\n' 'jq is required to provision SSH keys' >&2
+    return 127
+  }
 
-    fetch_tools_checked=1
+  fetch_tools_checked=1
 }
 
 provision_key() {
-    name=$1
-    uri=$2
+  name=$1
+  uri=$2
 
-    case $name in
-        '' | . | .. | */*)
-            printf 'Invalid SSH key name: %s\n' "$name" >&2
-            return 1
-            ;;
-    esac
+  case $name in
+    '' | . | .. | */*)
+      printf 'Invalid SSH key name: %s\n' "$name" >&2
+      return 1
+      ;;
+  esac
 
-    case $uri in
-        pass://*/*)
-            ;;
-        *)
-            printf 'Invalid Proton Pass URI for %s: %s\n' "$name" "$uri" >&2
-            return 1
-            ;;
-    esac
+  case $uri in
+    pass://*/*)
+      ;;
+    *)
+      printf 'Invalid Proton Pass URI for %s: %s\n' "$name" "$uri" >&2
+      return 1
+      ;;
+  esac
 
-    require_fetch_tools
+  require_fetch_tools
 
-    ref=${uri#pass://}
-    share_id=${ref%%/*}
-    item_id=${ref#*/}
+  ref=${uri#pass://}
+  share_id=${ref%%/*}
+  item_id=${ref#*/}
 
-    if [ -z "$share_id" ] || [ -z "$item_id" ] || [ "$item_id" = "$ref" ]; then
-        printf 'Invalid Proton Pass URI for %s: %s\n' "$name" "$uri" >&2
-        return 1
-    fi
+  if [ -z "$share_id" ] || [ -z "$item_id" ] || [ "$item_id" = "$ref" ]; then
+    printf 'Invalid Proton Pass URI for %s: %s\n' "$name" "$uri" >&2
+    return 1
+  fi
 
-    item_json="$tmpdir/$name.json"
-    raw_private="$tmpdir/$name.private.raw"
-    raw_public="$tmpdir/$name.public.raw"
-    private_file="$tmpdir/$name"
-    public_file="$tmpdir/$name.pub"
+  item_json="$tmpdir/$name.json"
+  raw_private="$tmpdir/$name.private.raw"
+  raw_public="$tmpdir/$name.public.raw"
+  private_file="$tmpdir/$name"
+  public_file="$tmpdir/$name.pub"
 
-    printf 'Fetching SSH key from Proton Pass: %s\n' "$name"
+  printf 'Fetching SSH key from Proton Pass: %s\n' "$name"
 
-    pass-cli item view \
-        --share-id "$share_id" \
-        --item-id "$item_id" \
-        --output json > "$item_json"
+  pass-cli item view \
+    --share-id "$share_id" \
+    --item-id "$item_id" \
+    --output json > "$item_json"
 
-    jq -je \
-        '.item.content.content.SshKey.private_key' \
-        "$item_json" > "$raw_private"
+  jq -je \
+    '.item.content.content.SshKey.private_key' \
+    "$item_json" > "$raw_private"
 
-    jq -je \
-        '.item.content.content.SshKey.public_key' \
-        "$item_json" > "$raw_public"
+  jq -je \
+    '.item.content.content.SshKey.public_key' \
+    "$item_json" > "$raw_public"
 
-    # Keep the key contents unchanged except for removing trailing blank lines.
-    awk '
-        {
-            lines[NR] = $0
-            if ($0 !~ /^[[:space:]]*$/)
-                last = NR
-        }
-        END {
-            if (!last)
-                exit 1
+  # Keep the key contents unchanged except for removing trailing blank lines.
+  awk '
+    {
+      lines[NR] = $0
+      if ($0 !~ /^[[:space:]]*$/)
+        last = NR
+    }
+    END {
+      if (!last)
+        exit 1
 
-            for (i = 1; i <= last; i++)
-                print lines[i]
-        }
-    ' "$raw_private" > "$private_file"
+      for (i = 1; i <= last; i++)
+        print lines[i]
+    }
+  ' "$raw_private" > "$private_file"
 
-    awk '
-        NF >= 2 {
-            print
-            found = 1
-            exit
-        }
-        END {
-            if (!found)
-                exit 1
-        }
-    ' "$raw_public" > "$public_file"
+  awk '
+    NF >= 2 {
+      print
+      found = 1
+      exit
+    }
+    END {
+      if (!found)
+        exit 1
+    }
+  ' "$raw_public" > "$public_file"
 
-    chmod 600 "$private_file"
-    chmod 644 "$public_file"
+  chmod 600 "$private_file"
+  chmod 644 "$public_file"
 
-    rm -f -- "$item_json" "$raw_private" "$raw_public"
-    printf '%s\n' "$name" >> "$desired_manifest"
+  rm -f -- "$item_json" "$raw_private" "$raw_public"
+  printf '%s\n' "$name" >> "$desired_manifest"
 }
 
 {{- range $name, $key := .ssh.keys }}
@@ -165,27 +165,27 @@ provision_key {{ $name | quote }} {{ $key.uri | quote }}
 
 # Install all fetched keys only after every Proton Pass lookup succeeded.
 while IFS= read -r name; do
-    [ -n "$name" ] || continue
+  [ -n "$name" ] || continue
 
-    mv -f -- "$tmpdir/$name" "$keys_dir/$name"
-    mv -f -- "$tmpdir/$name.pub" "$keys_dir/$name.pub"
-    chmod 600 "$keys_dir/$name"
-    chmod 644 "$keys_dir/$name.pub"
+  mv -f -- "$tmpdir/$name" "$keys_dir/$name"
+  mv -f -- "$tmpdir/$name.pub" "$keys_dir/$name.pub"
+  chmod 600 "$keys_dir/$name"
+  chmod 644 "$keys_dir/$name.pub"
 done < "$desired_manifest"
 
 # Remove only keys previously managed by this script and no longer selected.
 if [ -f "$manifest" ]; then
-    while IFS= read -r old_name; do
-        [ -n "$old_name" ] || continue
+  while IFS= read -r old_name; do
+    [ -n "$old_name" ] || continue
 
-        if ! grep -Fqx "$old_name" "$desired_manifest"; then
-            printf 'Removing SSH key no longer assigned to this host: %s\n' \
-                "$old_name"
-            rm -f -- \
-                "$keys_dir/$old_name" \
-                "$keys_dir/$old_name.pub"
-        fi
-    done < "$manifest"
+    if ! grep -Fqx "$old_name" "$desired_manifest"; then
+      printf 'Removing SSH key no longer assigned to this host: %s\n' \
+        "$old_name"
+      rm -f -- \
+        "$keys_dir/$old_name" \
+        "$keys_dir/$old_name.pub"
+    fi
+  done < "$manifest"
 fi
 
 manifest_tmp="$state_dir/.proton-pass-ssh-keys.manifest.tmp.$$"
@@ -195,8 +195,8 @@ mv -f -- "$manifest_tmp" "$manifest"
 manifest_tmp=
 
 printf 'Provisioned %s Proton Pass SSH key(s) for %s\n' \
-    "$(wc -l < "$desired_manifest" | tr -d '[:space:]')" \
-    {{ $machine | quote }}
+  "$(wc -l < "$desired_manifest" | tr -d '[:space:]')" \
+  {{ $machine | quote }}
 
 trap - 0 1 2 15
 rm -rf -- "$tmpdir"

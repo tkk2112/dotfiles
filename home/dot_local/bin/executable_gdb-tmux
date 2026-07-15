@@ -181,6 +181,7 @@ runner="$runtime_directory/run-gdb"
   printf 'gdb_status=$?\n'
   printf 'rm -rf %q\n' "$runtime_directory"
   printf 'tmux kill-window -t %q\n' "$window_id"
+  # shellcheck disable=SC2016
   printf 'exit "$gdb_status"\n'
 } >"$runner"
 
