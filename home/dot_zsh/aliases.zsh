@@ -19,6 +19,7 @@ alias ls='lsd'
 alias cz='chezmoi'
 alias hookoff='git config --global core.hooksPath /dev/null'
 alias hookon='git config --global --unset core.hooksPath'
+alias tlf='tldr --list | fzf --preview "tldr {1} --color=always" --preview-window=right,70% | xargs tldr'
 alias tmux='tmux -2'
 
 alias dpigs='dpigs -H'
