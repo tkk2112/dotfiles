@@ -9,6 +9,7 @@ packages:
       - dejan/lazygit
       - gsauthof/dracut-sshd
       - kylegospo/grub-btrfs
+      - scottames/ghostty
 
   casks:
     - name: whatcable
@@ -16,30 +17,7 @@ packages:
       tap: darrylmorley/whatcable
       cask: whatcable
 
-  uv_tools:
-    - name: cmake-language-server
-      group: development
-      package: cmake-language-server
-      command: cmake-language-server
-      with: [pygls==1.3.1]
-      skip: [darwin]
-    - name: mdformat
-      group: development
-      package: mdformat==1.0.0
-      with: [mdformat-gfm==1.0.0]
-      skip: [darwin]
-    - name: stylua
-      group: development
-      package: git+https://github.com/johnnymorganz/stylua@v2.5.2
-      skip: [darwin]
-    - name: taplo
-      group: development
-      package: taplo==0.9.3
-      skip: [darwin]
-    - name: yamlfmt
-      group: development
-      package: google-yamlfmt==0.21.0
-      skip: [darwin]
+  uv_tools: []
 
   catalog:
     # Core: Always-installed CLI foundation.
@@ -57,12 +35,16 @@ packages:
       managers: [apt]
     - name: ca-certificates
       managers: [apt, dnf, pacman]
+    - name: cargo
+      managers: [dnf]
     - name: curl
       managers: [apt, dnf, pacman]
     - name: direnv
     - name: fontconfig
       managers: [apt, dnf, pacman]
     - name: fzf
+    - name: ghostty
+      managers: [dnf]
     - name: git
     - name: git-gui
       managers: [brew, apt, dnf]
@@ -71,18 +53,19 @@ packages:
     - name: lsd
     - name: neovim
     - name: proton-pass-cli
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: ripgrep
     - name: rsync
       managers: [apt, dnf, pacman]
+    - name: rust
+      managers: [brew, dnf]
     - name: shellcheck
     - name: shfmt
     - name: tldr
+      managers: [brew, linuxbrew]
       names:
-        apt: tealdeer
-        dnf: tealdeer
-        pacman: tealdeer
         brew: tlrc
+        linuxbrew: tlrc
     - name: tmux
     - name: tree
     - name: tree-sitter-cli
@@ -109,10 +92,10 @@ packages:
       group: development
     - name: cmake-language-server
       group: development
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: code-minimap
       group: development
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: gdb
       group: development
       managers: [apt, dnf, pacman, brew]
@@ -143,7 +126,7 @@ packages:
       managers: [apt, dnf, pacman]
     - name: mdformat
       group: development
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: meson
       group: development
     - name: ninja
@@ -167,16 +150,16 @@ packages:
       managers: [apt, dnf, pacman]
     - name: stylua
       group: development
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: taplo
       group: development
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: uv
       group: development
       managers: [brew, dnf, pacman]
     - name: yamlfmt
       group: development
-      managers: [brew]
+      managers: [brew, linuxbrew]
     - name: zig
       group: development
       managers: [brew, dnf, pacman]
