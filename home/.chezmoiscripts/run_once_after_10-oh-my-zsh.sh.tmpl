@@ -4,11 +4,11 @@ set -eu
 command -v git >/dev/null 2>&1 || exit 0
 
 clone_if_missing() {
-    repo="$1"
-    dest="$2"
-    if [ ! -d "$dest/.git" ]; then
-        git clone --depth 1 "$repo" "$dest"
-    fi
+  repo="$1"
+  dest="$2"
+  if [ ! -d "$dest/.git" ]; then
+    git clone --depth 1 "$repo" "$dest"
+  fi
 }
 
 clone_if_missing https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"

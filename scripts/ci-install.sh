@@ -7,6 +7,12 @@ fi
 
 ci_pkgs="${DOTFILES_CI_PKGS:-git curl jq}"
 
+set -f
+# DOTFILES_CI_PKGS is a space-separated package list.
+# shellcheck disable=SC2086
+set -- $ci_pkgs
+set +f
+
 log() {
   printf '%s\n' "$*"
 }
@@ -39,21 +45,21 @@ else
   section "Installing CI dependencies"
 
   if command -v brew >/dev/null 2>&1; then
-    log "macOS CI packages: $ci_pkgs"
-    run brew install $ci_pkgs || true
+    log "macOS CI packages: $*"
+    run brew install "$@" || true
   else
-    ci_pkgs="$ci_pkgs ca-certificates"
-    log "Linux CI packages: $ci_pkgs"
+    set -- "$@" ca-certificates
+    log "Linux CI packages: $*"
 
     if command -v apt-get >/dev/null 2>&1; then
       run apt-get update
-      run env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $ci_pkgs
+      run env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
     elif command -v dnf >/dev/null 2>&1; then
-      run dnf install -y $ci_pkgs
+      run dnf install -y "$@"
     elif command -v apk >/dev/null 2>&1; then
-      run apk add --no-cache $ci_pkgs
+      run apk add --no-cache "$@"
     elif command -v pacman >/dev/null 2>&1; then
-      run pacman -Sy --noconfirm --needed $ci_pkgs
+      run pacman -Sy --noconfirm --needed "$@"
     else
       printf 'Unsupported package manager\n' >&2
       exit 1

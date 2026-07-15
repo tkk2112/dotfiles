@@ -10,15 +10,15 @@ NERD_FONTS_VERSION="v3.4.0"
 
 case "{{ .chezmoi.os }}" in
 darwin)
-    FONT_DIR="$HOME/Library/Fonts"
-    ;;
+  FONT_DIR="$HOME/Library/Fonts"
+  ;;
 linux)
-    FONT_DIR="$HOME/.local/share/fonts"
-    ;;
+  FONT_DIR="$HOME/.local/share/fonts"
+  ;;
 *)
-    printf 'Skipping fonts on unsupported OS: %s\n' "{{ .chezmoi.os }}"
-    exit 0
-    ;;
+  printf 'Skipping fonts on unsupported OS: %s\n' "{{ .chezmoi.os }}"
+  exit 0
+  ;;
 esac
 
 FONT_ZIP="$FONT_DIR/${FONT_NAME}.zip"
@@ -26,58 +26,58 @@ FONT_MARKER="$FONT_DIR/.${FONT_NAME}-${NERD_FONTS_VERSION}.installed"
 FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/${FONT_NAME}.zip"
 
 if [ "${DOTFILES_SKIP_FONTS:-}" = "1" ]; then
-    printf 'Skipping fonts because DOTFILES_SKIP_FONTS=1\n'
-    exit 0
+  printf 'Skipping fonts because DOTFILES_SKIP_FONTS=1\n'
+  exit 0
 fi
 
 if [ "${DOTFILES_CI:-}" = "true" ]; then
-    printf 'Skipping fonts in CI\n'
-    exit 0
+  printf 'Skipping fonts in CI\n'
+  exit 0
 fi
 
 if [ "$PROFILE_WORKSTATION" != "true" ]; then
-    printf 'Skipping fonts because workstation profile is not enabled\n'
-    exit 0
+  printf 'Skipping fonts because workstation profile is not enabled\n'
+  exit 0
 fi
 
 run() {
-    printf '+ %s\n' "$*"
+  printf '+ %s\n' "$*"
 
-    if [ "${DOTFILES_FONTS_DRY_RUN:-}" = "1" ]; then
-        return 0
-    fi
+  if [ "${DOTFILES_FONTS_DRY_RUN:-}" = "1" ]; then
+    return 0
+  fi
 
-    "$@"
+  "$@"
 }
 
 mkdir -p "$FONT_DIR"
 
 if [ -e "$FONT_MARKER" ]; then
-    printf 'Font already installed: %s %s\n' "$FONT_NAME" "$NERD_FONTS_VERSION"
-    exit 0
+  printf 'Font already installed: %s %s\n' "$FONT_NAME" "$NERD_FONTS_VERSION"
+  exit 0
 fi
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM
 
 if command -v curl >/dev/null 2>&1; then
-    run curl -fsSL "$FONT_URL" -o "$tmp_dir/$FONT_NAME.zip"
+  run curl -fsSL "$FONT_URL" -o "$tmp_dir/$FONT_NAME.zip"
 elif command -v wget >/dev/null 2>&1; then
-    run wget -qO "$tmp_dir/$FONT_NAME.zip" "$FONT_URL"
+  run wget -qO "$tmp_dir/$FONT_NAME.zip" "$FONT_URL"
 else
-    printf 'Need curl or wget to install fonts\n' >&2
-    exit 1
+  printf 'Need curl or wget to install fonts\n' >&2
+  exit 1
 fi
 
 if command -v unzip >/dev/null 2>&1; then
-    run unzip -o "$tmp_dir/$FONT_NAME.zip" -d "$FONT_DIR"
+  run unzip -o "$tmp_dir/$FONT_NAME.zip" -d "$FONT_DIR"
 else
-    printf 'Need unzip to install fonts\n' >&2
-    exit 1
+  printf 'Need unzip to install fonts\n' >&2
+  exit 1
 fi
 
 if command -v fc-cache >/dev/null 2>&1; then
-    run fc-cache -f "$FONT_DIR"
+  run fc-cache -f "$FONT_DIR"
 fi
 
 cp "$tmp_dir/$FONT_NAME.zip" "$FONT_ZIP"
