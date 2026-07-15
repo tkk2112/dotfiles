@@ -17,20 +17,40 @@ fi
 
 typeset -U path cdpath fpath manpath
 
-if darwin; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+brew_bin=""
+
+for candidate in \
+  /opt/homebrew/bin/brew \
+  /usr/local/bin/brew \
+  /home/linuxbrew/.linuxbrew/bin/brew \
+  "$HOME/.linuxbrew/bin/brew"
+do
+  if [[ -x "$candidate" ]]; then
+    brew_bin="$candidate"
+    break
+  fi
+done
+
+if [[ -n "$brew_bin" ]]; then
+  eval "$("$brew_bin" shellenv)"
+
   brew_prefix="$(brew --prefix)"
-  fpath=(
-    "$brew_prefix/share/zsh/functions"
+
+  for completion_dir in \
+    "$brew_prefix/share/zsh/functions" \
     "$brew_prefix/share/zsh/site-functions"
-    "${fpath[@]}"
-  )
+  do
+    if [[ -d "$completion_dir" ]]; then
+      fpath=("$completion_dir" $fpath)
+    fi
+  done
 fi
 
 fpath=(
-  ~/.zsh/completions
+  "$HOME/.zsh/completions"
   $fpath
 )
+unset brew_bin brew_prefix candidate completion_dir
 
 plugins=(
   aliases

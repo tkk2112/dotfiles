@@ -1,13 +1,14 @@
 #!/bin/sh
 set -eu
 
-{{ $profiles := .profiles | default (list) }}
-{{ $owned := has "owned" $profiles }}
-{{ define "packageLines" }}
+{{- $profiles := .profiles | default (list) -}}
+
+{{- define "packageLines" -}}
 {{- $manager := index . 0 -}}
-{{- $profiles := index . 1 -}}
-{{- $catalog := index . 2 -}}
+{{- $catalog := index . 1 | default (list) -}}
+{{- $profiles := index . 2 | default (list) -}}
 {{- $defaultManagers := list "brew" "apt" "dnf" "pacman" -}}
+
 {{- range $pkg := $catalog -}}
 {{- $name := get $pkg "name" -}}
 {{- $group := get $pkg "group" | default "core" -}}
@@ -15,12 +16,13 @@ set -eu
 {{- $names := get $pkg "names" | default (dict) -}}
 {{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
 {{- $enabledManager := has $manager $managers -}}
+
 {{- if and $name $enabledGroup $enabledManager -}}
 {{- $packageName := get $names $manager | default $name -}}
-{{- printf "%s\n" $packageName -}}
+{{ printf "%s\n" $packageName }}
 {{- end -}}
 {{- end -}}
-{{ end }}
+{{- end }}
 
 {{ define "caskLines" }}
 {{- $profiles := index . 0 -}}
@@ -41,10 +43,10 @@ set -eu
 {{- end -}}
 {{ end }}
 
-PROFILE_OWNED="{{ if $owned }}true{{ else }}false{{ end }}"
+PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
 
 BREW_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "brew" $profiles .packages.catalog) }}
+{{ template "packageLines" (list "brew" .packages.catalog $profiles) }}
 EOF
 )"
 
@@ -53,8 +55,13 @@ BREW_CASKS="$(cat <<'EOF'
 EOF
 )"
 
+LINUXBREW_PACKAGES="$(cat <<'EOF'
+{{ template "packageLines" (list "linuxbrew" .packages.catalog $profiles) }}
+EOF
+)"
+
 APT_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "apt" $profiles .packages.catalog) }}
+{{ template "packageLines" (list "apt" .packages.catalog $profiles) }}
 EOF
 )"
 
@@ -66,12 +73,12 @@ EOF
 )"
 
 DNF_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "dnf" $profiles .packages.catalog) }}
+{{ template "packageLines" (list "dnf" .packages.catalog $profiles) }}
 EOF
 )"
 
 PACMAN_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "pacman" $profiles .packages.catalog) }}
+{{ template "packageLines" (list "pacman" .packages.catalog $profiles) }}
 EOF
 )"
 
@@ -173,6 +180,49 @@ install_brew() {
   install_brew_casks
 }
 
+find_brew() {
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return 0
+  fi
+
+  for candidate in \
+    /home/linuxbrew/.linuxbrew/bin/brew \
+    "$HOME/.linuxbrew/bin/brew" \
+    /opt/homebrew/bin/brew \
+    /usr/local/bin/brew
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+install_linuxbrew() {
+  if [ -z "$LINUXBREW_PACKAGES" ]; then
+    return 0
+  fi
+
+  brew_command="$(find_brew || true)"
+
+  if [ -z "$brew_command" ]; then
+    printf '%s\n' \
+      'Homebrew was not found; skipping Linuxbrew packages.' >&2
+    return 0
+  fi
+
+  printf 'Installing Linuxbrew packages:\n%s\n' "$LINUXBREW_PACKAGES"
+
+  printf '%s\n' "$LINUXBREW_PACKAGES" |
+    while IFS= read -r package; do
+      [ -n "$package" ] || continue
+      run "$brew_command" install "$package"
+    done
+}
+
 install_apt_ppas() {
   ppas="$(normalize_packages "$APT_PPAS")"
 
@@ -264,6 +314,8 @@ linux)
   else
     printf 'No supported package manager found; skipping packages\n' >&2
   fi
+
+  install_linuxbrew
   ;;
 
 *)
