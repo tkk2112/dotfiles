@@ -1,6 +1,9 @@
 keybind = clear
 
 # Application
+keybind = ctrl+shift+comma=reload_config
+keybind = ctrl+shift+p=toggle_command_palette
+
 keybind = global:f12=toggle_quick_terminal
 {{ if eq .chezmoi.os "darwin" -}}
 keybind = super+n=new_window
@@ -55,8 +58,13 @@ background-blur = 16
 background-opacity = 0.95
 scrollbar = never
 
-font-family = JetBrains Mono
+font-family = FiraCode Nerd Font
+{{ if eq .chezmoi.os "darwin" -}}
 font-size = 14
+{{ else if eq .chezmoi.os "linux" -}}
+font-size = 10
+window-inherit-font-size = false
+{{ end }}
 adjust-cell-height = 1
 
 {{ if eq .chezmoi.os "darwin" -}}
