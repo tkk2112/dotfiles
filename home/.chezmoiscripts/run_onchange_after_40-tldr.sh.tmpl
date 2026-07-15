@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+# Re-run when the package catalog changes.
+# packages.yaml: {{ include ".chezmoidata/packages.yaml" | sha256sum }}
+
 {{ $profiles := .profiles | default (list) }}
 PROFILE_SERVER="{{ if has "server" $profiles }}true{{ else }}false{{ end }}"
 PROFILE_WORKSTATION="{{ if has "workstation" $profiles }}true{{ else }}false{{ end }}"

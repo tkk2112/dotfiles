@@ -77,6 +77,12 @@ packages:
       managers: [apt, dnf, pacman]
     - name: shellcheck
     - name: shfmt
+    - name: tldr
+      names:
+        apt: tealdeer
+        dnf: tealdeer
+        pacman: tealdeer
+        brew: tlrc
     - name: tmux
     - name: tree
     - name: tree-sitter-cli
@@ -273,9 +279,6 @@ packages:
         dnf: openssh-server
         pacman: openssh
     - name: perl
-      group: server
-      managers: [dnf]
-    - name: tldr
       group: server
       managers: [dnf]
     - name: which
