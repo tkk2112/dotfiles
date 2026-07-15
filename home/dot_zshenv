@@ -9,6 +9,8 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state"
 
+export HOMEBREW_NO_ANALYTICS=1
+
 for dir in "$HOME/.local/bin" "$HOME/bin"; do
   case ":$PATH:" in
     *":$dir:"*) ;;
