@@ -1,4 +1,3 @@
----
 line_ending: lf
 match_type: doublestar
 gitignore_excludes: true
