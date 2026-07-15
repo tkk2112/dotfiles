@@ -79,8 +79,7 @@ local external_formatters = {
 
       if ok then
         expandtab = project_settings.get_option(bufnr, "expandtab", expandtab)
-
-        shiftwidth = project_settings.get_option(bufnr, "shiftwidth", shiftwidth)
+        tabstop = project_settings.get_option(bufnr, "tabstop", tabstop)
       end
 
       if expandtab == false then
@@ -89,7 +88,7 @@ local external_formatters = {
 
       return {
         "--indent",
-        tostring(math.max(1, shiftwidth)),
+        tostring(math.max(1, tabstop)),
         ".",
       }
     end,
