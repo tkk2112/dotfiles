@@ -80,15 +80,69 @@ local function jump_filtered(direction)
   vim.notify("No non-plugin jump target found", vim.log.levels.WARN)
 end
 
-local function reload_config()
-  for name in pairs(package.loaded) do
-    if name:match("^config") or name:match("^plugins") then
-      package.loaded[name] = nil
+local restart_session = vim.fn.stdpath("state") .. "/restart-session.vim"
+
+local function save_modified_file_buffers()
+  local unsaved = {}
+
+  for _, buffer in
+    ipairs(vim.fn.getbufinfo({
+      bufloaded = 1,
+      bufmodified = 1,
+    }))
+  do
+    local bufnr = buffer.bufnr
+
+    -- Ignore terminal, quickfix, prompt, help, and plugin scratch buffers.
+    if vim.bo[bufnr].buftype == "" then
+      if buffer.name == "" then
+        table.insert(unsaved, {
+          bufnr = bufnr,
+          name = "[No Name]",
+          error = "buffer has no filename",
+        })
+      else
+        local ok, err = pcall(function()
+          vim.api.nvim_buf_call(bufnr, function()
+            vim.cmd("silent update")
+          end)
+        end)
+
+        if not ok or vim.bo[bufnr].modified then
+          table.insert(unsaved, {
+            bufnr = bufnr,
+            name = vim.fn.fnamemodify(buffer.name, ":~:."),
+            error = ok and "buffer remains modified" or tostring(err),
+          })
+        end
+      end
     end
   end
 
-  dofile(vim.env.MYVIMRC)
-  vim.notify("Reloaded Neovim config", vim.log.levels.INFO)
+  return unsaved
+end
+
+local function restart_neovim()
+  local unsaved = save_modified_file_buffers()
+
+  if #unsaved > 0 then
+    local lines = {
+      "Restart cancelled: unsaved file buffers remain:",
+    }
+
+    for _, buffer in ipairs(unsaved) do
+      table.insert(lines, string.format("%s (buffer %d): %s", buffer.name, buffer.bufnr, buffer.error))
+    end
+
+    vim.notify(table.concat(lines, "\n"), vim.log.levels.WARN)
+
+    return
+  end
+
+  local session = vim.fn.fnameescape(restart_session)
+
+  vim.cmd("mksession! " .. session)
+  vim.cmd("restart source " .. session)
 end
 
 local function select_all()
@@ -184,7 +238,9 @@ map("t", "<C-`>", terminal.toggle, { desc = "Toggle terminal" })
 map("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Exit terminal mode" })
 
 -- Configuration and UI
-map("n", "<leader>rr", reload_config, { desc = "Reload Neovim config" })
+map("n", "<leader>rr", restart_neovim, {
+  desc = "Restart Neovim and reload config",
+})
 map("n", "<leader>rs", "<cmd>Lazy sync<cr>", { desc = "Sync lazy.nvim plugins" })
 map("n", "<leader>lf", function()
   format.format(0)
