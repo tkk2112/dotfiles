@@ -27,5 +27,16 @@
     "home/dot_zshenv": {
       "filetype": "zsh"
     }
+  },
+  "commands": {
+    "a": {
+      "description": "Apply chezmoi",
+      "command": "chezmoi apply",
+      "output": "terminal",
+      "cwd": "${projectRoot}",
+      "env": {
+        "CHEZMOI_NO_TTY": "1"
+      }
+    }
   }
 }

@@ -29,6 +29,9 @@
           }
         ]
       }
+    },
+    "commands": {
+      "$ref": "#/$defs/commands"
     }
   },
   "$defs": {
@@ -102,6 +105,77 @@
         "format_on_save": {
           "type": "boolean"
         }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output": {
+          "type": "string",
+          "enum": [
+            "terminal",
+            "quickfix"
+          ]
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path or project-relative path. Supports ${projectRoot} and ${env:NAME}."
+        },
+        "env": {
+          "$ref": "#/$defs/environment",
+          "description": "Per-command environment overrides. Values support ${projectRoot}, ${cwd}, and ${env:NAME}."
+        },
+        "compiler": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "open": {
+          "type": "string",
+          "enum": [
+            "always",
+            "errors",
+            "never"
+          ]
+        }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^.$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "$ref": "#/$defs/command"
+          }
+        ]
       }
     }
   }
