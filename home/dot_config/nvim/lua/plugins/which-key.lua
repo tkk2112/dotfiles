@@ -18,6 +18,7 @@ return {
         { "<leader>p", group = "project" },
         { "<leader>r", group = "reload" },
         { "<leader>s", group = "search" },
+        { "<leader>t", group = "colorscheme" },
         { "<leader>u", group = "ui" },
         { "<leader>w", group = "write" },
         { "<leader>x", group = "diagnostics" },
