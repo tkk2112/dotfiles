@@ -383,11 +383,16 @@ function M.pick()
 
         project = normalize(project)
         active_project = project
-
         touch_project(project)
+        vim.schedule(function()
+          local result = require("config.project_sessions").switch(project)
 
-        vim.cmd("cd " .. vim.fn.fnameescape(project))
-        require("fzf-lua").files({ cwd = project })
+          if result == "new" or result == "current" then
+            require("fzf-lua").files({
+              cwd = project,
+            })
+          end
+        end)
       end,
     },
   })
