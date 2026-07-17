@@ -449,8 +449,21 @@ function M.apply_options(bufnr)
   end
 end
 
+local project_commands = require("config.project_commands")
+
+function M.commands(bufnr)
+  local commands = M.get(bufnr or 0).commands
+  return type(commands) == "table" and commands or {}
+end
+
 function M.apply(bufnr)
   bufnr = bufnr or 0
+
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  project_commands.attach(bufnr, M.root(bufnr), M.config_path(bufnr), M.commands(bufnr))
 
   if not is_real_file_buffer(bufnr) then
     return
