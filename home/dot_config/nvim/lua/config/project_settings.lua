@@ -525,4 +525,8 @@ end, {
   desc = "Set and persist the current file's filetype",
 })
 
+require("config.project_sessions").setup(function()
+  return M.root(0)
+end)
+
 return M
