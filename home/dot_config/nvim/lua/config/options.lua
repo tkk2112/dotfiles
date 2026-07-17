@@ -39,6 +39,7 @@ vim.opt.writebackup = true
 vim.opt.autoread = true
 vim.opt.confirm = true
 vim.opt.updatetime = 300
+vim.opt.sessionoptions:remove("terminal")
 
 -- Command-line completion
 vim.opt.wildmenu = true
