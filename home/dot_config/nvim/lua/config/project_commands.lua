@@ -15,8 +15,11 @@ local mapping = "<leader><space>"
 
 local valid_outputs = {
   quickfix = true,
+  ["quickfix-watch"] = true,
   terminal = true,
 }
+
+local quickfix = require("config.quickfix")
 
 local function command_description(spec)
   local description = spec.description or spec.desc
@@ -207,23 +210,22 @@ end
 
 local function resolve_command_environment(project_root, cwd, configured_env, inherited_env)
   local environment = vim.deepcopy(inherited_env)
-  local overrides = {}
 
   if configured_env == nil then
-    return environment, overrides
+    return environment
   end
 
   if type(configured_env) ~= "table" or vim.islist(configured_env) then
-    return nil, nil, "Command env must be an object"
+    return nil, "Command env must be an object"
   end
 
   for name, value in pairs(configured_env) do
     if type(name) ~= "string" or not name:match("^[A-Za-z_][A-Za-z0-9_]*$") then
-      return nil, nil, "Invalid environment variable name: " .. vim.inspect(name)
+      return nil, "Invalid environment variable name: " .. vim.inspect(name)
     end
 
     if type(value) ~= "string" then
-      return nil, nil, "Environment value for " .. name .. " must be a string"
+      return nil, "Environment value for " .. name .. " must be a string"
     end
 
     local expanded, expansion_error = expand_macros(value, {
@@ -233,14 +235,13 @@ local function resolve_command_environment(project_root, cwd, configured_env, in
     })
 
     if not expanded then
-      return nil, nil, expansion_error
+      return nil, expansion_error
     end
 
     environment[name] = expanded
-    overrides[name] = expanded
   end
 
-  return environment, overrides
+  return environment
 end
 
 local function trust_project_commands(config_path)
@@ -265,79 +266,6 @@ local function trust_project_commands(config_path)
   end
 
   return true
-end
-
-local function with_project_cwd(cwd, callback)
-  local local_directory = vim.fn.haslocaldir()
-  local previous_directory = vim.fn.getcwd()
-  local command
-
-  if local_directory == 1 then
-    command = "lcd"
-  elseif local_directory == 2 then
-    command = "tcd"
-  else
-    command = "cd"
-  end
-
-  vim.api.nvim_cmd({
-    cmd = command,
-    args = { cwd },
-    mods = {
-      noautocmd = true,
-      silent = true,
-    },
-  }, {})
-
-  local ok, result = pcall(callback)
-
-  vim.api.nvim_cmd({
-    cmd = command,
-    args = { previous_directory },
-    mods = {
-      noautocmd = true,
-      silent = true,
-    },
-  }, {})
-
-  if not ok then
-    error(result)
-  end
-
-  return result
-end
-
-local function with_environment(overrides, callback)
-  local unset = {}
-  local previous = {}
-
-  for name, value in pairs(overrides) do
-    local current = vim.env[name]
-
-    if current == nil then
-      previous[name] = unset
-    else
-      previous[name] = current
-    end
-
-    vim.env[name] = value
-  end
-
-  local ok, result = pcall(callback)
-
-  for name, value in pairs(previous) do
-    if value == unset then
-      vim.env[name] = nil
-    else
-      vim.env[name] = value
-    end
-  end
-
-  if not ok then
-    error(result)
-  end
-
-  return result
 end
 
 local function run_terminal(cwd, environment, spec)
@@ -370,87 +298,33 @@ local function run_terminal(cwd, environment, spec)
   vim.cmd("startinsert")
 end
 
-local function valid_compiler_name(compiler)
-  return type(compiler) == "string" and compiler:match("^[%w_.-]+$") ~= nil
-end
+local function pad_right(value, width)
+  local padding = width - vim.fn.strdisplaywidth(value)
 
-local function restore_compiler_state(state)
-  vim.bo.makeprg = state.makeprg
-  vim.bo.errorformat = state.errorformat
-  vim.bo.makeencoding = state.makeencoding
-  vim.b.current_compiler = state.current_compiler
-end
-
-local function run_quickfix(cwd, environment_overrides, spec)
-  local state = {
-    makeprg = vim.bo.makeprg,
-    errorformat = vim.bo.errorformat,
-    makeencoding = vim.bo.makeencoding,
-    current_compiler = vim.b.current_compiler,
-  }
-
-  if spec.compiler then
-    if not valid_compiler_name(spec.compiler) then
-      vim.notify("Invalid compiler name: " .. vim.inspect(spec.compiler), vim.log.levels.ERROR)
-
-      return
-    end
-
-    local ok, err = pcall(vim.cmd, "silent compiler! " .. spec.compiler)
-
-    if not ok then
-      restore_compiler_state(state)
-      vim.notify(err, vim.log.levels.ERROR)
-      return
-    end
-  end
-
-  vim.bo.makeprg = spec.command
-
-  local exit_code
-
-  local ok, err = pcall(function()
-    with_project_cwd(cwd, function()
-      with_environment(environment_overrides, function()
-        -- The bang prevents :make from immediately jumping to the first entry.
-        vim.cmd("silent make!")
-        exit_code = vim.v.shell_error
-      end)
-    end)
-  end)
-
-  restore_compiler_state(state)
-
-  if not ok then
-    vim.notify(err, vim.log.levels.ERROR)
-    return
-  end
-
-  local open = spec.open or "errors"
-
-  if open == "always" or (open ~= "never" and exit_code ~= 0) then
-    vim.cmd("botright copen")
-  elseif open ~= "never" then
-    vim.cmd("botright cwindow")
-  end
-
-  local description = command_description(spec)
-
-  if exit_code == 0 then
-    vim.notify(description .. " completed", vim.log.levels.INFO)
-  else
-    vim.notify(string.format("%s failed with exit code %d", description, exit_code), vim.log.levels.ERROR)
-  end
+  return value .. string.rep(" ", math.max(0, padding))
 end
 
 local function menu_lines(entries)
   local lines = {}
+  local key_width = 0
+  local description_width = 0
+
+  for _, entry in ipairs(entries) do
+    key_width = math.max(key_width, vim.fn.strdisplaywidth(entry.key))
+
+    description_width = math.max(description_width, vim.fn.strdisplaywidth(command_description(entry.spec)))
+  end
+
   local width = 20
 
   for _, entry in ipairs(entries) do
-    local line = string.format(" %s  %s  ·  %s", entry.key, command_description(entry.spec), entry.spec.command)
+    local key = pad_right(entry.key, key_width)
+    local description = pad_right(command_description(entry.spec), description_width)
+
+    local line = string.format(" %s  %s  →  %s", key, description, entry.spec.command)
 
     table.insert(lines, line)
+
     width = math.max(width, vim.fn.strdisplaywidth(line) + 2)
   end
 
@@ -485,6 +359,7 @@ local function choose_entry(entries)
     row = math.max(0, math.floor((ui.height - #lines) / 2) - 1),
     col = math.max(0, math.floor((ui.width - width) / 2)),
   })
+  vim.wo[window].wrap = false
 
   for index, entry in ipairs(entries) do
     vim.api.nvim_buf_add_highlight(buffer, -1, "Special", index - 1, 1, 1 + #entry.key)
@@ -513,7 +388,24 @@ local function choose_entry(entries)
   return nil
 end
 
-function M.run(project_root, config_path, spec)
+function M.run(project_root, config_path, spec, command_key)
+  local description = command_description(spec)
+
+  local watch_id = table.concat({
+    config_path or project_root,
+    command_key or spec.command,
+  }, "::")
+
+  -- Stopping an existing watcher is safe and should not require the project
+  -- file to be trusted again if it changed after the watcher was started.
+  if spec.output == "quickfix-watch" and quickfix.is_watching(watch_id) then
+    quickfix.stop(watch_id, false)
+
+    vim.notify(description .. " stopped", vim.log.levels.INFO)
+
+    return
+  end
+
   if not trust_project_commands(config_path) then
     return
   end
@@ -527,8 +419,7 @@ function M.run(project_root, config_path, spec)
     return
   end
 
-  local environment, environment_overrides, environment_error =
-    resolve_command_environment(project_root, cwd, spec.env, inherited_env)
+  local environment, environment_error = resolve_command_environment(project_root, cwd, spec.env, inherited_env)
 
   if not environment then
     vim.notify(environment_error, vim.log.levels.ERROR)
@@ -537,7 +428,52 @@ function M.run(project_root, config_path, spec)
   end
 
   if spec.output == "quickfix" then
-    run_quickfix(cwd, environment_overrides, spec)
+    local result, err = quickfix.run({
+      argv = shell_argv(spec.command),
+      cwd = cwd,
+      env = environment,
+      compiler = spec.compiler,
+      open = spec.open or "errors",
+      title = description,
+    })
+
+    if not result then
+      vim.notify(err, vim.log.levels.ERROR)
+      return
+    end
+
+    if result.code == 0 then
+      vim.notify(string.format("%s completed (%d quickfix entries)", description, #result.items), vim.log.levels.INFO)
+    else
+      vim.notify(
+        string.format("%s failed with exit code %d (%d quickfix entries)", description, result.code, #result.items),
+        vim.log.levels.ERROR
+      )
+    end
+
+    return
+  end
+
+  if spec.output == "quickfix-watch" then
+    local result, err = quickfix.watch({
+      id = watch_id,
+      argv = shell_argv(spec.command),
+      cwd = cwd,
+      root = project_root,
+      env = environment,
+      compiler = spec.compiler,
+      open = spec.open or "errors",
+      diagnostics = spec.diagnostics or "auto",
+      title = description,
+      debounce_ms = spec.debounce_ms,
+    })
+
+    if not result then
+      vim.notify(err, vim.log.levels.ERROR)
+      return
+    end
+
+    vim.notify(description .. " started", vim.log.levels.INFO)
 
     return
   end
@@ -549,7 +485,7 @@ function M.open(project_root, config_path, entries)
   local entry = choose_entry(entries)
 
   if entry then
-    M.run(project_root, config_path, entry.spec)
+    M.run(project_root, config_path, entry.spec, entry.key)
   end
 end
 
