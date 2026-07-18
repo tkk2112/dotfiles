@@ -9,6 +9,8 @@ return {
         return require("config.project").status()
       end
 
+      local quickfix = require("config.quickfix")
+
       return {
         options = {
           icons_enabled = true,
@@ -32,6 +34,14 @@ return {
             },
           },
           lualine_x = {
+            {
+              quickfix.statusline,
+              color = quickfix.statusline_color,
+              padding = {
+                left = 1,
+                right = 1,
+              },
+            },
             project,
             {
               "diagnostics",

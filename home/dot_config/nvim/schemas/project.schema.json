@@ -135,7 +135,8 @@
           "type": "string",
           "enum": [
             "terminal",
-            "quickfix"
+            "quickfix",
+            "quickfix-watch"
           ]
         },
         "cwd": {
@@ -158,6 +159,21 @@
             "errors",
             "never"
           ]
+        },
+        "debounce_ms": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 5000,
+          "description": "Milliseconds after a save before a quickfix watcher starts a validation run."
+        },
+        "diagnostics": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "description": "Publish watcher results as inline diagnostics. auto only publishes for buffers without an attached LSP."
         }
       }
     },
