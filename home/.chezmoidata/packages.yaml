@@ -96,6 +96,9 @@ packages:
     - name: code-minimap
       group: development
       managers: [brew, linuxbrew]
+    - name: cppman
+      group: development
+      managers: [apt, brew, linuxbrew]
     - name: gdb
       group: development
       managers: [apt, dnf, pacman, brew]
