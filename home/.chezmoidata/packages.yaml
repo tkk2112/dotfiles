@@ -23,12 +23,6 @@ packages:
     # Core: Always-installed CLI foundation.
     - name: age
       managers: [apt, dnf, pacman, brew]
-    - name: argcomplete
-      managers: [apt, dnf, brew]
-      names:
-        apt: python3-argcomplete
-        dnf: python3-argcomplete
-        brew: python-argcomplete
     - name: bat
     - name: btop
     - name: build-essential

@@ -170,11 +170,23 @@ install_brew_casks() {
   run brew install --cask $casks
 }
 
+prepare_brew_ci() {
+  if [ "${DOTFILES_CI:-}" != "true" ]; then
+    return 0
+  fi
+
+  if brew tap | grep -Fxq 'aws/tap'; then
+    run brew untap aws/tap
+  fi
+}
+
 install_brew() {
   if ! command -v brew >/dev/null 2>&1; then
     printf 'Homebrew is not installed; skipping packages\n' >&2
     exit 0
   fi
+
+  prepare_brew_ci
 
   install_user_packages Homebrew "$BREW_PACKAGES" brew install
   install_brew_casks
