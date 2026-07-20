@@ -1,3 +1,5 @@
+local float = require("config.ui.float")
+
 vim.diagnostic.config({
   virtual_text = true,
   signs = true,
@@ -9,21 +11,6 @@ vim.diagnostic.config({
     source = true,
   },
 })
-
-local function close_floats()
-  local closed = false
-
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    local config = vim.api.nvim_win_get_config(win)
-
-    if config.relative ~= "" and vim.api.nvim_win_is_valid(win) then
-      pcall(vim.api.nvim_win_close, win, true)
-      closed = true
-    end
-  end
-
-  return closed
-end
 
 local function focus_float(open_float)
   local before = {}
@@ -65,7 +52,7 @@ local function focus_float(open_float)
 end
 
 vim.keymap.set("n", "<Esc>", function()
-  if close_floats() then
+  if float.close_all() then
     return
   end
 
