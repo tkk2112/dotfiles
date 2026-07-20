@@ -2,6 +2,8 @@
 
 local M = {}
 
+local paths = require("config.lib.path")
+
 local watchers = {}
 local diagnostic_namespace = vim.api.nvim_create_namespace("dotfiles_quickfix_watch")
 
@@ -254,26 +256,6 @@ local function validate_common_options(options)
   end
 
   return open
-end
-
-local function normalize_path(path)
-  if type(path) ~= "string" or path == "" then
-    return nil
-  end
-
-  local normalized = vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", "")
-  return vim.uv.fs_realpath(normalized) or normalized
-end
-
-local function path_is_within(path, root)
-  path = normalize_path(path)
-  root = normalize_path(root)
-
-  if not path or not root then
-    return false
-  end
-
-  return path == root or vim.startswith(path, root .. "/")
 end
 
 local function close_timer(timer)
@@ -623,8 +605,8 @@ function M.watch(options)
     id = options.id,
     title = options.title or table.concat(options.argv, " "),
     compiler = options.compiler,
-    cwd = normalize_path(options.cwd),
-    root = normalize_path(options.root or options.cwd),
+    cwd = paths.real(options.cwd),
+    root = paths.real(options.root or options.cwd),
     argv = vim.deepcopy(options.argv),
     env = vim.deepcopy(options.env),
     open = open,
@@ -749,9 +731,9 @@ vim.api.nvim_create_autocmd("BufWritePost", {
       return
     end
 
-    local path = vim.api.nvim_buf_get_name(event.buf)
+    local filename = vim.api.nvim_buf_get_name(event.buf)
 
-    if path_is_within(path, watcher.root) then
+    if paths.is_within(filename, watcher.root) then
       schedule_watch_build(watcher)
     end
   end,

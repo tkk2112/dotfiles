@@ -19,6 +19,7 @@ local valid_outputs = {
   terminal = true,
 }
 
+local paths = require("config.lib.path")
 local quickfix = require("config.quickfix")
 
 local function command_description(spec)
@@ -133,21 +134,6 @@ local function expand_macros(value, context)
   return expanded
 end
 
-local function is_absolute_path(path)
-  -- POSIX path: /home/user/project
-  if path:sub(1, 1) == "/" then
-    return true
-  end
-
-  -- Windows drive path: C:/project or C:\project
-  if path:match("^%a:[/\\]") then
-    return true
-  end
-
-  -- Windows UNC path: //server/share or \\server\share
-  return path:match("^[/\\][/\\]") ~= nil
-end
-
 local function resolve_command_cwd(project_root, configured_cwd, inherited_env)
   if configured_cwd == nil then
     return project_root
@@ -189,7 +175,7 @@ local function resolve_command_cwd(project_root, configured_cwd, inherited_env)
   end
 
   -- Plain relative paths are relative to the project root.
-  if not is_absolute_path(cwd) then
+  if not paths.is_absolute(cwd) then
     cwd = project_root .. "/" .. cwd
   end
 
