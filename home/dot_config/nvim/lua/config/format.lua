@@ -75,7 +75,7 @@ local external_formatters = {
       local ok, project_settings = pcall(require, "config.project_settings")
 
       local expandtab = vim.bo[bufnr].expandtab
-      local shiftwidth = vim.bo[bufnr].shiftwidth
+      local tabstop = vim.bo[bufnr].tabstop
 
       if ok then
         expandtab = project_settings.get_option(bufnr, "expandtab", expandtab)
