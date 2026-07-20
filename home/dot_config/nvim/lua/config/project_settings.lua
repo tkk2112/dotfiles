@@ -16,6 +16,10 @@
 
 local M = {}
 
+local buffer = require("config.lib.buffer")
+local json = require("config.lib.json")
+local paths = require("config.lib.path")
+
 local project_marker = ".nvim"
 local project_config = "project.json"
 local config_cache = {}
@@ -38,116 +42,50 @@ local denied_options = {
   exrc = true,
 }
 
-local function normalize(path)
-  return vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", "")
-end
-
-local function is_real_file_buffer(bufnr)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return false
-  end
-
-  return vim.bo[bufnr].buftype == "" and vim.api.nvim_buf_get_name(bufnr) ~= ""
-end
-
 local function find_project_root(bufnr)
   bufnr = bufnr or 0
 
-  if is_real_file_buffer(bufnr) then
+  if buffer.is_file(bufnr) then
     local root = vim.fs.root(vim.api.nvim_buf_get_name(bufnr), project_marker)
 
     if root then
-      return normalize(root)
+      return paths.absolute(root)
     end
   end
 
   local cwd_root = vim.fs.root(vim.fn.getcwd(), project_marker)
-  return cwd_root and normalize(cwd_root) or nil
+  return cwd_root and paths.absolute(cwd_root) or nil
 end
 
 local function project_config_path(root)
   return root and (root .. "/" .. project_marker .. "/" .. project_config) or nil
 end
 
-local function project_relative_path(path, root)
-  path = normalize(path)
-  root = normalize(root)
+local function read_project_config(filename)
+  local config, err = json.read(filename)
 
-  local prefix = root .. "/"
-
-  if path:sub(1, #prefix) ~= prefix then
-    return nil
+  if err then
+    vim.notify("Failed reading project config: " .. filename .. "\n" .. err, vim.log.levels.ERROR)
+    return {}
   end
 
-  return path:sub(#prefix + 1)
+  if config == nil then
+    return {}
+  end
+
+  if type(config) ~= "table" then
+    vim.notify("Project config must be a JSON object: " .. filename, vim.log.levels.WARN)
+    return {}
+  end
+
+  return config
 end
 
-local function read_json(path)
-  if not path or vim.fn.filereadable(path) == 0 then
-    return {}
-  end
+local function write_project_config(filename, config)
+  local ok, err = json.write(filename, config)
 
-  local ok_read, lines = pcall(vim.fn.readfile, path)
-
-  if not ok_read then
-    vim.notify("Failed reading project config: " .. path, vim.log.levels.WARN)
-    return {}
-  end
-
-  local ok_decode, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
-
-  if not ok_decode then
-    vim.notify("Invalid project config JSON: " .. path, vim.log.levels.ERROR)
-    return {}
-  end
-
-  if type(decoded) ~= "table" then
-    vim.notify("Project config must be a JSON object: " .. path, vim.log.levels.WARN)
-    return {}
-  end
-
-  return decoded
-end
-
-local function format_json(config)
-  local encoded = vim.json.encode(config)
-
-  if vim.fn.executable("jq") == 1 then
-    local formatted = vim.fn.system({
-      "jq",
-      "--indent",
-      "2",
-      ".",
-    }, encoded)
-
-    if vim.v.shell_error == 0 then
-      return vim.split(formatted, "\n", {
-        plain = true,
-        trimempty = true,
-      })
-    end
-  end
-
-  return { encoded }
-end
-
-local function write_json(path, config)
-  local temporary_path = path .. ".tmp"
-  local lines = format_json(config)
-
-  local ok_write, write_result = pcall(vim.fn.writefile, lines, temporary_path)
-
-  if not ok_write or write_result ~= 0 then
-    vim.fn.delete(temporary_path)
-    vim.notify("Failed writing project config: " .. path, vim.log.levels.ERROR)
-    return false
-  end
-
-  local ok_rename, rename_error = os.rename(temporary_path, path)
-
-  if not ok_rename then
-    vim.fn.delete(temporary_path)
-    vim.notify("Failed replacing project config: " .. tostring(rename_error), vim.log.levels.ERROR)
+  if not ok then
+    vim.notify("Failed writing project config: " .. filename .. "\n" .. err, vim.log.levels.ERROR)
     return false
   end
 
@@ -159,17 +97,17 @@ local function get_config(root)
     return {}
   end
 
-  local path = project_config_path(root)
-  local mtime = vim.fn.getftime(path)
-  local cached = config_cache[path]
+  local config_path = project_config_path(root)
+  local mtime = vim.fn.getftime(config_path)
+  local cached = config_cache[config_path]
 
   if cached and cached.mtime == mtime then
     return cached.config
   end
 
-  local config = read_json(path)
+  local config = read_project_config(config_path)
 
-  config_cache[path] = {
+  config_cache[config_path] = {
     mtime = mtime,
     config = config,
   }
@@ -252,7 +190,7 @@ end
 function M.relative_path(bufnr)
   bufnr = bufnr or 0
 
-  if not is_real_file_buffer(bufnr) then
+  if not buffer.is_file(bufnr) then
     return nil
   end
 
@@ -262,7 +200,7 @@ function M.relative_path(bufnr)
     return nil
   end
 
-  return project_relative_path(vim.api.nvim_buf_get_name(bufnr), root)
+  return paths.relative(vim.api.nvim_buf_get_name(bufnr), root)
 end
 
 function M.file_settings(bufnr)
@@ -360,7 +298,7 @@ end
 function M.apply_filetype(bufnr)
   bufnr = bufnr or 0
 
-  if not is_real_file_buffer(bufnr) then
+  if not buffer.is_file(bufnr) then
     return
   end
 
@@ -393,7 +331,7 @@ function M.set_filetype(bufnr, filetype)
     return
   end
 
-  local path = project_config_path(root)
+  local config_path = project_config_path(root)
   local config = vim.deepcopy(M.get(bufnr))
 
   if type(config.files) ~= "table" then
@@ -409,14 +347,11 @@ function M.set_filetype(bufnr, filetype)
 
   settings.filetype = filetype
 
-  if not write_json(path, config) then
+  if not write_project_config(config_path, config) then
     return
   end
 
-  -- Force the updated configuration to be read next time.
-  config_cache[path] = nil
-
-  -- Apply immediately to the current buffer.
+  config_cache[config_path] = nil
   vim.bo[bufnr].filetype = filetype
 
   vim.notify(string.format("Set %s filetype to %s in %s", relative, filetype, project_config), vim.log.levels.INFO)
@@ -465,7 +400,7 @@ function M.apply(bufnr)
 
   project_commands.attach(bufnr, M.root(bufnr), M.config_path(bufnr), M.commands(bufnr))
 
-  if not is_real_file_buffer(bufnr) then
+  if not buffer.is_file(bufnr) then
     return
   end
 

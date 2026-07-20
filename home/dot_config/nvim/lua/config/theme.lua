@@ -2,6 +2,8 @@
 
 local M = {}
 
+local paths = require("config.lib.path")
+
 local default_schemes = {
   dark = "dotfiles-dark",
   light = "dotfiles-light",
@@ -54,10 +56,6 @@ M.apply(default_schemes.dark)
 
 local theme_target = vim.fn.expand("~/.config/nvim/lua/theme/colorscheme.lua")
 
-local function normalize_path(path)
-  return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
-end
-
 local function resolve_chezmoi_source(target)
   local result = vim
     .system({
@@ -79,7 +77,7 @@ local function resolve_chezmoi_source(target)
     return nil, "chezmoi returned an empty source path"
   end
 
-  return normalize_path(source)
+  return paths.real(source)
 end
 
 local theme_source, theme_source_error = resolve_chezmoi_source(theme_target)
@@ -173,7 +171,7 @@ if theme_source then
   vim.api.nvim_create_autocmd("BufWritePost", {
     group = theme_group,
     callback = function(event)
-      local filename = normalize_path(vim.api.nvim_buf_get_name(event.buf))
+      local filename = paths.real(vim.api.nvim_buf_get_name(event.buf))
 
       if filename == theme_source then
         apply_and_reload()

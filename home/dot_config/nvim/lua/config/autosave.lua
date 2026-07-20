@@ -2,6 +2,8 @@
 
 local M = {}
 
+local buffer = require("config.lib.buffer")
+
 local function save_on_focus_enabled(bufnr)
   local ok, project_settings = pcall(require, "config.project_settings")
   if not ok then
@@ -11,24 +13,8 @@ local function save_on_focus_enabled(bufnr)
   return project_settings.save_on_focus(bufnr)
 end
 
-local function is_real_file_buffer(bufnr)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return false
-  end
-
-  if not vim.bo[bufnr].modifiable or vim.bo[bufnr].readonly then
-    return false
-  end
-
-  if vim.bo[bufnr].buftype ~= "" then
-    return false
-  end
-
-  return vim.api.nvim_buf_get_name(bufnr) ~= ""
-end
-
 local function save_buffer(bufnr)
-  if not is_real_file_buffer(bufnr) then
+  if not buffer.is_writable_file(bufnr) then
     return
   end
 

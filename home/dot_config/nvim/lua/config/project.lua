@@ -2,15 +2,14 @@
 
 local M = {}
 
+local json = require("config.lib.json")
+local paths = require("config.lib.path")
+
 local project_marker = ".nvim"
 local project_config = "project.json"
 local projects_file = vim.fn.stdpath("data") .. "/projects.json"
 
 local active_project = nil
-
-local function normalize(path)
-  return vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", "")
-end
 
 local function file_exists(path)
   return vim.fn.filereadable(path) == 1
@@ -68,80 +67,6 @@ local function write_default_project_config(path)
   return true
 end
 
-local function format_json(data)
-  local encoded = vim.json.encode(data)
-
-  if vim.fn.executable("jq") == 1 then
-    local formatted = vim.fn.system({
-      "jq",
-      "--indent",
-      "2",
-      ".",
-    }, encoded)
-
-    if vim.v.shell_error == 0 then
-      return vim.split(formatted, "\n", {
-        plain = true,
-        trimempty = true,
-      })
-    end
-  end
-
-  return { encoded }
-end
-
-local function write_json(path, data)
-  local temporary_path = path .. ".tmp"
-
-  vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
-
-  local ok_write, write_result = pcall(vim.fn.writefile, format_json(data), temporary_path)
-
-  if not ok_write or write_result ~= 0 then
-    vim.fn.delete(temporary_path)
-
-    vim.notify("Failed writing project list: " .. path, vim.log.levels.ERROR)
-
-    return false
-  end
-
-  local ok_rename, rename_error = os.rename(temporary_path, path)
-
-  if not ok_rename then
-    vim.fn.delete(temporary_path)
-
-    vim.notify("Failed replacing project list: " .. tostring(rename_error), vim.log.levels.ERROR)
-
-    return false
-  end
-
-  return true
-end
-
-local function read_json(path)
-  if not file_exists(path) then
-    return nil
-  end
-
-  local ok_read, lines = pcall(vim.fn.readfile, path)
-
-  if not ok_read then
-    vim.notify("Failed reading project list: " .. path, vim.log.levels.WARN)
-
-    return nil
-  end
-
-  local ok_decode, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
-
-  if not ok_decode or type(decoded) ~= "table" then
-    vim.notify("Invalid project list JSON: " .. path, vim.log.levels.WARN)
-
-    return nil
-  end
-
-  return decoded
-end
-
 local function sort_projects(projects)
   table.sort(projects, function(left, right)
     if left.last_opened == right.last_opened then
@@ -157,16 +82,30 @@ end
 local function write_projects(projects)
   sort_projects(projects)
 
-  return write_json(projects_file, {
+  local ok, err = json.write(projects_file, {
     version = 1,
     projects = projects,
+  }, {
+    mkdir = true,
   })
+
+  if not ok then
+    vim.notify("Failed writing project list: " .. projects_file .. "\n" .. err, vim.log.levels.ERROR)
+    return false
+  end
+
+  return true
 end
 
 local function read_projects()
-  local payload = read_json(projects_file)
+  local payload, err = json.read(projects_file)
 
-  if not payload or type(payload.projects) ~= "table" then
+  if err then
+    vim.notify("Failed reading project list: " .. projects_file .. "\n" .. err, vim.log.levels.WARN)
+    return {}
+  end
+
+  if type(payload) ~= "table" or type(payload.projects) ~= "table" then
     return {}
   end
 
@@ -174,21 +113,21 @@ local function read_projects()
 
   for _, entry in ipairs(payload.projects) do
     if type(entry) == "table" then
-      local path = entry.path
+      local project_path = entry.path
       local last_opened = 0
 
       if type(entry.last_opened) == "number" then
         last_opened = math.max(0, math.floor(entry.last_opened))
       end
 
-      if type(path) == "string" and path ~= "" and directory_exists(path) then
-        path = normalize(path)
+      if type(project_path) == "string" and project_path ~= "" and directory_exists(project_path) then
+        project_path = paths.real(project_path)
 
-        local existing = by_path[path]
+        local existing = by_path[project_path]
 
         if not existing or last_opened > existing.last_opened then
-          by_path[path] = {
-            path = path,
+          by_path[project_path] = {
+            path = project_path,
             last_opened = last_opened,
           }
         end
@@ -205,14 +144,14 @@ local function read_projects()
   return sort_projects(projects)
 end
 
-local function touch_project(path)
-  if type(path) ~= "string" or path == "" then
+local function touch_project(value)
+  if type(value) ~= "string" or value == "" then
     return nil
   end
 
-  local project = normalize(path)
+  local project = paths.real(value)
 
-  if not directory_exists(project) then
+  if not project or not directory_exists(project) then
     return nil
   end
 
@@ -259,7 +198,7 @@ local function record_project(root)
     return
   end
 
-  root = normalize(root)
+  root = paths.real(root)
 
   if root == active_project then
     return
@@ -269,11 +208,15 @@ local function record_project(root)
   touch_project(root)
 end
 
-local function ensure_project(path)
-  local root = normalize(path)
+local function ensure_project(value)
+  local root = paths.real(value)
+
+  if not root then
+    return nil, false
+  end
+
   local marker_path = root .. "/" .. project_marker
   local config_path = marker_path .. "/" .. project_config
-
   if not directory_exists(marker_path) then
     vim.fn.mkdir(marker_path, "p")
   end
@@ -341,15 +284,14 @@ function M.add_path()
       return
     end
 
-    local path = normalize(input)
+    local project_path = paths.real(input)
 
-    if not directory_exists(path) then
-      vim.notify("Not a directory: " .. path, vim.log.levels.ERROR)
-
+    if not project_path or not directory_exists(project_path) then
+      vim.notify("Not a directory: " .. tostring(project_path or input), vim.log.levels.ERROR)
       return
     end
 
-    local root, created_config = ensure_project(path)
+    local root, created_config = ensure_project(project_path)
     local suffix = created_config and " with default config" or ""
 
     vim.notify("Project added" .. suffix .. ": " .. root, vim.log.levels.INFO)
@@ -361,17 +303,16 @@ function M.pick()
 
   if vim.tbl_isempty(projects) then
     vim.notify("No projects yet. Use <leader>pa to add the current directory.", vim.log.levels.WARN)
-
     return
   end
 
-  local paths = {}
+  local project_paths = {}
 
   for _, project in ipairs(projects) do
-    table.insert(paths, project.path)
+    table.insert(project_paths, project.path)
   end
 
-  require("fzf-lua").fzf_exec(paths, {
+  require("fzf-lua").fzf_exec(project_paths, {
     prompt = "Projects> ",
     actions = {
       ["default"] = function(selected)
@@ -381,9 +322,16 @@ function M.pick()
           return
         end
 
-        project = normalize(project)
+        project = paths.real(project)
+
+        if not project then
+          vim.notify("Could not resolve selected project", vim.log.levels.ERROR)
+          return
+        end
+
         active_project = project
         touch_project(project)
+
         vim.schedule(function()
           local result = require("config.project_sessions").switch(project)
 
