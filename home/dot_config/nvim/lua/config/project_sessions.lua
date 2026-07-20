@@ -9,6 +9,8 @@
 
 local M = {}
 
+local paths = require("config.lib.path")
+
 local session_directory = vim.fs.normalize(vim.fn.stdpath("state") .. "/project-sessions")
 
 local project_sessionoptions = table.concat({
@@ -26,18 +28,6 @@ local root_provider
 local active_root
 local setup_complete = false
 local restoring = false
-
-local function normalize(path)
-  if type(path) ~= "string" or path == "" then
-    return nil
-  end
-
-  local normalized = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
-
-  -- Use the canonical path when possible so opening the same project through
-  -- a symlink does not create a second session.
-  return vim.uv.fs_realpath(normalized) or normalized
-end
 
 local function session_name(root)
   local basename = vim.fn.fnamemodify(root, ":t")
@@ -121,7 +111,7 @@ local function with_project_sessionoptions(callback)
 end
 
 local function save_session(root, notify)
-  root = normalize(root)
+  root = paths.real(root)
 
   if not root or not ensure_session_directory() then
     return false
@@ -171,7 +161,7 @@ local function detect_missing_filetypes()
 end
 
 local function restore_session(root, notify)
-  root = normalize(root)
+  root = paths.real(root)
 
   if not root then
     return false
@@ -217,7 +207,7 @@ local function restore_session(root, notify)
 end
 
 local function delete_session(root, notify)
-  root = normalize(root)
+  root = paths.real(root)
 
   if not root then
     return false
@@ -255,7 +245,7 @@ local function resolve_current_root()
     return nil
   end
 
-  return normalize(root_provider())
+  return paths.real(root_provider())
 end
 
 local function activate()
@@ -401,7 +391,7 @@ local function reset_workspace()
 end
 
 function M.switch(root)
-  root = normalize(root)
+  root = paths.real(root)
 
   if not root then
     vim.notify("Cannot switch to an invalid project root", vim.log.levels.ERROR)

@@ -3,6 +3,8 @@
 
 local M = {}
 
+local buffer = require("config.lib.buffer")
+
 local function buffer_dir(bufnr)
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
@@ -114,22 +116,6 @@ local function formatter_cwd(formatter, bufnr)
   end
 
   return formatter.cwd
-end
-
-local function is_real_file_buffer(bufnr)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return false
-  end
-
-  if vim.bo[bufnr].buftype ~= "" then
-    return false
-  end
-
-  if vim.bo[bufnr].readonly or not vim.bo[bufnr].modifiable then
-    return false
-  end
-
-  return vim.api.nvim_buf_get_name(bufnr) ~= ""
 end
 
 local function format_enabled(bufnr)
@@ -255,7 +241,7 @@ end
 function M.format(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
-  if is_real_file_buffer(bufnr) then
+  if buffer.is_writable_file(bufnr) then
     format_buffer(bufnr, true)
   end
 end
@@ -263,7 +249,7 @@ end
 function M.format_on_save(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
-  if is_real_file_buffer(bufnr) and format_enabled(bufnr) then
+  if buffer.is_writable_file(bufnr) and format_enabled(bufnr) then
     format_buffer(bufnr, false)
   end
 end
