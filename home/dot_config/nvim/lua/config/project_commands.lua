@@ -21,6 +21,7 @@ local valid_outputs = {
 
 local paths = require("config.lib.path")
 local quickfix = require("config.quickfix")
+local quickfix_watch = require("config.quickfix_watch")
 
 local function command_description(spec)
   local description = spec.description or spec.desc
@@ -384,8 +385,8 @@ function M.run(project_root, config_path, spec, command_key)
 
   -- Stopping an existing watcher is safe and should not require the project
   -- file to be trusted again if it changed after the watcher was started.
-  if spec.output == "quickfix-watch" and quickfix.is_watching(watch_id) then
-    quickfix.stop(watch_id, false)
+  if spec.output == "quickfix-watch" and quickfix_watch.is_watching(watch_id) then
+    quickfix_watch.stop(watch_id, false)
 
     vim.notify(description .. " stopped", vim.log.levels.INFO)
 
@@ -414,7 +415,7 @@ function M.run(project_root, config_path, spec, command_key)
   end
 
   if spec.output == "quickfix" then
-    local result, err = quickfix.run({
+    local result, err = quickfix_watch.run({
       argv = shell_argv(spec.command),
       cwd = cwd,
       env = environment,
@@ -441,7 +442,7 @@ function M.run(project_root, config_path, spec, command_key)
   end
 
   if spec.output == "quickfix-watch" then
-    local result, err = quickfix.watch({
+    local result, err = quickfix_watch.watch({
       id = watch_id,
       argv = shell_argv(spec.command),
       cwd = cwd,
