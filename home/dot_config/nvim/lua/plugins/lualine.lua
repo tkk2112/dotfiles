@@ -9,7 +9,7 @@ return {
         return require("config.project").status()
       end
 
-      local quickfix = require("config.quickfix")
+      local quickfix_watch = require("config.quickfix_watch")
 
       return {
         options = {
@@ -35,8 +35,8 @@ return {
           },
           lualine_x = {
             {
-              quickfix.statusline,
-              color = quickfix.statusline_color,
+              quickfix_watch.statusline,
+              color = quickfix_watch.statusline_color,
               padding = {
                 left = 1,
                 right = 1,
