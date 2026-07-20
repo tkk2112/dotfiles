@@ -2,7 +2,6 @@ local map = vim.keymap.set
 
 local autosave = require("config.autosave")
 local format = require("config.format")
-local pickers = require("config.pickers")
 local project = require("config.project")
 local project_settings = require("config.project_settings")
 local search = require("config.search")
@@ -186,8 +185,8 @@ map_shortcuts("n", shortcuts.search_project, search.project, { desc = "Search pr
 map_shortcuts("i", shortcuts.search_project, from_insert(search.project), { desc = "Search project" })
 map_shortcuts("n", shortcuts.project_files, project.find_files, { desc = "Find file in project" })
 map_shortcuts("i", shortcuts.project_files, from_insert(project.find_files), { desc = "Find file in project" })
-map_shortcuts("n", shortcuts.home_files, pickers.find_files_from_home, { desc = "Find file from home" })
-map_shortcuts("i", shortcuts.home_files, from_insert(pickers.find_files_from_home), { desc = "Find file from home" })
+map_shortcuts("n", shortcuts.home_files, search.find_files_from_home, { desc = "Find file from home" })
+map_shortcuts("i", shortcuts.home_files, from_insert(search.find_files_from_home), { desc = "Find file from home" })
 
 -- Projects
 map("n", "<leader>pp", project.pick, { desc = "Pick project" })
