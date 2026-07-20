@@ -181,6 +181,16 @@ local function replace_quickfix(title, items, context)
   })
 end
 
+local function open_quickfix_without_focus()
+  local current_window = vim.api.nvim_get_current_win()
+
+  vim.cmd("silent botright copen")
+
+  if vim.api.nvim_win_is_valid(current_window) then
+    vim.api.nvim_set_current_win(current_window)
+  end
+end
+
 local function open_one_shot(mode, exit_code)
   if mode == "always" then
     open_quickfix_without_focus()
@@ -194,16 +204,6 @@ local function open_one_shot(mode, exit_code)
     if vim.api.nvim_win_is_valid(current_window) then
       vim.api.nvim_set_current_win(current_window)
     end
-  end
-end
-
-local function open_quickfix_without_focus()
-  local current_window = vim.api.nvim_get_current_win()
-
-  vim.cmd("silent botright copen")
-
-  if vim.api.nvim_win_is_valid(current_window) then
-    vim.api.nvim_set_current_win(current_window)
   end
 end
 
