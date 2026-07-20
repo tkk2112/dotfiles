@@ -167,7 +167,7 @@ install_brew_casks() {
   print_packages "Homebrew cask" "$casks"
 
   # shellcheck disable=SC2086
-  run brew install --cask $casks
+  run brew install --quiet --cask $casks
 }
 
 prepare_brew_ci() {
@@ -188,7 +188,7 @@ install_brew() {
 
   prepare_brew_ci
 
-  install_user_packages Homebrew "$BREW_PACKAGES" brew install
+  install_user_packages Homebrew "$BREW_PACKAGES" brew install --quiet
   install_brew_casks
 }
 
