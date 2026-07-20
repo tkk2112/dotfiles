@@ -224,24 +224,3 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end, with_desc("Switch source/header"))
   end,
 })
-
-vim.api.nvim_create_user_command("LspCheck", function()
-  local executables = require("config.executables")
-  local cmake_language_server = executables.find("cmake-language-server", {
-    "/opt/homebrew/bin/cmake-language-server",
-  })
-
-  print("filetype: " .. vim.bo.filetype)
-  print("cmake-language-server: " .. cmake_language_server)
-
-  local clients = vim.lsp.get_clients({ bufnr = 0 })
-  if vim.tbl_isempty(clients) then
-    print("LSP clients: none")
-    return
-  end
-
-  print("LSP clients:")
-  for _, client in ipairs(clients) do
-    print("- " .. client.name)
-  end
-end, { force = true })
