@@ -1,6 +1,7 @@
 local M = {}
 
 local executables = require("config.executables")
+local float = require("config.ui.float")
 
 local providers = {
   cpp = "cpp",
@@ -113,13 +114,9 @@ local function output_lines(output)
   return lines
 end
 
-local function close_window(window)
-  if vim.api.nvim_win_is_valid(window) then
-    vim.api.nvim_win_close(window, true)
-  end
-end
-
 local function show_output(title, output, options)
+  options = options or {}
+
   local lines = output_lines(output)
 
   if vim.tbl_isempty(lines) then
@@ -127,52 +124,19 @@ local function show_output(title, output, options)
     return
   end
 
-  local max_width = 1
-
-  for _, line in ipairs(lines) do
-    max_width = math.max(max_width, vim.fn.strdisplaywidth(line))
-  end
-
-  local available_height = math.max(1, vim.o.lines - vim.o.cmdheight - 2)
-  local width = math.min(math.max(50, max_width), math.max(20, math.floor(vim.o.columns * 0.9)))
-  local height = math.min(math.max(8, #lines), math.max(4, math.floor(available_height * 0.85)))
-  local row = math.max(0, math.floor((available_height - height) / 2))
-  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
-  local buffer = vim.api.nvim_create_buf(false, true)
-
-  vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
-  vim.bo[buffer].bufhidden = "wipe"
-  vim.bo[buffer].buftype = "nofile"
-  vim.bo[buffer].filetype = options.filetype
-  vim.bo[buffer].modifiable = false
-  vim.bo[buffer].swapfile = false
-
-  local window = vim.api.nvim_open_win(buffer, true, {
-    relative = "editor",
-    row = row,
-    col = col,
-    width = width,
-    height = height,
-    border = "rounded",
-    style = "minimal",
-    title = " " .. title .. " ",
-    title_pos = "center",
-    zindex = 60,
+  float.open_centered(lines, {
+    title = title,
+    filetype = options.filetype,
+    wrap = options.wrap,
+    min_width = 50,
+    min_height = 8,
+    close_keys = {
+      "q",
+      "<Esc>",
+      "<F13>",
+    },
+    close_description = "Close documentation",
   })
-
-  vim.wo[window].conceallevel = 0
-  vim.wo[window].linebreak = options.wrap
-  vim.wo[window].wrap = options.wrap
-
-  for _, key in ipairs({ "q", "<Esc>", "<S-F1>" }) do
-    vim.keymap.set("n", key, function()
-      close_window(window)
-    end, {
-      buffer = buffer,
-      silent = true,
-      desc = "Close documentation",
-    })
-  end
 end
 
 local function open_cppreference(query)
@@ -310,7 +274,7 @@ end, {
   force = true,
 })
 
-vim.keymap.set("n", "<S-F1>", function()
+vim.keymap.set("n", "<F13>", function()
   M.open()
 end, {
   silent = true,
