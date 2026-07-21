@@ -430,38 +430,37 @@ function M.print()
   })
 end
 
-local project_settings_group = vim.api.nvim_create_augroup("dotfiles_project_settings", {
-  clear = true,
-})
+function M.setup()
+  local group = vim.api.nvim_create_augroup("dotfiles_project_settings", {
+    clear = true,
+  })
 
-vim.api.nvim_create_autocmd({
-  "BufReadPost",
-  "BufNewFile",
-  "BufEnter",
-}, {
-  group = project_settings_group,
-  callback = function(event)
-    M.apply(event.buf)
-  end,
-})
+  vim.api.nvim_create_autocmd({
+    "BufReadPost",
+    "BufNewFile",
+    "BufEnter",
+  }, {
+    group = group,
+    callback = function(event)
+      M.apply(event.buf)
+    end,
+  })
 
-vim.api.nvim_create_autocmd("FileType", {
-  group = project_settings_group,
-  callback = function(event)
-    M.apply_options(event.buf)
-  end,
-})
+  vim.api.nvim_create_autocmd("FileType", {
+    group = group,
+    callback = function(event)
+      M.apply_options(event.buf)
+    end,
+  })
 
-vim.api.nvim_create_user_command("Filetype", function(command)
-  M.set_filetype(0, command.args)
-end, {
-  nargs = 1,
-  complete = "filetype",
-  desc = "Set and persist the current file's filetype",
-})
-
-require("config.project_sessions").setup(function()
-  return M.root(0)
-end)
+  vim.api.nvim_create_user_command("Filetype", function(command)
+    M.set_filetype(0, command.args)
+  end, {
+    nargs = 1,
+    complete = "filetype",
+    desc = "Set and persist the current file's filetype",
+    force = true,
+  })
+end
 
 return M

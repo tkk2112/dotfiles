@@ -5,6 +5,12 @@ local theme = require("config.theme")
 
 local theme_target = vim.fn.expand("~/.config/nvim/lua/theme/colorscheme.lua")
 
+local theme_source
+local theme_source_error
+
+local apply_in_progress = false
+local apply_again = false
+
 local function resolve_chezmoi_source(target)
   local result = vim
     .system({
@@ -17,7 +23,13 @@ local function resolve_chezmoi_source(target)
     :wait()
 
   if result.code ~= 0 then
-    return nil, vim.trim(result.stderr or "")
+    local message = vim.trim(result.stderr or result.stdout or "")
+
+    if message == "" then
+      message = "chezmoi source-path failed with exit code " .. result.code
+    end
+
+    return nil, message
   end
 
   local source = vim.trim(result.stdout or "")
@@ -29,10 +41,19 @@ local function resolve_chezmoi_source(target)
   return paths.real(source)
 end
 
-local theme_source, theme_source_error = resolve_chezmoi_source(theme_target)
+function M.reload()
+  local scheme = vim.g.colors_name
 
-local apply_in_progress = false
-local apply_again = false
+  if scheme ~= "dotfiles-dark" and scheme ~= "dotfiles-light" then
+    scheme = vim.o.background == "dark" and "dotfiles-dark" or "dotfiles-light"
+  end
+
+  package.loaded["theme.palette"] = nil
+  package.loaded["theme.colorscheme"] = nil
+
+  theme.apply(scheme)
+  vim.cmd("redraw!")
+end
 
 local function apply_and_reload()
   if apply_in_progress then
@@ -62,7 +83,7 @@ local function apply_and_reload()
         vim.notify("Theme applied and reloaded", vim.log.levels.INFO)
       end
 
-      -- Do not lose a second save made while chezmoi was still running.
+      -- Do not lose a second save while chezmoi is still running.
       if apply_again then
         apply_again = false
         apply_and_reload()
@@ -71,37 +92,49 @@ local function apply_and_reload()
   end)
 end
 
-vim.api.nvim_create_user_command("ThemeReload", function()
-  M.reload()
-end, {
-  desc = "Reload the current custom colorscheme",
-})
+function M.setup()
+  theme_source, theme_source_error = resolve_chezmoi_source(theme_target)
 
-vim.api.nvim_create_user_command("ThemeApply", function()
-  apply_and_reload()
-end, {
-  desc = "Apply the chezmoi colorscheme and reload it",
-})
+  vim.api.nvim_create_user_command("ThemeReload", function()
+    M.reload()
+  end, {
+    desc = "Reload the current custom colorscheme",
+    force = true,
+  })
 
-vim.api.nvim_create_user_command("ThemeEdit", function()
+  vim.api.nvim_create_user_command("ThemeApply", function()
+    apply_and_reload()
+  end, {
+    desc = "Apply the chezmoi colorscheme and reload it",
+    force = true,
+  })
+
+  vim.api.nvim_create_user_command("ThemeEdit", function()
+    if not theme_source then
+      vim.notify(
+        "Could not resolve chezmoi theme source:\n" .. (theme_source_error or "Unknown error"),
+        vim.log.levels.ERROR
+      )
+
+      return
+    end
+
+    vim.cmd("vsplit " .. vim.fn.fnameescape(theme_source))
+  end, {
+    desc = "Edit the chezmoi colorscheme source",
+    force = true,
+  })
+
+  local group = vim.api.nvim_create_augroup("dotfiles_theme_live_reload", {
+    clear = true,
+  })
+
   if not theme_source then
-    vim.notify(
-      "Could not resolve chezmoi theme source:\n" .. (theme_source_error or "Unknown error"),
-      vim.log.levels.ERROR
-    )
     return
   end
 
-  vim.cmd("vsplit " .. vim.fn.fnameescape(theme_source))
-end, {
-  desc = "Edit the chezmoi colorscheme source",
-})
-
-if theme_source then
-  local theme_group = vim.api.nvim_create_augroup("dotfiles_theme_live_reload", { clear = true })
-
   vim.api.nvim_create_autocmd("BufWritePost", {
-    group = theme_group,
+    group = group,
     callback = function(event)
       local filename = paths.real(vim.api.nvim_buf_get_name(event.buf))
 
@@ -111,3 +144,5 @@ if theme_source then
     end,
   })
 end
+
+return M

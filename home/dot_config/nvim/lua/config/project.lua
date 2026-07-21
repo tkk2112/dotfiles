@@ -375,31 +375,35 @@ function M.print_root()
   print(M.root())
 end
 
-local project_tracking_group = vim.api.nvim_create_augroup("dotfiles_project_tracking", { clear = true })
+function M.setup()
+  local group = vim.api.nvim_create_augroup("dotfiles_project_tracking", {
+    clear = true,
+  })
 
-vim.api.nvim_create_autocmd({
-  "VimEnter",
-  "BufEnter",
-}, {
-  group = project_tracking_group,
-  callback = function(event)
-    local bufnr = event.buf
+  vim.api.nvim_create_autocmd({
+    "VimEnter",
+    "BufEnter",
+  }, {
+    group = group,
+    callback = function(event)
+      local bufnr = event.buf
 
-    if not bufnr or bufnr == 0 then
-      bufnr = vim.api.nvim_get_current_buf()
-    end
+      if not bufnr or bufnr == 0 then
+        bufnr = vim.api.nvim_get_current_buf()
+      end
 
-    local root = project_root_for_buffer(bufnr) or vim.fs.root(vim.fn.getcwd(), project_marker)
+      local root = project_root_for_buffer(bufnr) or vim.fs.root(vim.fn.getcwd(), project_marker)
 
-    record_project(root)
-  end,
-})
+      record_project(root)
+    end,
+  })
 
-vim.api.nvim_create_autocmd("DirChanged", {
-  group = project_tracking_group,
-  callback = function()
-    record_project(vim.fs.root(vim.fn.getcwd(), project_marker))
-  end,
-})
+  vim.api.nvim_create_autocmd("DirChanged", {
+    group = group,
+    callback = function()
+      record_project(vim.fs.root(vim.fn.getcwd(), project_marker))
+    end,
+  })
+end
 
 return M
