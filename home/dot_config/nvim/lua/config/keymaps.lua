@@ -42,6 +42,36 @@ local function close_buffer()
   end)
 end
 
+local function close_other_buffers()
+  vim.schedule(function()
+    local current = vim.api.nvim_get_current_buf()
+    local bufremove = require("mini.bufremove")
+    local failed = {}
+
+    for _, buffer in
+      ipairs(vim.fn.getbufinfo({
+        buflisted = 1,
+      }))
+    do
+      local bufnr = buffer.bufnr
+
+      if bufnr ~= current and vim.api.nvim_buf_is_valid(bufnr) then
+        local ok, err = pcall(bufremove.delete, bufnr, false)
+
+        if not ok or (vim.api.nvim_buf_is_valid(bufnr) and vim.fn.buflisted(bufnr) == 1) then
+          local name = buffer.name ~= "" and vim.fn.fnamemodify(buffer.name, ":~:.") or "[No Name]"
+
+          table.insert(failed, ok and name or name .. ": " .. tostring(err))
+        end
+      end
+    end
+
+    if #failed > 0 then
+      vim.notify("Could not close these buffers:\n" .. table.concat(failed, "\n"), vim.log.levels.WARN)
+    end
+  end)
+end
+
 local function cycle_buffer(command)
   return function()
     vim.cmd(command)
@@ -152,9 +182,12 @@ end
 map("n", "<leader>ww", "<cmd>write<cr>", { desc = "Write current file" })
 map("n", "<leader>wa", autosave.save_all, { desc = "Write all modified files" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
-map("n", "<leader>bd", close_buffer, { desc = "Close buffer" })
 map("n", "<leader>bn", cycle_buffer("BufferLineCycleNext"), { desc = "Next buffer" })
 map("n", "<leader>bp", cycle_buffer("BufferLineCyclePrev"), { desc = "Previous buffer" })
+map("n", "<leader>bd", close_buffer, { desc = "Close buffer" })
+map("n", "<leader>bo", close_other_buffers, {
+  desc = "Close other buffers",
+})
 
 map_shortcuts({ "n", "i", "x" }, shortcuts.save, "<cmd>write<cr>", { desc = "Write current file" })
 map_shortcuts("n", shortcuts.close_buffer, close_buffer, { desc = "Close buffer" })
