@@ -254,10 +254,15 @@ function M.format_on_save(bufnr)
   end
 end
 
-vim.api.nvim_create_autocmd("BufWritePre", {
-  callback = function(event)
-    M.format_on_save(event.buf)
-  end,
-})
+function M.setup()
+  local group = vim.api.nvim_create_augroup("dotfiles_format", { clear = true })
+
+  vim.api.nvim_create_autocmd("BufWritePre", {
+    group = group,
+    callback = function(event)
+      M.format_on_save(event.buf)
+    end,
+  })
+end
 
 return M
