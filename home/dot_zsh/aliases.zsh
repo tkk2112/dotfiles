@@ -3,18 +3,21 @@ if debian; then
 else
   alias bat='bat --theme=Coldark-Dark'
 fi
-
 alias less='bat'
 alias more='bat'
+
+if (($+commands[duf])); then
+  alias df='duf'
+fi
 
 alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias grep='grep --color=auto'
 
+alias ls='lsd'
 alias l='ls -1'
 alias la='ls -A'
 alias ll='ls -lah --git'
-alias ls='lsd'
 
 alias cz='chezmoi'
 alias hookoff='git config --global core.hooksPath /dev/null'
