@@ -266,19 +266,21 @@ function M.open(query)
   }, lookup)
 end
 
-vim.api.nvim_create_user_command("LanguageDocs", function(options)
-  M.open(options.args)
-end, {
-  nargs = "*",
-  desc = "Open full language documentation",
-  force = true,
-})
+function M.setup()
+  vim.api.nvim_create_user_command("LanguageDocs", function(options)
+    M.open(options.args)
+  end, {
+    nargs = "*",
+    desc = "Open full language documentation",
+    force = true,
+  })
 
-vim.keymap.set("n", "<F13>", function()
-  M.open()
-end, {
-  silent = true,
-  desc = "Full language documentation",
-})
+  vim.keymap.set("n", "<F13>", function()
+    M.open()
+  end, {
+    silent = true,
+    desc = "Full language documentation",
+  })
+end
 
 return M

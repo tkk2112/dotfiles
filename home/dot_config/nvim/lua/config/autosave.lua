@@ -52,16 +52,29 @@ function M.save_all()
   end
 end
 
-vim.api.nvim_create_autocmd({ "FocusLost", "VimSuspend", "TermEnter" }, {
-  callback = function()
-    M.save_all()
-  end,
-})
+function M.setup()
+  local group = vim.api.nvim_create_augroup("dotfiles_autosave", { clear = true })
 
-vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
-  callback = function(event)
-    save_buffer(event.buf)
-  end,
-})
+  vim.api.nvim_create_autocmd({
+    "FocusLost",
+    "VimSuspend",
+    "TermEnter",
+  }, {
+    group = group,
+    callback = function()
+      M.save_all()
+    end,
+  })
+
+  vim.api.nvim_create_autocmd({
+    "WinLeave",
+    "BufLeave",
+  }, {
+    group = group,
+    callback = function(event)
+      save_buffer(event.buf)
+    end,
+  })
+end
 
 return M
