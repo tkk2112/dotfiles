@@ -44,12 +44,6 @@ function M.toggle()
   M.apply(default_schemes[next_mode])
 end
 
-vim.api.nvim_create_autocmd({ "BufEnter", "DirChanged" }, {
-  callback = function(event)
-    M.apply_for_buffer(event.buf)
-  end,
-})
-
 function M.reload()
   local scheme = vim.g.colors_name
 
@@ -67,6 +61,28 @@ function M.reload()
   vim.cmd("redraw!")
 end
 
-M.apply(default_schemes.dark)
+function M.setup()
+  local group = vim.api.nvim_create_augroup("dotfiles_theme", {
+    clear = true,
+  })
+
+  vim.api.nvim_create_autocmd({
+    "BufEnter",
+    "DirChanged",
+  }, {
+    group = group,
+    callback = function(event)
+      local bufnr = event.buf
+
+      if not bufnr or bufnr == 0 then
+        bufnr = vim.api.nvim_get_current_buf()
+      end
+
+      M.apply_for_buffer(bufnr)
+    end,
+  })
+
+  M.apply(default_schemes.dark)
+end
 
 return M
