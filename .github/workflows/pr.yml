@@ -71,6 +71,7 @@ jobs:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: ${{ matrix.profiles }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   install-macos:
