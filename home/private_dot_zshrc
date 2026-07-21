@@ -34,7 +34,7 @@ done
 if [[ -n "$brew_bin" ]]; then
   eval "$("$brew_bin" shellenv)"
 
-  brew_prefix="$(brew --prefix)"
+  brew_prefix="$("$brew_bin" --prefix)"
 
   for completion_dir in \
     "$brew_prefix/share/zsh/functions" \
@@ -78,22 +78,33 @@ fi
 ZSH_THEME="powerlevel10k/powerlevel10k"
 source "$ZSH/oh-my-zsh.sh"
 
-source ~/.zsh/options.zsh
-source ~/.zsh/history.zsh
-source ~/.zsh/keybindings.zsh
-source ~/.zsh/aliases.zsh
-source ~/.zsh/dirs.zsh
+source "$HOME/.zsh/options.zsh"
+source "$HOME/.zsh/history.zsh"
+source "$HOME/.zsh/keybindings.zsh"
+source "$HOME/.zsh/aliases.zsh"
+source "$HOME/.zsh/dirs.zsh"
 
-for func_file in ~/.zsh/functions/*.zsh; do
-  source "$func_file"
-done
-
-[[ -r ~/.p10k.zsh ]] && source ~/.p10k.zsh
-
-if [[ -d ~/ProtonDrive/work/zsh ]]; then
-  for func_file in ~/ProtonDrive/work/zsh/*.zsh; do
-    [[ -f $func_file ]] && source "$func_file"
-  done
+if (( $+commands[pass-cli] )); then
+  source "$HOME/.zsh/modules/proton-pass-ssh.zsh"
 fi
 
-[[ -r ~/.zshrc_local ]] && source ~/.zshrc_local
+() {
+  local function_file
+
+  for function_file in "$HOME"/.zsh/functions/*.zsh(N); do
+    source "$function_file"
+  done
+}
+if [[ -d "$HOME/ProtonDrive/work/zsh" ]]; then
+  () {
+    local func_file
+
+    for func_file in "$HOME"/ProtonDrive/work/zsh/*.zsh(N); do
+      source "$func_file"
+    done
+  }
+fi
+
+[[ -r "$HOME/.p10k.zsh" ]] && source "$HOME/.p10k.zsh"
+
+[[ -r "$HOME/.zshrc_local" ]] && source "$HOME/.zshrc_local"

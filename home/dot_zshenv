@@ -1,4 +1,4 @@
-source ~/.zsh/functions/identify.zsh
+source "$HOME/.zsh/platform.zsh"
 
 export EDITOR="nvim"
 export GIT_EDITOR="$EDITOR"
