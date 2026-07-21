@@ -417,73 +417,73 @@ function M.statusline_color()
   return "DiagnosticInfo"
 end
 
-local group = vim.api.nvim_create_augroup("dotfiles_quickfix_watchers", {
-  clear = true,
-})
+function M.setup()
+  local group = vim.api.nvim_create_augroup("dotfiles_quickfix_watchers", {
+    clear = true,
+  })
 
-vim.api.nvim_create_autocmd("BufWritePost", {
-  group = group,
-  callback = function(event)
-    local watcher = active_watcher()
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    group = group,
+    callback = function(event)
+      local watcher = active_watcher()
 
-    if not watcher then
+      if not watcher then
+        return
+      end
+
+      local filename = vim.api.nvim_buf_get_name(event.buf)
+
+      if paths.is_within(filename, watcher.root) then
+        schedule_watch_build(watcher)
+      end
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("LspAttach", {
+    group = group,
+    callback = function(event)
+      local watcher = active_watcher()
+
+      if watcher and watcher.diagnostics == "auto" then
+        vim.diagnostic.reset(diagnostic_namespace, event.buf)
+      end
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("DirChanged", {
+    group = group,
+    callback = function()
+      M.stop_all(false)
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    group = group,
+    callback = function()
+      M.stop_all(false, "sigkill")
+    end,
+  })
+
+  vim.api.nvim_create_user_command("QuickfixWatchBuild", function()
+    if not M.build() then
+      vim.notify("No quickfix watcher is running", vim.log.levels.INFO)
+    end
+  end, {
+    desc = "Run the active quickfix watcher now",
+    force = true,
+  })
+
+  vim.api.nvim_create_user_command("QuickfixWatchStop", function()
+    if not active_watcher() then
+      vim.notify("No quickfix watcher is running", vim.log.levels.INFO)
       return
     end
 
-    local filename = vim.api.nvim_buf_get_name(event.buf)
-
-    if paths.is_within(filename, watcher.root) then
-      schedule_watch_build(watcher)
-    end
-  end,
-})
-
-vim.api.nvim_create_autocmd("LspAttach", {
-  group = group,
-  callback = function(event)
-    local watcher = active_watcher()
-
-    if watcher and watcher.diagnostics == "auto" then
-      vim.diagnostic.reset(diagnostic_namespace, event.buf)
-    end
-  end,
-})
-
-vim.api.nvim_create_autocmd("DirChanged", {
-  group = group,
-  callback = function()
-    M.stop_all(false)
-  end,
-})
-
-vim.api.nvim_create_autocmd("VimLeavePre", {
-  group = group,
-  callback = function()
-    M.stop_all(false, "sigkill")
-  end,
-})
-
-pcall(vim.api.nvim_del_user_command, "QuickfixWatchBuild")
-
-vim.api.nvim_create_user_command("QuickfixWatchBuild", function()
-  if not M.build() then
-    vim.notify("No quickfix watcher is running", vim.log.levels.INFO)
-  end
-end, {
-  desc = "Run the active quickfix watcher now",
-})
-
-pcall(vim.api.nvim_del_user_command, "QuickfixWatchStop")
-
-vim.api.nvim_create_user_command("QuickfixWatchStop", function()
-  if not active_watcher() then
-    vim.notify("No quickfix watcher is running", vim.log.levels.INFO)
-    return
-  end
-
-  M.stop_all(true)
-end, {
-  desc = "Stop the active quickfix watcher",
-})
+    M.stop_all(true)
+  end, {
+    desc = "Stop the active quickfix watcher",
+    force = true,
+  })
+end
 
 return M
