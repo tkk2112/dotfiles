@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+{{- if eq .sshAgent "proton-pass" }}
+
+command -v pass-cli >/dev/null 2>&1 || exit 0
+
+completion_dir="$HOME/.zsh/completions"
+completion_file="$completion_dir/_pass-cli"
+temporary_file="$(mktemp)"
+
+cleanup() {
+  rm -f "$temporary_file"
+}
+
+trap cleanup EXIT INT TERM
+
+mkdir -p "$completion_dir"
+pass-cli completions zsh >"$temporary_file"
+
+if [ ! -f "$completion_file" ] ||
+  ! cmp -s "$temporary_file" "$completion_file"; then
+  install -m 0644 "$temporary_file" "$completion_file"
+fi
+
+{{- end }}

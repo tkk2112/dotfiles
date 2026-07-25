@@ -53,27 +53,38 @@ fpath=(
 unset brew_bin brew_prefix candidate completion_dir
 
 plugins=(
-  aliases
   autoupdate
+
+  aliases
   branch
   chezmoi
   colored-man-pages
   command-not-found
   direnv
   fzf
-  nmap
-  rsync
-  ssh-agent
   sudo
-  uv
-  zsh-autosuggestions
-  zsh-completions
-  zsh-syntax-highlighting
+
+{{- if eq .chezmoi.os "darwin" }}
+  macos
+{{- end }}
+
+{{- if eq .osid "arch" }}
+  archlinux
+{{- end }}
+
+{{- if eq .sshAgent "omz" }}
+  ssh-agent
+{{- end }}
 )
 
-if darwin; then
-  plugins+=(brew macos)
-fi
+# Homebrew may exist on either macOS or Linux.
+(( $+commands[brew] )) && plugins+=(brew)
+
+plugins+=(
+  zsh-completions
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
 
 ZSH_THEME="powerlevel10k/powerlevel10k"
 source "$ZSH/oh-my-zsh.sh"

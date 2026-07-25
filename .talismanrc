@@ -3,10 +3,25 @@ threshold: high
 version: "1.0"
 
 fileignoreconfig:
-  - filename: home/private_dot_ssh/conf.d/*.age
-    checksum: c8ce56fe0d7b75029a7673f54aa2d6ff8acae484e3d3e542e6b20de219de1a47
+  - filename: home/private_dot_ssh/conf.d/encrypted_10-specific.conf.tmpl.age
+    checksum: 99144f6beb3787a97bb14dc2ab32d21c9b890549f2dd1d7e8deff02fd954df51
 
-  - filename: home/dot_zshenv
+  - filename: home/private_dot_ssh/conf.d/encrypted_20-vacuums.conf.tmpl.age
+    checksum: bdfa22bfbc808cd7f872b19bce608d17525fb0a997e261830f1bb480126e9c85
+
+  - filename: home/private_dot_ssh/conf.d/encrypted_30-void.conf.tmpl.age
+    checksum: 1f2860acb224f1a5cce3a517f9e3a695d6db48a2e4a90c6d29597c81e3d7d7c9
+
+  - filename: home/private_dot_ssh/conf.d/encrypted_40-legacy-rsa.conf.tmpl.age
+    checksum: e1e22ef26699b3e6e406c9674ab5e0c2eda0f110fbf268a5e8ece2ad59d4087d
+
+  - filename: home/private_dot_ssh/conf.d/encrypted_50-remarkable.conf.tmpl.age
+    checksum: 47082123480ff1439e081ddbaecc4b8a49ca14fc3544769010c4e38393ea8a8d
+
+  - filename: home/private_dot_ssh/conf.d/encrypted_80-regional.conf.tmpl.age
+    checksum: eec0e0ad3685e9746633c1ec7b94bdb99f418a2d4df23f8d5798e5ab989b29c1
+
+  - filename: home/dot_zshenv.tmpl
     ignore_detectors:
       - filename
 

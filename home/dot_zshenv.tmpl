@@ -1,5 +1,3 @@
-source "$HOME/.zsh/platform.zsh"
-
 export EDITOR="nvim"
 export GIT_EDITOR="$EDITOR"
 export VISUAL="$EDITOR"
@@ -20,9 +18,13 @@ done
 export PATH
 
 export MANROFFOPT="-c"
+{{- if eq .osid "debian" }}
+export MANPAGER="sh -c 'col -bx | batcat -l man -p'"
+{{- else }}
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+{{- end }}
 
-if debian; then
-  export MANPAGER="sh -c 'col -bx | batcat -l man -p'"
-else
-  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
-fi
+{{- if eq .sshAgent "proton-pass" }}
+export PROTON_PASS_SSH_VAULT={{ .sshVault | quote }}
+export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+{{- end }}

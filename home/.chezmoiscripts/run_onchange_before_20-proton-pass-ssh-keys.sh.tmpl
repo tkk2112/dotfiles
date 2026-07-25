@@ -5,6 +5,7 @@ set -eu
 # Bump this value in ssh.yaml after rotating or replacing a Proton Pass key.
 # chezmoi SSH key revision: {{ .ssh.revision }}
 
+public_only={{ if eq .sshAgent "proton-pass" }}1{{ else }}0{{ end }}
 ssh_dir="$HOME/.ssh"
 keys_dir="$ssh_dir/keys"
 state_dir="$HOME/.config/chezmoi"
@@ -62,11 +63,6 @@ require_fetch_tools() {
     return 127
   }
 
-  command -v jq >/dev/null 2>&1 || {
-    printf '%s\n' 'jq is required to provision SSH keys' >&2
-    return 127
-  }
-
   fetch_tools_checked=1
 }
 
@@ -101,42 +97,21 @@ provision_key() {
     return 1
   fi
 
-  item_json="$tmpdir/$name.json"
   raw_private="$tmpdir/$name.private.raw"
   raw_public="$tmpdir/$name.public.raw"
   private_file="$tmpdir/$name"
   public_file="$tmpdir/$name.pub"
 
-  printf 'Fetching SSH key from Proton Pass: %s\n' "$name"
+  if [ "$public_only" -eq 1 ]; then
+    printf 'Fetching SSH public key from Proton Pass: %s\n' "$name"
+  else
+    printf 'Fetching SSH key pair from Proton Pass: %s\n' "$name"
+  fi
 
   pass-cli item view \
     --share-id "$share_id" \
     --item-id "$item_id" \
-    --output json > "$item_json"
-
-  jq -je \
-    '.item.content.content.SshKey.private_key' \
-    "$item_json" > "$raw_private"
-
-  jq -je \
-    '.item.content.content.SshKey.public_key' \
-    "$item_json" > "$raw_public"
-
-  # Keep the key contents unchanged except for removing trailing blank lines.
-  awk '
-    {
-      lines[NR] = $0
-      if ($0 !~ /^[[:space:]]*$/)
-        last = NR
-    }
-    END {
-      if (!last)
-        exit 1
-
-      for (i = 1; i <= last; i++)
-        print lines[i]
-    }
-  ' "$raw_private" > "$private_file"
+    --field public_key >"$raw_public"
 
   awk '
     NF >= 2 {
@@ -148,13 +123,37 @@ provision_key() {
       if (!found)
         exit 1
     }
-  ' "$raw_public" > "$public_file"
+  ' "$raw_public" >"$public_file"
 
-  chmod 600 "$private_file"
   chmod 644 "$public_file"
 
-  rm -f -- "$item_json" "$raw_private" "$raw_public"
-  printf '%s\n' "$name" >> "$desired_manifest"
+  if [ "$public_only" -eq 0 ]; then
+    pass-cli item view \
+      --share-id "$share_id" \
+      --item-id "$item_id" \
+      --field private_key >"$raw_private"
+
+    # Keep the private key unchanged except for trailing blank lines.
+    awk '
+      {
+        lines[NR] = $0
+        if ($0 !~ /^[[:space:]]*$/)
+          last = NR
+      }
+      END {
+        if (!last)
+          exit 1
+
+        for (i = 1; i <= last; i++)
+          print lines[i]
+      }
+    ' "$raw_private" >"$private_file"
+
+    chmod 600 "$private_file"
+  fi
+
+  rm -f -- "$raw_private" "$raw_public"
+  printf '%s\n' "$name" >>"$desired_manifest"
 }
 
 {{- range $name, $key := .ssh.keys }}
@@ -167,11 +166,20 @@ provision_key {{ $name | quote }} {{ $key.uri | quote }}
 while IFS= read -r name; do
   [ -n "$name" ] || continue
 
-  mv -f -- "$tmpdir/$name" "$keys_dir/$name"
   mv -f -- "$tmpdir/$name.pub" "$keys_dir/$name.pub"
-  chmod 600 "$keys_dir/$name"
   chmod 644 "$keys_dir/$name.pub"
-done < "$desired_manifest"
+
+  if [ "$public_only" -eq 1 ]; then
+    if [ -e "$keys_dir/$name" ] || [ -L "$keys_dir/$name" ]; then
+      printf 'Removing local private key now provided by Proton Pass: %s\n' \
+        "$name"
+      rm -f -- "$keys_dir/$name"
+    fi
+  else
+    mv -f -- "$tmpdir/$name" "$keys_dir/$name"
+    chmod 600 "$keys_dir/$name"
+  fi
+done <"$desired_manifest"
 
 # Remove only keys previously managed by this script and no longer selected.
 if [ -f "$manifest" ]; then
@@ -194,8 +202,15 @@ chmod 600 "$manifest_tmp"
 mv -f -- "$manifest_tmp" "$manifest"
 manifest_tmp=
 
-printf 'Provisioned %s Proton Pass SSH key(s) for %s\n' \
-  "$(wc -l < "$desired_manifest" | tr -d '[:space:]')" \
+if [ "$public_only" -eq 1 ]; then
+  key_description='Proton Pass SSH public key(s)'
+else
+  key_description='Proton Pass SSH key pair(s)'
+fi
+
+printf 'Provisioned %s %s for %s\n' \
+  "$(wc -l <"$desired_manifest" | tr -d '[:space:]')" \
+  "$key_description" \
   {{ $machine | quote }}
 
 trap - 0 1 2 15

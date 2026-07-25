@@ -1,0 +1,16 @@
+{{- if and
+  (eq .chezmoi.os "linux")
+  (eq .sshAgent "proton-pass")
+-}}
+[Unit]
+Description=Proton Pass SSH Agent
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/proton-pass-ssh-agent
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+{{- end }}
