@@ -1,8 +1,8 @@
-if debian; then
-  alias bat='batcat --theme=Coldark-Dark'
-else
-  alias bat='bat --theme=Coldark-Dark'
-fi
+{{- if eq .osid "debian" }}
+alias bat='batcat --theme=Coldark-Dark'
+{{- else }}
+alias bat='bat --theme=Coldark-Dark'
+{{- end }}
 alias less='bat'
 alias more='bat'
 

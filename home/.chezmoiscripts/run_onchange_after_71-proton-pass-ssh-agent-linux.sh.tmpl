@@ -1,0 +1,24 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/sh
+set -eu
+
+# proton-pass-ssh-agent-revision: 1
+# configured-agent: {{ .sshAgent }}
+# configured-vault: {{ .sshVault }}
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+  exit 0
+fi
+
+command -v systemctl >/dev/null 2>&1 || exit 0
+
+unit="proton-pass-ssh-agent.service"
+
+if [ "{{ .sshAgent }}" = "proton-pass" ]; then
+  systemctl --user daemon-reload
+  systemctl --user enable --now "$unit"
+else
+  systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
+  systemctl --user daemon-reload
+fi
+{{- end }}
