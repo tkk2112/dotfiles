@@ -1,0 +1,30 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+set -eu
+
+# Bump when changing the LaunchAgent structure.
+# proton-pass-ssh-agent-revision: 1
+# configured-agent: {{ .sshAgent }}
+# configured-vault: {{ .sshVault }}
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+  exit 0
+fi
+
+label="com.proton.pass-cli.ssh-agent"
+domain="gui/$(id -u)"
+plist="$HOME/Library/LaunchAgents/$label.plist"
+
+if [ "{{ .sshAgent }}" != "proton-pass" ]; then
+  launchctl bootout "$domain/$label" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+if [ ! -f "$plist" ]; then
+  printf 'Missing Proton Pass LaunchAgent: %s\n' "$plist" >&2
+  exit 1
+fi
+
+launchctl bootout "$domain/$label" >/dev/null 2>&1 || true
+launchctl bootstrap "$domain" "$plist"
+{{- end }}

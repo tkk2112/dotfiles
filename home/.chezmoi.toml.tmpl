@@ -38,6 +38,25 @@
 {{-   fail "select exactly one machine role: workstation or headless" -}}
 {{- end -}}
 
+{{- $sshAgentChoices := list "proton-pass" "omz" "external" "none" -}}
+{{- $defaultSshAgent := "none" -}}
+
+{{- if has "workstation" $profiles -}}
+{{-   if eq .chezmoi.os "darwin" -}}
+{{-     $defaultSshAgent = "proton-pass" -}}
+{{-   else -}}
+{{-     $defaultSshAgent = "omz" -}}
+{{-   end -}}
+{{- end -}}
+
+{{- $sshAgent := promptChoiceOnce
+  .
+  "sshAgent"
+  "SSH agent"
+  $sshAgentChoices
+  $defaultSshAgent
+-}}
+
 {{- $gitName := promptStringOnce . "git.name" "git user name" "Thomas Kristensen" -}}
 {{- $gitEmail := promptStringOnce . "git.email" "git user email" "" -}}
 
@@ -54,6 +73,8 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
     hostname = {{ .chezmoi.hostname | quote }}
     machine = {{ promptStringOnce . "machine" "machine name" .chezmoi.hostname | quote }}
     profiles = {{ $profiles | toToml }}
+    sshAgent = {{ $sshAgent | quote }}
+    sshVault = "Keys"
 
 [data.git]
     name = {{ $gitName | quote }}

@@ -1,0 +1,11 @@
+{{- if eq .sshAgent "proton-pass" -}}
+#!/bin/sh
+set -eu
+
+PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
+export PATH
+
+exec pass-cli ssh-agent start \
+  --vault-name {{ .sshVault | quote }} \
+  --socket-path "$HOME/.ssh/proton-pass-agent.sock"
+{{- end }}
