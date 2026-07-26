@@ -30,11 +30,11 @@ jobs:
 
   install-linux:
     needs: check
-    name: sanity / ubuntu / workstation,development,owned / native
+    name: sanity / fedora / workstation,development,owned / native
     runs-on: ubuntu-latest
 
     container:
-      image: ubuntu:26.04
+      image: fedora:latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
