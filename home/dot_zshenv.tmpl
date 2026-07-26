@@ -43,5 +43,8 @@ export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 
 {{- if eq .sshAgent "proton-pass" }}
 export PROTON_PASS_SSH_VAULT={{ .sshVault | quote }}
-export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+
+if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "$SSH_AUTH_SOCK" ]; then
+  export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+fi
 {{- end }}
