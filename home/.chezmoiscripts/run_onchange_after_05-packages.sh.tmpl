@@ -7,7 +7,7 @@ set -eu
 {{- $manager := index . 0 -}}
 {{- $catalog := index . 1 | default (list) -}}
 {{- $profiles := index . 2 | default (list) -}}
-{{- $defaultManagers := list "brew" "apt" "dnf" "pacman" -}}
+{{- $defaultManagers := list "brew" "linuxbrew" "apt" "dnf" "pacman" -}}
 
 {{- range $pkg := $catalog -}}
 {{- $name := get $pkg "name" -}}
@@ -16,6 +16,26 @@ set -eu
 {{- $names := get $pkg "names" | default (dict) -}}
 {{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
 {{- $enabledManager := has $manager $managers -}}
+
+{{- if and $name $enabledGroup $enabledManager -}}
+{{- $packageName := get $names $manager | default $name -}}
+{{ printf "%s\n" $packageName }}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{- define "explicitPackageLines" -}}
+{{- $manager := index . 0 -}}
+{{- $catalog := index . 1 | default (list) -}}
+{{- $profiles := index . 2 | default (list) -}}
+
+{{- range $pkg := $catalog -}}
+{{- $name := get $pkg "name" -}}
+{{- $group := get $pkg "group" | default "core" -}}
+{{- $managers := get $pkg "managers" | default (list) -}}
+{{- $names := get $pkg "names" | default (dict) -}}
+{{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
+{{- $enabledManager := and (hasKey $pkg "managers") (has $manager $managers) -}}
 
 {{- if and $name $enabledGroup $enabledManager -}}
 {{- $packageName := get $names $manager | default $name -}}
@@ -57,6 +77,11 @@ EOF
 
 LINUXBREW_PACKAGES="$(cat <<'EOF'
 {{ template "packageLines" (list "linuxbrew" .packages.catalog $profiles) }}
+EOF
+)"
+
+LINUXBREW_SUPPLEMENTAL_PACKAGES="$(cat <<'EOF'
+{{ template "explicitPackageLines" (list "linuxbrew" .packages.catalog $profiles) }}
 EOF
 )"
 
@@ -214,7 +239,17 @@ find_brew() {
 }
 
 install_linuxbrew() {
-  if [ -z "$LINUXBREW_PACKAGES" ]; then
+  package_block="$LINUXBREW_PACKAGES"
+
+  # Owned Linux machines use the native package manager for normal packages.
+  # Only explicitly Linuxbrew-selected supplemental tools are installed there.
+  if [ "$PROFILE_OWNED" = "true" ] || [ "${DOTFILES_CI:-}" = "true" ]; then
+    package_block="$LINUXBREW_SUPPLEMENTAL_PACKAGES"
+  fi
+
+  packages="$(normalize_packages "$package_block")"
+
+  if [ -z "$packages" ]; then
     return 0
   fi
 
@@ -226,9 +261,9 @@ install_linuxbrew() {
     return 0
   fi
 
-  printf 'Installing Linuxbrew packages:\n%s\n' "$LINUXBREW_PACKAGES"
+  print_packages "Linuxbrew" "$packages"
 
-  printf '%s\n' "$LINUXBREW_PACKAGES" |
+  printf '%s\n' "$packages" |
     while IFS= read -r package; do
       [ -n "$package" ] || continue
       run "$brew_command" install "$package"
