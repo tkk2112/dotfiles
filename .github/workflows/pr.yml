@@ -31,15 +31,18 @@ jobs:
           set +e
           uv tool run pre-commit run --all-files >pre-commit.log 2>&1
           status=$?
+          git diff >pre-commit.diff
           cat pre-commit.log
           exit "$status"
 
-      - name: Upload pre-commit log
+      - name: Upload pre-commit diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: pre-commit-log
-          path: pre-commit.log
+          name: pre-commit-diagnostics
+          path: |
+            pre-commit.log
+            pre-commit.diff
 
   install-linux:
     needs: check
