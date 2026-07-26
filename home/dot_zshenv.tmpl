@@ -7,6 +7,23 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state"
 
+# Chezmoi executes rendered scripts from TMPDIR. Some managed systems mount
+# /tmp with noexec, so move temporary files onto the executable home dataset.
+if [ -z "${TMPDIR:-}" ] && command -v findmnt >/dev/null 2>&1; then
+  _dotfiles_tmp_options="$(findmnt -no OPTIONS -T /tmp 2>/dev/null || :)"
+
+  case ",$_dotfiles_tmp_options," in
+    *,noexec,*)
+      TMPDIR="$XDG_CACHE_HOME/tmp"
+      mkdir -p "$TMPDIR"
+      chmod 700 "$TMPDIR"
+      export TMPDIR
+      ;;
+  esac
+
+  unset _dotfiles_tmp_options
+fi
+
 export HOMEBREW_NO_ANALYTICS=1
 
 for dir in "$HOME/.local/bin" "$HOME/bin"; do
