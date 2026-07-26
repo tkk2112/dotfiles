@@ -1,10 +1,13 @@
-{{- if eq .osid "debian" }}
-alias bat='batcat --theme=Coldark-Dark'
-{{- else }}
-alias bat='bat --theme=Coldark-Dark'
-{{- end }}
-alias less='bat'
-alias more='bat'
+if (( $+commands[batcat] )); then
+  alias bat='batcat --theme=Coldark-Dark'
+elif (( $+commands[bat] )); then
+  alias bat='bat --theme=Coldark-Dark'
+fi
+
+if (( $+aliases[bat] )); then
+  alias less='bat'
+  alias more='bat'
+fi
 
 if (($+commands[duf])); then
   alias df='duf'
@@ -14,20 +17,32 @@ alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias grep='grep --color=auto'
 
-alias ls='lsd'
-alias l='ls -1'
-alias la='ls -A'
-alias ll='ls -lah --git'
+if (( $+commands[lsd] )); then
+  alias ls='lsd'
+  alias l='ls -1'
+  alias la='ls -A'
+  alias ll='ls -lah --git'
+else
+  alias l='ls -1'
+  alias la='ls -A'
+  alias ll='ls -lah'
+fi
 
 alias cz='chezmoi'
 alias hookoff='git config --global core.hooksPath /dev/null'
 alias hookon='git config --global --unset core.hooksPath'
-alias tlf='tldr --list | fzf --preview "tldr {1} --color=always" --preview-window=right,70% | xargs tldr'
-alias tmux='tmux -2'
 
-alias dpigs='dpigs -H'
-alias nonascii='ag "[^\x00-\x7F]"'
+if (( $+commands[tldr] && $+commands[fzf] )); then
+  alias tlf='tldr --list | fzf --preview "tldr {1} --color=always" --preview-window=right,70% | xargs tldr'
+fi
+
+(( $+commands[tmux] )) && alias tmux='tmux -2'
+(( $+commands[dpigs] )) && alias dpigs='dpigs -H'
+(( $+commands[ag] )) && alias nonascii='ag "[^\x00-\x7F]"'
+
 alias rot13='tr a-zA-Z n-za-mN-ZA-M'
 
-alias vi='nvim'
-alias vim='nvim'
+if (( $+commands[nvim] )); then
+  alias vi='nvim'
+  alias vim='nvim'
+fi
