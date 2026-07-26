@@ -3,11 +3,13 @@ set -eu
 
 VALID_PROFILE_SETS="
 workstation
-workstation,development
-workstation,laptop,development,owned
 headless
-headless,server,owned
-workstation,development,gaming,server,owned
+workstation,development
+workstation,laptop
+workstation,gaming
+headless,server
+workstation,owned
+workstation,laptop,development,gaming,server,owned
 "
 
 INVALID_PROFILE_SETS="
@@ -132,6 +134,11 @@ test_invalid_profile_set() {
 
 command -v chezmoi >/dev/null 2>&1 || fail "missing command: chezmoi"
 command -v jq >/dev/null 2>&1 || fail "missing command: jq"
+
+if [ -n "${DOTFILES_PROFILE_SET:-}" ]; then
+  test_profile_set "$DOTFILES_PROFILE_SET"
+  exit 0
+fi
 
 printf '%s\n' "$VALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
   test_profile_set "$profiles"
