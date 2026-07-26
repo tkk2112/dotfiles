@@ -25,24 +25,7 @@ jobs:
           key: pre-commit-5|${{ runner.os }}|${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit
-        id: precommit
-        shell: bash
-        run: |
-          set +e
-          uv tool run pre-commit run --all-files >pre-commit.log 2>&1
-          status=$?
-          git diff >pre-commit.diff
-          cat pre-commit.log
-          exit "$status"
-
-      - name: Upload pre-commit diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pre-commit-diagnostics
-          path: |
-            pre-commit.log
-            pre-commit.diff
+        run: uv tool run pre-commit run --all-files
 
   install-linux:
     needs: check
@@ -76,6 +59,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run full install test
+        shell: bash
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
@@ -83,7 +67,16 @@ jobs:
           DOTFILES_CI_PACKAGE_MODE: >-
             ${{ contains(matrix.profiles, 'owned') && 'native' || 'linuxbrew' }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./scripts/ci-install.sh
+        run: |
+          set -o pipefail
+          ./scripts/ci-install.sh 2>&1 | tee ci-install.log
+
+      - name: Upload failed install log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-install-${{ strategy.job-index }}
+          path: ci-install.log
 
   install-linux-degraded:
     needs: check
@@ -107,13 +100,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run install without package access or Homebrew
+        shell: bash
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation
           DOTFILES_CI_PACKAGE_MODE: degraded
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./scripts/ci-install.sh
+        run: |
+          set -o pipefail
+          ./scripts/ci-install.sh 2>&1 | tee ci-install.log
+
+      - name: Upload failed degraded-install log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: degraded-install-${{ strategy.job-index }}
+          path: ci-install.log
 
   install-macos:
     needs: check
@@ -135,13 +138,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run full install test
+        shell: bash
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: ${{ matrix.profiles }}
           DOTFILES_CI_PACKAGE_MODE: brew
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./scripts/ci-install.sh
+        run: |
+          set -o pipefail
+          ./scripts/ci-install.sh 2>&1 | tee ci-install.log
+
+      - name: Upload failed macOS-install log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-install-${{ strategy.job-index }}
+          path: ci-install.log
 
   test:
     name: test
