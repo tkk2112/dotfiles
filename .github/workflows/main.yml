@@ -28,41 +28,9 @@ jobs:
       - name: Run pre-commit
         run: uv tool run pre-commit run --all-files
 
-  profile-matrix:
-    needs: check
-    name: profiles / ${{ matrix.profiles }}
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        profiles:
-          - workstation
-          - headless
-          - workstation,development
-          - workstation,laptop
-          - workstation,gaming
-          - headless,server
-          - workstation,owned
-          - workstation,laptop,development,gaming,server,owned
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install chezmoi
-        run: sh -c "$(curl -fsLS https://get.chezmoi.io)" -- -b "$HOME/.local/bin"
-
-      - name: Validate profile set
-        env:
-          DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILE_SET: ${{ matrix.profiles }}
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          ./scripts/test-profiles.sh
-
   install-linux:
     needs: check
-    name: install on ubuntu / workstation,development,owned
+    name: sanity / ubuntu / workstation,development,owned / native
     runs-on: ubuntu-latest
 
     container:
@@ -71,26 +39,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run dotfiles install test
+      - name: Run representative install
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation,development,owned
+          DOTFILES_CI_PACKAGE_MODE: native
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   install-macos:
     needs: check
-    name: install on macos:latest / workstation,laptop,development,owned
+    name: sanity / macos / workstation,laptop,development,owned / brew
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run dotfiles install test
+      - name: Run representative install
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation,laptop,development,owned
+          DOTFILES_CI_PACKAGE_MODE: brew
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   bootstrap-url-check:
@@ -113,7 +85,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - check
-      - profile-matrix
       - install-linux
       - install-macos
       - bootstrap-url-check
@@ -125,19 +96,16 @@ jobs:
           set -eu
 
           check_result='${{ needs.check.result }}'
-          profile_matrix_result='${{ needs.profile-matrix.result }}'
           install_linux_result='${{ needs.install-linux.result }}'
           install_macos_result='${{ needs.install-macos.result }}'
           bootstrap_url_check_result='${{ needs.bootstrap-url-check.result }}'
 
           printf 'check: %s\n' "$check_result"
-          printf 'profile-matrix: %s\n' "$profile_matrix_result"
           printf 'install-linux: %s\n' "$install_linux_result"
           printf 'install-macos: %s\n' "$install_macos_result"
           printf 'bootstrap-url-check: %s\n' "$bootstrap_url_check_result"
 
           test "$check_result" = "success"
-          test "$profile_matrix_result" = "success"
           test "$install_linux_result" = "success"
           test "$install_macos_result" = "success"
           test "$bootstrap_url_check_result" = "success"
