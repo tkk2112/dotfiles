@@ -83,47 +83,77 @@ install_bootstrap_prerequisites() {
   [ -n "$packages" ] || return 0
   command -v brew >/dev/null 2>&1 || return 0
 
-  printf 'Installing bootstrap prerequisites with Homebrew:%s\n' "$packages"
+  printf 'Installing optional bootstrap tools with Homebrew:%s\n' "$packages"
 
-  # Linuxbrew can operate without bubblewrap, but must explicitly disable its
-  # sandbox until bubblewrap is available on PATH.
   if [ "$(uname -s)" = "Linux" ] && ! command -v bwrap >/dev/null 2>&1; then
     # shellcheck disable=SC2086
-    run env HOMEBREW_NO_SANDBOX_LINUX=1 brew install $packages
+    run env HOMEBREW_NO_SANDBOX_LINUX=1 brew install $packages || return 0
   else
     # shellcheck disable=SC2086
-    run brew install $packages
+    run brew install $packages || return 0
   fi
 }
 
-require_commands() {
+print_limited_install_notice() {
   missing=""
 
-  for command_name in "$@"; do
+  for command_name in age-keygen jq pass-cli; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
-      missing="${missing}
-  - ${command_name}"
+      missing="${missing} ${command_name}"
     fi
   done
 
-  if [ -z "$missing" ]; then
+  if [ -n "$missing" ]; then
+    printf 'Continuing with a limited install; unavailable optional tools:%s\n' \
+      "$missing" >&2
+  fi
+}
+
+should_exclude_encrypted() {
+  if [ "${DOTFILES_CI:-}" = "true" ]; then
     return 0
   fi
 
-  printf 'Missing bootstrap prerequisites:%s\n' "$missing" >&2
-  printf '%s\n' \
-    'Install these commands before running setup.sh.' \
-    'Fedora example:' \
-    '  sudo dnf install age jq' \
-    '  brew install proton-pass-cli' >&2
-  exit 127
+  key_file="$HOME/.config/chezmoi/key.txt"
+
+  if command -v age >/dev/null 2>&1 && [ -s "$key_file" ]; then
+    return 1
+  fi
+
+  # The run_once_before age provisioner can create the identity during apply.
+  if command -v age-keygen >/dev/null 2>&1 && \
+    command -v pass-cli >/dev/null 2>&1; then
+    return 1
+  fi
+
+  return 0
+}
+
+apply_dotfiles() {
+  source_dir=$1
+  shift
+
+  if should_exclude_encrypted; then
+    printf '%s\n' \
+      'Age identity unavailable; applying everything except encrypted files.' >&2
+
+    if [ -n "$source_dir" ]; then
+      run chezmoi --source "$source_dir" apply --exclude encrypted "$@"
+    else
+      run chezmoi apply --exclude encrypted "$@"
+    fi
+  elif [ -n "$source_dir" ]; then
+    run chezmoi --source "$source_dir" apply "$@"
+  else
+    run chezmoi apply "$@"
+  fi
 }
 
 add_homebrew_to_path
 
 if [ "${DOTFILES_CI:-}" != "true" ]; then
   install_bootstrap_prerequisites
-  require_commands age-keygen jq pass-cli
+  print_limited_install_notice
 fi
 
 # Chezmoi renders executable scripts in its temporary directory. Some managed
@@ -140,19 +170,19 @@ if [ -n "$repo_dir" ] && [ -f "$repo_dir/.chezmoiroot" ]; then
 
   if [ "${DOTFILES_CI:-}" = "true" ]; then
     run chezmoi init --source "$repo_dir" --promptDefaults
-    run chezmoi --source "$repo_dir" apply --exclude encrypted "$@"
   else
     run chezmoi init --source "$repo_dir"
-    run chezmoi --source "$repo_dir" apply "$@"
   fi
+
+  apply_dotfiles "$repo_dir" "$@"
 else
   log "Using remote chezmoi source: $PULL_REPO_URL"
 
   if [ "${DOTFILES_CI:-}" = "true" ]; then
     run chezmoi init "$PULL_REPO_URL" --promptDefaults
-    run chezmoi apply --exclude encrypted "$@"
   else
     run chezmoi init "$PULL_REPO_URL"
-    run chezmoi apply "$@"
   fi
+
+  apply_dotfiles "" "$@"
 fi
