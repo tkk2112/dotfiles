@@ -25,7 +25,21 @@ jobs:
           key: pre-commit-5|${{ runner.os }}|${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit
-        run: uv tool run pre-commit run --all-files
+        id: precommit
+        shell: bash
+        run: |
+          set +e
+          uv tool run pre-commit run --all-files >pre-commit.log 2>&1
+          status=$?
+          cat pre-commit.log
+          exit "$status"
+
+      - name: Upload pre-commit log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-commit-log
+          path: pre-commit.log
 
   install-linux:
     needs: check
