@@ -27,20 +27,29 @@ trap cleanup 0 1 2 15
 mkdir -p "$key_dir"
 chmod 700 "$key_dir"
 
-command -v pass-cli >/dev/null 2>&1 || {
-  printf '%s\n' 'pass-cli is required to provision the chezmoi age identity' >&2
-  exit 127
-}
-
-command -v age-keygen >/dev/null 2>&1 || {
-  printf '%s\n' 'age-keygen is required to validate the chezmoi age identity' >&2
-  exit 127
-}
-
-# Preserve an already-migrated real identity file.
+# Preserve an existing real identity even when validation tooling is unavailable.
 if [ -f "$key_file" ] && [ ! -L "$key_file" ]; then
   chmod 600 "$key_file"
-  age-keygen -y "$key_file" >/dev/null
+
+  if command -v age-keygen >/dev/null 2>&1; then
+    age-keygen -y "$key_file" >/dev/null
+  else
+    printf '%s\n' \
+      'age-keygen unavailable; keeping the existing chezmoi age identity'
+  fi
+
+  exit 0
+fi
+
+if ! command -v pass-cli >/dev/null 2>&1; then
+  printf '%s\n' \
+    'Skipping chezmoi age identity provisioning; pass-cli is unavailable'
+  exit 0
+fi
+
+if ! command -v age-keygen >/dev/null 2>&1; then
+  printf '%s\n' \
+    'Skipping chezmoi age identity provisioning; age-keygen is unavailable'
   exit 0
 fi
 

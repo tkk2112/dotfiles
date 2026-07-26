@@ -121,8 +121,8 @@ should_exclude_encrypted() {
   fi
 
   # The run_once_before age provisioner can create the identity during apply.
-  if command -v age-keygen >/dev/null 2>&1 && \
-    command -v pass-cli >/dev/null 2>&1; then
+  if command -v age-keygen >/dev/null 2>&1 \
+    && command -v pass-cli >/dev/null 2>&1; then
     return 1
   fi
 
