@@ -1,5 +1,4 @@
 #!/bin/sh
-set -eu
 
 GITHUB_REPO="tkk2112/dotfiles"
 PULL_REPO_URL="https://github.com/${GITHUB_REPO}.git"
@@ -74,6 +73,29 @@ add_homebrew_to_path() {
   done
 }
 
+install_bootstrap_prerequisites() {
+  packages=""
+
+  command -v age-keygen >/dev/null 2>&1 || packages="$packages age"
+  command -v jq >/dev/null 2>&1 || packages="$packages jq"
+  command -v pass-cli >/dev/null 2>&1 || packages="$packages proton-pass-cli"
+
+  [ -n "$packages" ] || return 0
+  command -v brew >/dev/null 2>&1 || return 0
+
+  printf 'Installing bootstrap prerequisites with Homebrew:%s\n' "$packages"
+
+  # Linuxbrew can operate without bubblewrap, but must explicitly disable its
+  # sandbox until bubblewrap is available on PATH.
+  if [ "$(uname -s)" = "Linux" ] && ! command -v bwrap >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    run env HOMEBREW_NO_SANDBOX_LINUX=1 brew install $packages
+  else
+    # shellcheck disable=SC2086
+    run brew install $packages
+  fi
+}
+
 require_commands() {
   missing=""
 
@@ -100,7 +122,17 @@ require_commands() {
 add_homebrew_to_path
 
 if [ "${DOTFILES_CI:-}" != "true" ]; then
+  install_bootstrap_prerequisites
   require_commands age-keygen jq pass-cli
+fi
+
+# Chezmoi renders executable scripts in its temporary directory. Some managed
+# systems mount /tmp with noexec, so keep temporary files on the home dataset.
+if [ -z "${TMPDIR:-}" ]; then
+  TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmp"
+  mkdir -p "$TMPDIR"
+  chmod 700 "$TMPDIR"
+  export TMPDIR
 fi
 
 if [ -n "$repo_dir" ] && [ -f "$repo_dir/.chezmoiroot" ]; then
