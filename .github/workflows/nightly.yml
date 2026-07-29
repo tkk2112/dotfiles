@@ -4,6 +4,7 @@ name: .dotfiles nightly
 on:
   schedule:
     - cron: '23 2 * * *'
+
   workflow_dispatch:
 
 permissions:
@@ -16,11 +17,12 @@ concurrency:
 jobs:
   install-linux:
     name: >-
-      nightly / ${{ matrix.image }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
+      nightly / ${{ matrix.image }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }} #magic___^_^___line
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
+
       matrix:
         include:
           - image: ubuntu:26.04
@@ -57,6 +59,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Restore Homebrew download cache
+        if: matrix.package_mode == 'linuxbrew'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-homebrew-cache
+          key: >-
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('home/.chezmoidata/packages.yaml') }}
+          restore-keys: |
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Run install and exhaustive profile validation
         env:
           DOTFILES_CI: 'true'
@@ -64,6 +76,7 @@ jobs:
           DOTFILES_PROFILES: ${{ matrix.profiles }}
           DOTFILES_CI_PACKAGE_MODE: ${{ matrix.package_mode }}
           DOTFILES_PROFILE_SCOPE: all
+          HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
           GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
@@ -73,6 +86,7 @@ jobs:
 
     strategy:
       fail-fast: false
+
       matrix:
         image:
           - ubuntu:latest
@@ -97,10 +111,20 @@ jobs:
   install-macos:
     name: >-
       nightly / macos / workstation,laptop,development,owned / brew
+
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore Homebrew download cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-homebrew-cache
+          key: >-
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('home/.chezmoidata/packages.yaml') }}
+          restore-keys: |
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Run install and exhaustive profile validation
         env:
@@ -109,5 +133,34 @@ jobs:
           DOTFILES_PROFILES: workstation,laptop,development,owned
           DOTFILES_CI_PACKAGE_MODE: brew
           DOTFILES_PROFILE_SCOPE: all
+          HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
           GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+
+    needs:
+      - install-linux
+      - install-linux-degraded
+      - install-macos
+
+    if: always()
+
+    steps:
+      - name: Check required jobs
+        run: |-
+          set -eu
+
+          install_linux_result='${{ needs.install-linux.result }}'
+          degraded_result='${{ needs.install-linux-degraded.result }}'
+          install_macos_result='${{ needs.install-macos.result }}'
+
+          printf 'install-linux: %s\n' "$install_linux_result"
+          printf 'install-linux-degraded: %s\n' "$degraded_result"
+          printf 'install-macos: %s\n' "$install_macos_result"
+
+          test "$install_linux_result" = "success"
+          test "$degraded_result" = "success"
+          test "$install_macos_result" = "success"

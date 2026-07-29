@@ -110,7 +110,20 @@ configure_native_access() {
   chmod 0440 "/etc/sudoers.d/$ci_user"
 }
 
+prepare_linuxbrew_cache() {
+  if [ -z "${HOMEBREW_CACHE:-}" ]; then
+    return 0
+  fi
+
+  section "Preparing Homebrew download cache"
+
+  run mkdir -p "$HOMEBREW_CACHE"
+  run chown -R "$ci_user:$ci_user" "$HOMEBREW_CACHE"
+}
+
 install_linuxbrew() {
+  prepare_linuxbrew_cache
+
   section "Installing Linuxbrew for the unowned-machine path"
 
   run mkdir -p "$brew_prefix"
@@ -301,6 +314,10 @@ validate_macos_profiles() {
 run_macos_install() {
   [ "$package_mode" = "brew" ] \
     || fail "macOS CI requires DOTFILES_CI_PACKAGE_MODE=brew"
+
+  if [ -n "${HOMEBREW_CACHE:-}" ]; then
+    run mkdir -p "$HOMEBREW_CACHE"
+  fi
 
   export DOTFILES_CI=true
   export DOTFILES_LOCATION="$repo_root"
