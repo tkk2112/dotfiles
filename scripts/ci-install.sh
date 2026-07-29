@@ -96,9 +96,9 @@ create_ci_user() {
   run mkdir -p "$ci_home"
   run chown -R "$ci_user:$ci_user" "$ci_home"
 
-  # GitHub mounts the checkout outside the test user's home. The source only
-  # needs to be readable; all generated state is written below ci_home.
-  run chmod -R a+rX "$repo_root"
+  # Chezmoi invokes Git while running as ci_user, so the disposable CI
+  # checkout must be owned by that user.
+  run chown -R "$ci_user:$ci_user" "$repo_root"
 }
 
 configure_native_access() {

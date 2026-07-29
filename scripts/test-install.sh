@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 
+expect_packages="${DOTFILES_CI_EXPECT_PACKAGES:-true}"
+
+case "$expect_packages" in
+  true | false) ;;
+  *)
+    printf 'Invalid DOTFILES_CI_EXPECT_PACKAGES: %s\n' \
+      "$expect_packages" >&2
+    exit 1
+    ;;
+esac
+
 REQUIRED_COMMANDS="
 chezmoi
 "
@@ -216,6 +227,11 @@ check_nvim_config() {
   section "Checking nvim config"
 
   if ! command -v nvim >/dev/null 2>&1; then
+    if [ "$expect_packages" = "false" ]; then
+      skip "nvim config checks; packages are not expected"
+      return 0
+    fi
+
     fail "nvim is required but was not installed"
   fi
 
@@ -345,6 +361,7 @@ print_environment() {
   log "SHELL=${SHELL:-}"
   log "PWD=$PWD"
   log "DOTFILES_CI=${DOTFILES_CI:-}"
+  log "DOTFILES_CI_EXPECT_PACKAGES=$expect_packages"
   log "DOTFILES_LOCATION=${DOTFILES_LOCATION:-}"
   log "GITHUB_ACTIONS=${GITHUB_ACTIONS:-}"
   log "USE_COLOR=$USE_COLOR"
