@@ -6,6 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check:
     name: pre-commit
@@ -18,7 +21,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          enable-cache: false
+          enable-cache: true
+          cache-dependency-glob: .pre-commit-config.yaml
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -30,35 +34,39 @@ jobs:
 
   install-linux:
     needs: check
-    name: install on ubuntu / workstation,development,owned
+    name: sanity / fedora / workstation,development,owned / native
     runs-on: ubuntu-latest
 
     container:
-      image: ubuntu:26.04
+      image: fedora:latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run dotfiles install test
+      - name: Run representative install
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation,development,owned
+          DOTFILES_CI_PACKAGE_MODE: native
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   install-macos:
     needs: check
-    name: install on macos:latest / workstation,laptop,development,owned
+    name: sanity / macos / workstation,laptop,development,owned / brew
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run dotfiles install test
+      - name: Run representative install
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation,laptop,development,owned
+          DOTFILES_CI_PACKAGE_MODE: brew
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   bootstrap-url-check:

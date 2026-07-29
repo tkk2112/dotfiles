@@ -5,10 +5,14 @@ on:
   workflow_dispatch:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   check:
     name: pre-commit
     runs-on: ubuntu-latest
+
     env:
       DOTFILES_CI: 'true'
 
@@ -17,7 +21,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          enable-cache: false
+          enable-cache: true
+          prune-cache: false
+          cache-dependency-glob: .pre-commit-config.yaml
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -27,38 +33,113 @@ jobs:
       - name: Run pre-commit
         run: uv tool run pre-commit run --all-files
 
+  nightly-gate:
+    name: nightly gate
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Check latest nightly result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -eu
+
+          nightly_path='.github/workflows/nightly.yml'
+
+          if ! gh api \
+            --method GET \
+            "/repos/$GITHUB_REPOSITORY/contents/$nightly_path" \
+            -f ref="$DEFAULT_BRANCH" \
+            >/dev/null 2>&1; then
+            printf '%s\n' \
+              'nightly.yml is not on the default branch; allowing bootstrap PR'
+            exit 0
+          fi
+
+          response="$(
+            gh api \
+              --method GET \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/actions/workflows/nightly.yml/runs" \
+              -f branch="$DEFAULT_BRANCH" \
+              -f status=completed \
+              -F per_page=1
+          )"
+
+          conclusion="$(
+            printf '%s' "$response" |
+              jq -r '.workflow_runs[0].conclusion // empty'
+          )"
+
+          run_url="$(
+            printf '%s' "$response" |
+              jq -r '.workflow_runs[0].html_url // empty'
+          )"
+
+          case "$conclusion" in
+            success)
+              printf 'Latest nightly passed: %s\n' "$run_url"
+              ;;
+
+            "")
+              printf '%s\n' \
+                'No completed nightly run exists on the default branch' >&2
+              printf '%s\n' \
+                'Run: gh workflow run nightly.yml --ref main' >&2
+              exit 1
+              ;;
+
+            *)
+              printf 'Latest nightly result: %s\n' "$conclusion" >&2
+              printf 'Run: %s\n' "$run_url" >&2
+              exit 1
+              ;;
+          esac
+
   install-linux:
-    needs: check
-    name: install on ${{ matrix.image }} / ${{ matrix.profiles }}
+    needs:
+      - check
+      - nightly-gate
+
+    name: >-
+      install / ${{ matrix.image }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
+
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
+
       matrix:
         include:
-          # Ubuntu/Debian: workstation and headless role coverage.
+          # APT and the owned headless/server path.
           - image: ubuntu:26.04
-            profiles: workstation,development,owned
-          - image: ubuntu:latest
-            profiles: workstation,development,owned
-          - image: debian:13
             profiles: headless,server,owned
-          - image: debian:sid
-            profiles: headless,development
+            package_mode: native
 
-          # Fedora: owned workstation, headless server, and gaming coverage.
-          - image: fedora:latest
-            profiles: workstation,development,owned
-          - image: fedora:latest
-            profiles: headless,server,owned
+          # DNF and the beastbox host configuration.
           - image: fedora:latest
             profiles: workstation,development,gaming,server,owned
+            package_mode: native
 
-          # Arch/CachyOS: rolling workstation/development coverage.
+          # Pacman and an owned workstation.
           - image: archlinux:latest
             profiles: workstation,development,owned
-          - image: cachyos/cachyos:latest
-            profiles: workstation,development,owned
+            package_mode: native
+
+          # Unowned Linux with Linuxbrew and no sudo access.
+          - image: debian:13
+            profiles: workstation,development
+            package_mode: linuxbrew
+
+          # No root access and no Homebrew.
+          - image: ubuntu:latest
+            profiles: workstation
+            package_mode: degraded
 
     container:
       image: ${{ matrix.image }}
@@ -66,36 +147,68 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run dotfiles install test
+      - name: Restore Homebrew download cache
+        if: matrix.package_mode == 'linuxbrew'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-homebrew-cache
+          key: >-
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('home/.chezmoidata/packages.yaml') }}
+          restore-keys: |
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Run representative install
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: ${{ matrix.profiles }}
+          DOTFILES_CI_PACKAGE_MODE: ${{ matrix.package_mode }}
+          HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
           GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   install-macos:
-    needs: check
-    name: install on macos:latest / workstation,laptop,development,owned
+    needs:
+      - check
+      - nightly-gate
+
+    name: >-
+      install / macos / workstation,laptop,development,owned / brew
+
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run dotfiles install test
+      - name: Restore Homebrew download cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-homebrew-cache
+          key: >-
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('home/.chezmoidata/packages.yaml') }}
+          restore-keys: |
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Run representative install
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation,laptop,development,owned
+          DOTFILES_CI_PACKAGE_MODE: brew
+          HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   test:
     name: test
     runs-on: ubuntu-latest
+
     needs:
       - check
+      - nightly-gate
       - install-linux
       - install-macos
+
     if: always()
 
     steps:
@@ -104,13 +217,16 @@ jobs:
           set -eu
 
           check_result='${{ needs.check.result }}'
+          nightly_gate_result='${{ needs.nightly-gate.result }}'
           install_linux_result='${{ needs.install-linux.result }}'
           install_macos_result='${{ needs.install-macos.result }}'
 
           printf 'check: %s\n' "$check_result"
+          printf 'nightly-gate: %s\n' "$nightly_gate_result"
           printf 'install-linux: %s\n' "$install_linux_result"
           printf 'install-macos: %s\n' "$install_macos_result"
 
           test "$check_result" = "success"
+          test "$nightly_gate_result" = "success"
           test "$install_linux_result" = "success"
           test "$install_macos_result" = "success"

@@ -1,0 +1,207 @@
+name: .dotfiles nightly
+
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    - cron: '23 2 * * *'
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotfiles-nightly
+  cancel-in-progress: false
+
+jobs:
+  profile-render:
+    name: nightly / all profile rendering
+    runs-on: ubuntu-latest
+
+    container:
+      image: ubuntu:latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install renderer dependencies
+        run: |
+          set -eu
+
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates \
+            curl \
+            git \
+            jq
+
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- \
+            -b /usr/local/bin
+
+      - name: Render all valid profiles
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILE_SCOPE: all
+        run: ./scripts/test-profiles.sh
+
+  install-linux:
+    name: >-
+      nightly / ${{ matrix.image }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+          # Broad APT coverage on the stable Ubuntu target.
+          - image: ubuntu:26.04
+            profiles: workstation,laptop,development,server,owned
+            package_mode: native
+
+          # Current Ubuntu headless/server path.
+          - image: ubuntu:latest
+            profiles: headless,server,owned
+            package_mode: native
+
+          # Full unowned Linuxbrew catalog without sudo access.
+          - image: debian:13
+            profiles: workstation,laptop,development,server
+            package_mode: linuxbrew
+
+          # Broad Debian package coverage on the rolling target.
+          - image: debian:sid
+            profiles: workstation,development,server,owned
+            package_mode: native
+
+          # Broad DNF coverage, including Fedora-specific gaming packages.
+          - image: fedora:latest
+            profiles: workstation,laptop,development,gaming,server,owned
+            package_mode: native
+
+          # Broad Pacman coverage.
+          - image: archlinux:latest
+            profiles: workstation,laptop,development,server,owned
+            package_mode: native
+
+          # Secondary Pacman distribution coverage.
+          - image: cachyos/cachyos:latest
+            profiles: workstation,laptop,development,server,owned
+            package_mode: native
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore Homebrew download cache
+        if: matrix.package_mode == 'linuxbrew'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-homebrew-cache
+          key: >-
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('home/.chezmoidata/packages.yaml') }}
+          restore-keys: |
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Run broad package installation
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: ${{ matrix.profiles }}
+          DOTFILES_CI_PACKAGE_MODE: ${{ matrix.package_mode }}
+          HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-install.sh
+
+  install-linux-degraded:
+    name: nightly degraded / ${{ matrix.image }} / workstation
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        image:
+          - ubuntu:latest
+          - fedora:latest
+          - archlinux:latest
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run install without package access
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: workstation
+          DOTFILES_CI_PACKAGE_MODE: degraded
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-install.sh
+
+  install-macos:
+    name: >-
+      nightly / macos / workstation,laptop,development,server,owned / brew
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore Homebrew download cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-homebrew-cache
+          key: >-
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('home/.chezmoidata/packages.yaml') }}
+          restore-keys: |
+            homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Run broad package installation
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: workstation,laptop,development,server,owned
+          DOTFILES_CI_PACKAGE_MODE: brew
+          HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-install.sh
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+
+    needs:
+      - profile-render
+      - install-linux
+      - install-linux-degraded
+      - install-macos
+
+    if: always()
+
+    steps:
+      - name: Check required jobs
+        run: |-
+          set -eu
+
+          profile_render_result='${{ needs.profile-render.result }}'
+          install_linux_result='${{ needs.install-linux.result }}'
+          degraded_result='${{ needs.install-linux-degraded.result }}'
+          install_macos_result='${{ needs.install-macos.result }}'
+
+          printf 'profile-render: %s\n' "$profile_render_result"
+          printf 'install-linux: %s\n' "$install_linux_result"
+          printf 'install-linux-degraded: %s\n' "$degraded_result"
+          printf 'install-macos: %s\n' "$install_macos_result"
+
+          test "$profile_render_result" = "success"
+          test "$install_linux_result" = "success"
+          test "$degraded_result" = "success"
+          test "$install_macos_result" = "success"
