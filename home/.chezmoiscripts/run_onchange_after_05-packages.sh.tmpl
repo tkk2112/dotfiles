@@ -44,7 +44,7 @@ set -eu
 {{- end -}}
 {{- end }}
 
-{{ define "caskLines" }}
+{{- define "caskLines" -}}
 {{- $profiles := index . 0 -}}
 {{- $casks := index . 1 | default (list) -}}
 {{- range $cask := $casks -}}
@@ -55,13 +55,13 @@ set -eu
 {{- $enabledGroup := or (eq $group "core") (has $group $profiles) -}}
 {{- if and $name $enabledGroup -}}
 {{- if $tap -}}
-{{- printf "%s/%s\n" $tap $caskName -}}
+{{ printf "%s/%s\n" $tap $caskName }}
 {{- else -}}
-{{- printf "%s\n" $caskName -}}
+{{ printf "%s\n" $caskName }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
-{{ end }}
+{{- end }}
 
 PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
 
@@ -129,7 +129,7 @@ run_as_root() {
     run sudo "$@"
   else
     printf 'Need root or sudo to install packages\n' >&2
-    exit 1
+    return 1
   fi
 }
 
@@ -181,43 +181,13 @@ install_root_packages() {
   run_as_root "$@" $packages
 }
 
-install_brew_casks() {
-  casks="$(normalize_packages "$BREW_CASKS")"
-
-  if [ -z "$casks" ]; then
-    printf 'No Homebrew casks selected\n'
-    return 0
-  fi
-
-  print_packages "Homebrew cask" "$casks"
-
-  # shellcheck disable=SC2086
-  run brew install --quiet --cask $casks
-}
-
-prepare_brew_ci() {
-  if [ "${DOTFILES_CI:-}" != "true" ]; then
-    return 0
-  fi
-
-  if brew tap | grep -Fxq 'aws/tap'; then
-    run brew untap aws/tap
-  fi
-}
-
-install_brew() {
-  if ! command -v brew >/dev/null 2>&1; then
-    printf 'Homebrew is not installed; skipping packages\n' >&2
-    exit 0
-  fi
-
-  prepare_brew_ci
-
-  install_user_packages Homebrew "$BREW_PACKAGES" brew install --quiet
-  install_brew_casks
+homebrew_enabled() {
+  [ "${DOTFILES_DISABLE_HOMEBREW:-}" != "1" ]
 }
 
 find_brew() {
+  homebrew_enabled || return 1
+
   if command -v brew >/dev/null 2>&1; then
     command -v brew
     return 0
@@ -238,12 +208,41 @@ find_brew() {
   return 1
 }
 
+install_brew_casks() {
+  casks="$(normalize_packages "$BREW_CASKS")"
+
+  if [ -z "$casks" ]; then
+    printf 'No Homebrew casks selected\n'
+    return 0
+  fi
+
+  print_packages "Homebrew cask" "$casks"
+
+  # shellcheck disable=SC2086
+  run brew install --quiet --cask $casks
+}
+
+install_brew() {
+  if ! homebrew_enabled; then
+    printf 'Homebrew is disabled; skipping packages\n'
+    return 0
+  fi
+
+  if ! command -v brew >/dev/null 2>&1; then
+    printf 'Homebrew is not installed; skipping packages\n' >&2
+    return 0
+  fi
+
+  install_user_packages Homebrew "$BREW_PACKAGES" brew install --quiet
+  install_brew_casks
+}
+
 install_linuxbrew() {
   package_block="$LINUXBREW_PACKAGES"
 
-  # Owned Linux machines use the native package manager for normal packages.
-  # Only explicitly Linuxbrew-selected supplemental tools are installed there.
-  if [ "$PROFILE_OWNED" = "true" ] || [ "${DOTFILES_CI:-}" = "true" ]; then
+  # Owned Linux machines use the native package manager for the normal catalog
+  # and Linuxbrew only for packages explicitly selected for Linuxbrew.
+  if [ "$PROFILE_OWNED" = "true" ]; then
     package_block="$LINUXBREW_SUPPLEMENTAL_PACKAGES"
   fi
 
@@ -256,12 +255,11 @@ install_linuxbrew() {
   brew_command="$(find_brew || true)"
 
   if [ -z "$brew_command" ]; then
-    printf '%s\n' \
-      'Homebrew was not found; skipping Linuxbrew packages.' >&2
+    printf '%s\n' 'Homebrew was not found; skipping Linuxbrew packages.' >&2
     return 0
   fi
 
-  print_packages "Linuxbrew" "$packages"
+  print_packages Linuxbrew "$packages"
 
   printf '%s\n' "$packages" |
     while IFS= read -r package; do
@@ -286,8 +284,6 @@ install_apt_ppas() {
   # shellcheck disable=SC1091
   . /etc/os-release
 
-  # Launchpad PPAs are Ubuntu-specific. Do not attempt to add them on Debian
-  # or another distribution that happens to use apt.
   if [ "${ID:-}" != "ubuntu" ]; then
     printf 'Skipping Ubuntu PPAs on distribution: %s\n' "${ID:-unknown}"
     return 0
@@ -307,29 +303,24 @@ install_apt_ppas() {
 $ppas
 EOF
 
-  # Refresh metadata after adding the repositories.
   run_as_root apt-get update
 }
 
 install_apt() {
-  if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
+  if [ "$PROFILE_OWNED" != "true" ]; then
     printf 'Skipping apt packages because owned profile is not enabled\n'
     return 0
   fi
 
-  # Initial metadata is needed to install software-properties-common.
   run_as_root apt-get update
-
-  # On Ubuntu, add configured PPAs before installing the package catalog.
   install_apt_ppas
-
   install_root_packages apt "$APT_PACKAGES" \
     env DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends
 }
 
 install_dnf() {
-  if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
+  if [ "$PROFILE_OWNED" != "true" ]; then
     printf 'Skipping dnf packages because owned profile is not enabled\n'
     return 0
   fi
@@ -338,12 +329,12 @@ install_dnf() {
 }
 
 install_pacman() {
-  if [ "$PROFILE_OWNED" != "true" ] && [ "${DOTFILES_CI:-}" != "true" ]; then
+  if [ "$PROFILE_OWNED" != "true" ]; then
     printf 'Skipping pacman packages because owned profile is not enabled\n'
     return 0
   fi
 
-  install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed
+  install_root_packages pacman "$PACMAN_PACKAGES" pacman -Syu --noconfirm --needed
 }
 
 case "{{ .chezmoi.os }}" in
@@ -359,7 +350,7 @@ linux)
   elif command -v pacman >/dev/null 2>&1; then
     install_pacman
   else
-    printf 'No supported package manager found; skipping packages\n' >&2
+    printf 'No supported package manager found; skipping native packages\n' >&2
   fi
 
   install_linuxbrew
