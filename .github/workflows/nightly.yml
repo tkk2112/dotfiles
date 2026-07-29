@@ -15,8 +15,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    name: package coverage and matrix
+    runs-on: ubuntu-latest
+
+    outputs:
+      linux: ${{ steps.matrix.outputs.linux }}
+      macos: ${{ steps.matrix.outputs.macos }}
+      degraded: ${{ steps.matrix.outputs.degraded }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          prune-cache: false
+
+      - name: Verify exhaustive package coverage
+        run: uv run --with pyyaml python scripts/test-package-coverage.py
+
+      - name: Build matrices
+        id: matrix
+        run: |
+          python - <<'PY' >>"$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          data = json.loads(
+              Path("scripts/nightly-package-scenarios.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          for key in ("linux", "macos", "degraded"):
+              value = {"include": data[key]}
+              print(f"{key}={json.dumps(value, separators=(',', ':'))}")
+          PY
+
   profile-render:
-    name: nightly / all profile rendering
+    name: nightly / representative profile rendering
+    needs: plan
     runs-on: ubuntu-latest
 
     container:
@@ -39,58 +78,22 @@ jobs:
           sh -c "$(curl -fsLS get.chezmoi.io)" -- \
             -b /usr/local/bin
 
-      - name: Render all valid profiles
+      - name: Render representative profiles
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILE_SCOPE: all
         run: ./scripts/test-profiles.sh
 
   install-linux:
     name: >-
-      nightly / ${{ matrix.image }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
+      nightly / ${{ matrix.name }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
 
+    needs: plan
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
-
-      matrix:
-        include:
-          # Broad APT coverage on the stable Ubuntu target.
-          - image: ubuntu:26.04
-            profiles: workstation,laptop,development,server,owned
-            package_mode: native
-
-          # Current Ubuntu headless/server path.
-          - image: ubuntu:latest
-            profiles: headless,server,owned
-            package_mode: native
-
-          # Full unowned Linuxbrew catalog without sudo access.
-          - image: debian:13
-            profiles: workstation,laptop,development,server
-            package_mode: linuxbrew
-
-          # Broad Debian package coverage on the rolling target.
-          - image: debian:sid
-            profiles: workstation,development,server,owned
-            package_mode: native
-
-          # Broad DNF coverage, including Fedora-specific gaming packages.
-          - image: fedora:latest
-            profiles: workstation,laptop,development,gaming,server,owned
-            package_mode: native
-
-          # Broad Pacman coverage.
-          - image: archlinux:latest
-            profiles: workstation,laptop,development,server,owned
-            package_mode: native
-
-          # Secondary Pacman distribution coverage.
-          - image: cachyos/cachyos:latest
-            profiles: workstation,laptop,development,server,owned
-            package_mode: native
+      matrix: ${{ fromJSON(needs.plan.outputs.linux) }}
 
     container:
       image: ${{ matrix.image }}
@@ -99,7 +102,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Restore Homebrew download cache
-        if: matrix.package_mode == 'linuxbrew'
+        if: >-
+          matrix.package_mode == 'linuxbrew' ||
+          matrix.package_mode == 'native-linuxbrew'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/dotfiles-homebrew-cache
@@ -108,7 +113,7 @@ jobs:
           restore-keys: |
             homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Run broad package installation
+      - name: Install every applicable package
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
@@ -119,17 +124,13 @@ jobs:
         run: ./scripts/ci-install.sh
 
   install-linux-degraded:
-    name: nightly degraded / ${{ matrix.image }} / workstation
+    name: nightly degraded / ${{ matrix.name }} / ${{ matrix.profiles }}
+    needs: plan
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
-
-      matrix:
-        image:
-          - ubuntu:latest
-          - fedora:latest
-          - archlinux:latest
+      matrix: ${{ fromJSON(needs.plan.outputs.degraded) }}
 
     container:
       image: ${{ matrix.image }}
@@ -141,16 +142,21 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: workstation
-          DOTFILES_CI_PACKAGE_MODE: degraded
+          DOTFILES_PROFILES: ${{ matrix.profiles }}
+          DOTFILES_CI_PACKAGE_MODE: ${{ matrix.package_mode }}
           GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
 
   install-macos:
     name: >-
-      nightly / macos / workstation,laptop,development,server,owned / brew
+      nightly / ${{ matrix.name }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
 
-    runs-on: macos-latest
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.macos) }}
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -164,12 +170,12 @@ jobs:
           restore-keys: |
             homebrew-v1-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Run broad package installation
+      - name: Install every applicable package
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: workstation,laptop,development,server,owned
-          DOTFILES_CI_PACKAGE_MODE: brew
+          DOTFILES_PROFILES: ${{ matrix.profiles }}
+          DOTFILES_CI_PACKAGE_MODE: ${{ matrix.package_mode }}
           HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
           GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/ci-install.sh
@@ -179,6 +185,7 @@ jobs:
     runs-on: ubuntu-latest
 
     needs:
+      - plan
       - profile-render
       - install-linux
       - install-linux-degraded
@@ -191,17 +198,20 @@ jobs:
         run: |-
           set -eu
 
-          profile_render_result='${{ needs.profile-render.result }}'
+          plan_result='${{ needs.plan.result }}'
+          profile_result='${{ needs.profile-render.result }}'
           install_linux_result='${{ needs.install-linux.result }}'
           degraded_result='${{ needs.install-linux-degraded.result }}'
           install_macos_result='${{ needs.install-macos.result }}'
 
-          printf 'profile-render: %s\n' "$profile_render_result"
+          printf 'plan: %s\n' "$plan_result"
+          printf 'profile-render: %s\n' "$profile_result"
           printf 'install-linux: %s\n' "$install_linux_result"
           printf 'install-linux-degraded: %s\n' "$degraded_result"
           printf 'install-macos: %s\n' "$install_macos_result"
 
-          test "$profile_render_result" = "success"
+          test "$plan_result" = "success"
+          test "$profile_result" = "success"
           test "$install_linux_result" = "success"
           test "$degraded_result" = "success"
           test "$install_macos_result" = "success"

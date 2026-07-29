@@ -1,0 +1,90 @@
+{
+  "linux": [
+    {
+      "name": "ubuntu-26.04",
+      "image": "ubuntu:26.04",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "native-linuxbrew",
+      "manager": "apt",
+      "supplemental_manager": "linuxbrew"
+    },
+    {
+      "name": "ubuntu-latest",
+      "image": "ubuntu:latest",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "native",
+      "manager": "apt"
+    },
+    {
+      "name": "debian-13-native",
+      "image": "debian:13",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "native",
+      "manager": "apt"
+    },
+    {
+      "name": "debian-sid",
+      "image": "debian:sid",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "native",
+      "manager": "apt"
+    },
+    {
+      "name": "fedora-latest",
+      "image": "fedora:latest",
+      "profiles": "workstation,laptop,development,gaming,server,owned",
+      "package_mode": "native",
+      "manager": "dnf"
+    },
+    {
+      "name": "archlinux-latest",
+      "image": "archlinux:latest",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "native",
+      "manager": "pacman"
+    },
+    {
+      "name": "cachyos-latest",
+      "image": "cachyos/cachyos:latest",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "native",
+      "manager": "pacman"
+    },
+    {
+      "name": "debian-13-linuxbrew",
+      "image": "debian:13",
+      "profiles": "workstation,laptop,development,server",
+      "package_mode": "linuxbrew",
+      "manager": "linuxbrew"
+    }
+  ],
+  "macos": [
+    {
+      "name": "macos-latest",
+      "runner": "macos-latest",
+      "profiles": "workstation,laptop,development,server,owned",
+      "package_mode": "brew",
+      "manager": "brew"
+    }
+  ],
+  "degraded": [
+    {
+      "name": "ubuntu-latest",
+      "image": "ubuntu:latest",
+      "profiles": "workstation",
+      "package_mode": "degraded"
+    },
+    {
+      "name": "fedora-latest",
+      "image": "fedora:latest",
+      "profiles": "workstation",
+      "package_mode": "degraded"
+    },
+    {
+      "name": "archlinux-latest",
+      "image": "archlinux:latest",
+      "profiles": "workstation",
+      "package_mode": "degraded"
+    }
+  ]
+}

@@ -8,7 +8,6 @@ fi
 repo_root="${DOTFILES_LOCATION:-${GITHUB_WORKSPACE:-$(git rev-parse --show-toplevel)}}"
 profiles="${DOTFILES_PROFILES:-workstation,development,owned}"
 package_mode="${DOTFILES_CI_PACKAGE_MODE:-native}"
-profile_scope="${DOTFILES_PROFILE_SCOPE:-selected}"
 ci_user="dotfiles"
 ci_home="/home/$ci_user"
 brew_prefix="/home/linuxbrew/.linuxbrew"
@@ -31,11 +30,6 @@ fail() {
   printf 'FAIL: %s\n' "$*" >&2
   exit 1
 }
-
-case "$profile_scope" in
-  selected | all) ;;
-  *) fail "unknown DOTFILES_PROFILE_SCOPE: $profile_scope" ;;
-esac
 
 install_linux_harness() {
   section "Installing CI harness dependencies"
@@ -121,10 +115,30 @@ prepare_linuxbrew_cache() {
   run chown -R "$ci_user:$ci_user" "$HOMEBREW_CACHE"
 }
 
+run_as_ci_user() {
+  run runuser -u "$ci_user" -- env \
+    HOME="$ci_home" \
+    USER="$ci_user" \
+    LOGNAME="$ci_user" \
+    SHELL=/bin/bash \
+    PATH="$ci_path" \
+    "$@"
+}
+
+ci_user_has() {
+  runuser -u "$ci_user" -- env \
+    HOME="$ci_home" \
+    USER="$ci_user" \
+    LOGNAME="$ci_user" \
+    SHELL=/bin/bash \
+    PATH="$ci_path" \
+    sh -c "command -v \"$1\" >/dev/null 2>&1"
+}
+
 install_linuxbrew() {
   prepare_linuxbrew_cache
 
-  section "Installing Linuxbrew for the unowned-machine path"
+  section "Installing Linuxbrew"
 
   run mkdir -p "$brew_prefix"
   run chown -R "$ci_user:$ci_user" /home/linuxbrew
@@ -146,47 +160,19 @@ install_linuxbrew() {
   run_as_ci_user brew --version
 }
 
-run_as_ci_user() {
-  run runuser -u "$ci_user" -- env \
-    HOME="$ci_home" \
-    USER="$ci_user" \
-    LOGNAME="$ci_user" \
-    SHELL=/bin/bash \
-    PATH="$ci_path" \
-    "$@"
-}
-
-ci_user_has() {
-  runuser -u "$ci_user" -- env \
-    HOME="$ci_home" \
-    USER="$ci_user" \
-    LOGNAME="$ci_user" \
-    SHELL=/bin/bash \
-    PATH="$ci_path" \
-    sh -c "command -v \"$1\" >/dev/null 2>&1"
-}
-
-validate_linux_profiles() {
+validate_linux_profile() {
   if ! ci_user_has jq; then
-    log "Skipping profile renderer validation because jq is unavailable"
+    log "Skipping selected profile validation because jq is unavailable"
     return 0
   fi
 
-  section "Validating rendered profiles"
+  section "Validating selected profile"
 
-  if [ "$profile_scope" = "all" ]; then
-    run_as_ci_user env \
-      DOTFILES_CI=true \
-      DOTFILES_LOCATION="$repo_root" \
-      DOTFILES_PROFILE_SCOPE=all \
-      sh "$repo_root/scripts/test-profiles.sh"
-  else
-    run_as_ci_user env \
-      DOTFILES_CI=true \
-      DOTFILES_LOCATION="$repo_root" \
-      DOTFILES_PROFILE_SET="$profiles" \
-      sh "$repo_root/scripts/test-profiles.sh"
-  fi
+  run_as_ci_user env \
+    DOTFILES_CI=true \
+    DOTFILES_LOCATION="$repo_root" \
+    DOTFILES_PROFILE_SET="$profiles" \
+    sh "$repo_root/scripts/test-profiles.sh"
 }
 
 run_linux_install() {
@@ -206,6 +192,16 @@ run_linux_install() {
 
       configure_native_access
       disable_homebrew=1
+      ;;
+
+    native-linuxbrew)
+      case ",$profiles," in
+        *,owned,*) ;;
+        *) fail "native-linuxbrew package mode requires the owned profile" ;;
+      esac
+
+      configure_native_access
+      install_linuxbrew
       ;;
 
     linuxbrew)
@@ -245,6 +241,7 @@ run_linux_install() {
     DOTFILES_CI_PACKAGE_MODE="$package_mode" \
     DOTFILES_DISABLE_HOMEBREW="$disable_homebrew" \
     DOTFILES_CI_EXPECT_PACKAGES="$expect_packages" \
+    HOMEBREW_CACHE="${HOMEBREW_CACHE:-}" \
     GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
     sh "$repo_root/setup.sh"
 
@@ -262,117 +259,28 @@ run_linux_install() {
         || fail "native package install did not provide nvim"
       ;;
 
+    native-linuxbrew)
+      ci_user_has brew \
+        || fail "owned Linuxbrew supplement test cannot find brew"
+      ci_user_has jq \
+        || fail "native package install did not provide jq"
+      ci_user_has nvim \
+        || fail "native package install did not provide nvim"
+      ci_user_has pass-cli \
+        || fail "owned Linuxbrew supplements did not provide pass-cli"
+      ;;
+
     linuxbrew)
       ci_user_has brew \
         || fail "Linuxbrew package test cannot find brew"
       ci_user_has jq \
         || fail "Linuxbrew package install did not provide jq"
-      ci_user_has lsd \
-        || fail "Linuxbrew package install did not provide lsd"
-      ci_user_has nvim \
-        || fail "Linuxbrew package install did not provide nvim"
-      ;;
+     ЪWЭ\Щ\—Ъ\ИЩ€Z[“[ќ^њ™]ИXЪШYЩH[њЭ[Y›Э›ЭљYHЩ‚€ЪWЭ\Щ\—Ъ\Иќљ[H€Z[“[ќ^њ™]ИXЪШYЩH[њЭ[Y›Э›ЭљYHќљ[H‚€ОВ‚€YЬYY
+B€Y€ЪWЭ\Щ\—Ъ\Ињ™]ОИ[‚€Z[™YЬYYXЪШYЩH\Э[™^XЭYH^ЬЩYЫYXњ™]И‚€љB€ОВ€\ШXВ‚€ЩXЭ[Ы€”ќ[›љ[™И[њЭ[[Y][Ы€‚‚€ќ[—Ш\ЧШЪWЭ\Щ\€[ќ€€Х’STЧРТO]ќYH€Х’STЧУРРUSУЏH‰™\ЧЬ›ЫЭ€€Х’STЧФ“С’STПH‰›Щљ[\И€€Х’STЧРТWФPТРQСWУSСOH‰XЪШYЩWЫ[ЩH€€Х’STЧРТWСVPХФPТРQСTПH‰^XЭЬXЪШYЩ\И€€Ъ‰™\ЧЬ›ЫЭЬШЬљ\ЛЭ\ЭZ[њЭ[њЪ‚‚€[Y]WЫ[ќ^Ь›Щљ[BџB‚ќ[Y]WЫXXЫЬЧЬ›Щљ[J
+HВ€ЩXЭ[Ы€•[Y][™ИЩ[XЭY›Щљ[H‚‚€ќ[€[ќ€€Х’STЧРТO]ќYH€Х’STЧУРРUSУЏH‰™\ЧЬ›ЫЭ€€Х’STЧФ“С’SWФСUH‰›Щљ[\И€€Ъ‰™\ЧЬ›ЫЭЬШЬљ\ЛЭ\Э\›Щљ[\ЛњЪ‚џB‚њќ[—ЫXXЫЬЧЪ[њЭ[
 
-    degraded)
-      if ci_user_has brew; then
-        fail "degraded package test unexpectedly exposed Homebrew"
-      fi
-      ;;
-  esac
-
-  section "Running install validation"
-
-  run_as_ci_user env \
-    DOTFILES_CI=true \
-    DOTFILES_LOCATION="$repo_root" \
-    DOTFILES_PROFILES="$profiles" \
-    DOTFILES_CI_PACKAGE_MODE="$package_mode" \
-    DOTFILES_CI_EXPECT_PACKAGES="$expect_packages" \
-    sh "$repo_root/scripts/test-install.sh"
-
-  validate_linux_profiles
-}
-
-validate_macos_profiles() {
-  section "Validating rendered profiles"
-
-  if [ "$profile_scope" = "all" ]; then
-    run env \
-      DOTFILES_CI=true \
-      DOTFILES_LOCATION="$repo_root" \
-      DOTFILES_PROFILE_SCOPE=all \
-      sh "$repo_root/scripts/test-profiles.sh"
-  else
-    run env \
-      DOTFILES_CI=true \
-      DOTFILES_LOCATION="$repo_root" \
-      DOTFILES_PROFILE_SET="$profiles" \
-      sh "$repo_root/scripts/test-profiles.sh"
-  fi
-}
-
-run_macos_install() {
-  [ "$package_mode" = "brew" ] \
-    || fail "macOS CI requires DOTFILES_CI_PACKAGE_MODE=brew"
-
-  if [ -n "${HOMEBREW_CACHE:-}" ]; then
-    run mkdir -p "$HOMEBREW_CACHE"
-  fi
-
-  export DOTFILES_CI=true
-  export DOTFILES_LOCATION="$repo_root"
-  export DOTFILES_PROFILES="$profiles"
-  export DOTFILES_CI_PACKAGE_MODE="$package_mode"
-  export DOTFILES_CI_EXPECT_PACKAGES=true
-  export HOMEBREW_NO_ANALYTICS=1
-  export HOMEBREW_NO_AUTO_UPDATE=1
-  export PATH="$HOME/.local/bin:$PATH"
-
-  section "Running actual dotfiles install"
-
-  run sh "$repo_root/setup.sh"
-
-  section "Checking Homebrew package path"
-
-  command -v brew >/dev/null 2>&1 \
-    || fail "Homebrew is unavailable"
-  command -v jq >/dev/null 2>&1 \
-    || fail "Homebrew package install did not provide jq"
-  command -v lsd >/dev/null 2>&1 \
-    || fail "Homebrew package install did not provide lsd"
-  command -v nvim >/dev/null 2>&1 \
-    || fail "Homebrew package install did not provide nvim"
-
-  section "Running install validation"
-
-  run sh "$repo_root/scripts/test-install.sh"
-
-  validate_macos_profiles
-}
-
-log "Starting CI dotfiles install"
-log "HOME=$HOME"
-log "PWD=$PWD"
-log "DOTFILES_LOCATION=$repo_root"
-log "DOTFILES_PROFILES=$profiles"
-log "DOTFILES_CI_PACKAGE_MODE=$package_mode"
-log "DOTFILES_PROFILE_SCOPE=$profile_scope"
-log "PATH=$PATH"
-
-if [ -f /etc/os-release ]; then
-  log ""
-  log "/etc/os-release:"
-  cat /etc/os-release
-fi
-
-case "$(uname -s)" in
-  Darwin)
-    run_macos_install
-    ;;
-  Linux)
-    run_linux_install
-    ;;
-  *)
-    fail "unsupported operating system: $(uname -s)"
-    ;;
-esac
+HВ€И‰XЪШYЩWЫ[ЩH€Hњ™]И€H€Z[›XXУФИТH™\]Z\™\ИХ’STЧРТWФPТРQСWУSСOXњ™]И‚‚€Y€И[€‰ТУQP”‘UЧРРPТN‹_H€NИ[‚€ќ[€ZЩ\€\‰УQP”‘UЧРРPТH‚€љB‚€^ЬќХ’STЧРТO]ќYB€^ЬќХ’STЧУРРUSУЏH‰™\ЧЬ›ЫЭ‚€^ЬќХ’STЧФ“С’STПH‰›Щљ[\И‚€^ЬќХ’STЧРТWФPТРQСWУSСOH‰XЪШYЩWЫ[ЩH‚€^ЬќХ’STЧРТWСVPХФPТРQСTП]ќYB€^ЬќУQP”‘UЧУ“ЧРSђSUPФПLB€^ЬќУQP”‘UЧУ“ЧРUUЧХTUOLB€^ЬќUH‰УQKЛ›ШШ[Шљ[Ћ‰U‚‚€ЩXЭ[Ы€”ќ[›љ[™ИXЭX[Эљ[\И[њЭ[‚‚€ќ[€Ъ‰™\ЧЬ›ЫЭЬЩ]\њЪ‚‚€ЩXЭ[Ы€ђЪXЪЪ[™ИЫYXњ™]ИXЪШYЩH]‚‚€ЫЫ[X[™]€њ™]И‹Щ]‹Ыќ[Џ‰ЊH€Z[’ЫYXњ™]И\И[]Z[X›H‚€ЫЫ[X[™]€њH‹Щ]‹Ыќ[Џ‰ЊH€Z[’ЫYXњ™]ИXЪШYЩH[њЭ[Y›Э›ЭљYHњH‚€ЫЫ[X[™]€Щ‹Щ]‹Ыќ[Џ‰ЊH€Z[’ЫYXњ™]ИXЪШYЩH[њЭ[Y›Э›ЭљYHЩ‚€ЫЫ[X[™]€ќљ[H‹Щ]‹Ыќ[Џ‰ЊH€Z[’ЫYXњ™]ИXЪШYЩH[њЭ[Y›Э›ЭљYHќљ[H‚‚€ЩXЭ[Ы€”ќ[›љ[™И[њЭ[[Y][Ы€‚‚€ќ[€Ъ‰™\ЧЬ›ЫЭЬШЬљ\ЛЭ\ЭZ[њЭ[њЪ‚‚€[Y]WЫXXЫЬЧЬ›Щљ[BџB‚›ЩИ”Э\ќ[™ИТHЭљ[\И[њЭ[‚›ЩИ’УQOIУQH‚›ЩИ”СIС‚›ЩИ‘Х’STЧУРРUSУЏI™\ЧЬ›ЫЭ‚›ЩИ‘Х’STЧФ“С’STПI›Щљ[\И‚›ЩИ‘Х’STЧРТWФPТРQСWУSСOIXЪШYЩWЫ[ЩH‚›ЩИ”UIU‚‚љY€ИY€Щ]ЛЫЬЛ\™[X\ЩHNИ[‚€ЩИ€‚€ЩИ‹Щ]ЛЫЬЛ\™[X\ЩN€‚€Ш]Щ]ЛЫЬЛ\™[X\ЩB™љB‚Ш\ЩH‰
+[[YH\КH€[‚€\ќЪ[ЉB€ќ[—ЫXXЫЬЧЪ[њЭ[€ОВ€[ќ^
+B€ќ[—Ы[ќ^Ъ[њЭ[€ОВ€
+ЉB€Z[ќ[њЭ\ЬќYЬ\][™ИЮ\Э[N€	
+[[YH\КH‚€ОВ™\ШXВ

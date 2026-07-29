@@ -33,35 +33,6 @@ run() {
   "$@"
 }
 
-generate_all_profile_sets() {
-  for role in workstation headless; do
-    for development in "" development; do
-      for gaming in "" gaming; do
-        for server in "" server; do
-          for laptop in "" laptop; do
-            for owned in "" owned; do
-              profiles="$role"
-
-              for capability in \
-                "$development" \
-                "$gaming" \
-                "$server" \
-                "$laptop" \
-                "$owned"; do
-                if [ -n "$capability" ]; then
-                  profiles="$profiles,$capability"
-                fi
-              done
-
-              printf '%s\n' "$profiles"
-            done
-          done
-        done
-      done
-    done
-  done
-}
-
 profile_slug() {
   printf '%s' "$1" | tr ',' '-'
 }
@@ -176,32 +147,12 @@ command -v chezmoi >/dev/null 2>&1 \
 command -v jq >/dev/null 2>&1 \
   || fail "missing command: jq"
 
-profile_scope="${DOTFILES_PROFILE_SCOPE:-representative}"
-
-case "$profile_scope" in
-  representative | all) ;;
-  *) fail "unknown DOTFILES_PROFILE_SCOPE: $profile_scope" ;;
-esac
-
 if [ -n "${DOTFILES_PROFILE_SET:-}" ]; then
-  if [ "$profile_scope" = "all" ]; then
-    fail "DOTFILES_PROFILE_SET cannot be combined with DOTFILES_PROFILE_SCOPE=all"
-  fi
-
   test_profile_set "$DOTFILES_PROFILE_SET"
   exit 0
 fi
 
-case "$profile_scope" in
-  representative)
-    valid_profile_sets="$REPRESENTATIVE_PROFILE_SETS"
-    ;;
-  all)
-    valid_profile_sets="$(generate_all_profile_sets)"
-    ;;
-esac
-
-printf '%s\n' "$valid_profile_sets" \
+printf '%s\n' "$REPRESENTATIVE_PROFILE_SETS" \
   | awk 'NF' \
   | while IFS= read -r profiles; do
     test_profile_set "$profiles"

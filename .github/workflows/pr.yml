@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check:
-    name: pre-commit
+    name: pre-commit and package coverage
     runs-on: ubuntu-latest
 
     env:
@@ -32,6 +32,9 @@ jobs:
 
       - name: Run pre-commit
         run: uv tool run pre-commit run --all-files
+
+      - name: Verify nightly package coverage
+        run: uv run --with pyyaml python scripts/test-package-coverage.py
 
   nightly-gate:
     name: nightly gate
@@ -116,27 +119,22 @@ jobs:
 
       matrix:
         include:
-          # APT and the owned headless/server path.
           - image: ubuntu:26.04
             profiles: headless,server,owned
             package_mode: native
 
-          # DNF and the beastbox host configuration.
           - image: fedora:latest
-            profiles: workstation,development,gaming,server,owned
-            package_mode: native
-
-          # Pacman and an owned workstation.
-          - image: archlinux:latest
             profiles: workstation,development,owned
             package_mode: native
 
-          # Unowned Linux with Linuxbrew and no sudo access.
+          - image: archlinux:latest
+            profiles: workstation,owned
+            package_mode: native
+
           - image: debian:13
-            profiles: workstation,development
+            profiles: workstation
             package_mode: linuxbrew
 
-          # No root access and no Homebrew.
           - image: ubuntu:latest
             profiles: workstation
             package_mode: degraded
@@ -172,9 +170,7 @@ jobs:
       - check
       - nightly-gate
 
-    name: >-
-      install / macos / workstation,laptop,development,owned / brew
-
+    name: install / macos / workstation,laptop,owned / brew
     runs-on: macos-latest
 
     steps:
@@ -193,7 +189,7 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: workstation,laptop,development,owned
+          DOTFILES_PROFILES: workstation,laptop,owned
           DOTFILES_CI_PACKAGE_MODE: brew
           HOMEBREW_CACHE: ${{ runner.temp }}/dotfiles-homebrew-cache
           GITHUB_TOKEN: ${{ github.token }}
