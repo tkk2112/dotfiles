@@ -1,0 +1,23 @@
+name: format diagnostic
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Run formatters and show changes
+        run: |
+          set +e
+          uv tool run pre-commit run --all-files
+          status=$?
+          git diff -- .github/workflows scripts
+          exit "$status"
