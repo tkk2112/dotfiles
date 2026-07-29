@@ -1,0 +1,113 @@
+name: .dotfiles nightly
+
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotfiles-nightly
+  cancel-in-progress: false
+
+jobs:
+  install-linux:
+    name: >-
+      nightly / ${{ matrix.image }} / ${{ matrix.profiles }} / ${{ matrix.package_mode }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:26.04
+            profiles: headless,server,owned
+            package_mode: native
+
+          - image: ubuntu:latest
+            profiles: workstation,laptop,development,owned
+            package_mode: native
+
+          - image: debian:13
+            profiles: workstation,development
+            package_mode: linuxbrew
+
+          - image: debian:sid
+            profiles: headless,server,owned
+            package_mode: native
+
+          - image: fedora:latest
+            profiles: workstation,development,gaming,server,owned
+            package_mode: native
+
+          - image: archlinux:latest
+            profiles: workstation,laptop,development,owned
+            package_mode: native
+
+          - image: cachyos/cachyos:latest
+            profiles: workstation,development,gaming,server,owned
+            package_mode: native
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run install and exhaustive profile validation
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: ${{ matrix.profiles }}
+          DOTFILES_CI_PACKAGE_MODE: ${{ matrix.package_mode }}
+          DOTFILES_PROFILE_SCOPE: all
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-install.sh
+
+  install-linux-degraded:
+    name: nightly degraded / ${{ matrix.image }} / workstation
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:latest
+          - fedora:latest
+          - archlinux:latest
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run install without package access
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: workstation
+          DOTFILES_CI_PACKAGE_MODE: degraded
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-install.sh
+
+  install-macos:
+    name: >-
+      nightly / macos / workstation,laptop,development,owned / brew
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run install and exhaustive profile validation
+        env:
+          DOTFILES_CI: 'true'
+          DOTFILES_LOCATION: ${{ github.workspace }}
+          DOTFILES_PROFILES: workstation,laptop,development,owned
+          DOTFILES_CI_PACKAGE_MODE: brew
+          DOTFILES_PROFILE_SCOPE: all
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-install.sh
