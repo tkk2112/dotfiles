@@ -70,7 +70,7 @@ install_linux_harness() {
       sudo \
       util-linux
   elif command -v pacman >/dev/null 2>&1; then
-    run pacman -Sy --noconfirm --needed \
+    run pacman -Syu --noconfirm --needed \
       base-devel \
       bash \
       ca-certificates \

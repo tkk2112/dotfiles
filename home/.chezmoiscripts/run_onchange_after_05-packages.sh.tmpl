@@ -334,7 +334,7 @@ install_pacman() {
     return 0
   fi
 
-  install_root_packages pacman "$PACMAN_PACKAGES" pacman -Sy --noconfirm --needed
+  install_root_packages pacman "$PACMAN_PACKAGES" pacman -Syu --noconfirm --needed
 }
 
 case "{{ .chezmoi.os }}" in

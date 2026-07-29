@@ -63,7 +63,7 @@ packages:
     - name: tmux
     - name: tree
     - name: tree-sitter-cli
-      managers: [brew, dnf, pacman]
+      managers: [apt, brew, linuxbrew, dnf, pacman]
     - name: unzip
       managers: [apt, dnf, pacman, brew]
     - name: yamllint
