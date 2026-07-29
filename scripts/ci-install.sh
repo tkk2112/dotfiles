@@ -261,4 +261,116 @@ run_linux_install() {
     native-linuxbrew)
       ci_user_has brew \
         || fail "owned Linuxbrew supplement test cannot find brew"
-     ÚWÝ\Ù\—Ú\ÈœHˆ˜Z[›˜]]™HXÚØYÙH[œÝ[Y›Ý›ÝšYHœH‚ˆÚWÝ\Ù\—Ú\Èš[Hˆ˜Z[›˜]]™HXÚØYÙH[œÝ[Y›Ý›ÝšYHš[H‚ˆÚWÝ\Ù\—Ú\È\ÜËXÛHˆ˜Z[›ÝÛ™Y[^œ™]ÈÝ\[Y[ÈY›Ý›ÝšYH\ÜËXÛH‚ˆÎÂ‚ˆ[^œ™]ÊBˆÚWÝ\Ù\—Ú\Èœ™]Èˆ˜Z[“[^œ™]ÈXÚØYÙH\ÝØ[››Ýš[™œ™]È‚ˆÚWÝ\Ù\—Ú\ÈœHˆ˜Z[“[^œ™]ÈXÚØYÙH[œÝ[Y›Ý›ÝšYHœH‚ˆÚWÝ\Ù\—Ú\ÈÙˆ˜Z[“[^œ™]ÈXÚØYÙH[œÝ[Y›Ý›ÝšYHÙ‚ˆ6•÷W6W%ö†2çf–ÒÀ¢ÇÂf–Â$Æ–çW†'&Wr6¶vR–ç7FÆÂF–Bæ÷B&÷f–FRçf–Ò ¢³° ¢FVw&FVB¢–b6•÷W6W%ö†2'&Ws²F†Và¢f–Â&FVw&FVB6¶vRFW7BVæW‡V7FVFÇ’W‡÷6VB†öÖV'&Wr ¢f¢³°¢W60 ¢6V7F–öâ%'Vææ–ær–ç7FÆÂfÆ–FF–öâ  ¢'Våö5ö6•÷W6W"VçbÀ¢DõDd”ÄU5ô4“×G'VRÀ¢DõDd”ÄU5ôÄô4D”ôãÒ"G&Wõ÷&ö÷B"À¢DõDd”ÄU5õ$ôd”ÄU3Ò"G&öf–ÆW2"À¢DõDd”ÄU5ô4•õ4´tUôÔôDSÒ"G6¶vUöÖöFR"À¢DõDd”ÄU5ô4•ôU…T5Eõ4´tU3Ò"FW‡V7E÷6¶vW2"À¢6‚"G&Wõ÷&ö÷B÷67&—G2÷FW7BÖ–ç7FÆÂç6‚  ¢fÆ–FFUöÆ–çW…÷&öf–ÆP§Ð §fÆ–FFUöÖ6÷5÷&öf–ÆR‚’°¢6V7F–öâ%fÆ–FF–ær6VÆV7FVB&öf–ÆR  ¢'VâVçbÀ¢DõDd”ÄU5ô4“×G'VRÀ¢DõDd”ÄU5ôÄô4D”ôãÒ"G&Wõ÷&ö÷B"À¢DõDd”ÄU5õ$ôd”ÄUõ4UCÒ"G&öf–ÆW2"À¢6‚"G&Wõ÷&ö÷B÷67&—G2÷FW7B×&öf–ÆW2ç6‚ §Ð §'VåöÖ6÷5ö–ç7FÆÂ‚’°¢²"G6¶vUöÖöFR"Ò&'&Wr"ÒÀ¢ÇÂf–Â&Ö4õ24’&WV—&W2DõDd”ÄU5ô4•õ4´tUôÔôDSÖ'&Wr  ¢–b²Öâ"G´„ôÔT%$Uuô44„S¢×Ò"Ó²F†Và¢'VâÖ¶F—"×"D„ôÔT%$Uuô44„R ¢f ¢W‡÷'BDõDd”ÄU5ô4“×G'VP¢W‡÷'BDõDd”ÄU5ôÄô4D”ôãÒ"G&Wõ÷&ö÷B ¢W‡÷'BDõDd”ÄU5õ$ôd”ÄU3Ò"G&öf–ÆW2 ¢W‡÷'BDõDd”ÄU5ô4•õ4´tUôÔôDSÒ"G6¶vUöÖöFR ¢W‡÷'BDõDd”ÄU5ô4•ôU…T5Eõ4´tU3×G'VP¢W‡÷'B„ôÔT%$UuôäõôäÅ•D”53Ó¢W‡÷'B„ôÔT%$UuôäõôUDõõUDDSÓ¢W‡÷'BDƒÒ"D„ôÔRòæÆö6Âö&–ã¢ED‚  ¢6V7F–öâ%'Vææ–ær7GVÂF÷Ff–ÆW2–ç7FÆÂ  ¢'Vâ6‚"G&Wõ÷&ö÷B÷6WGWç6‚  ¢6V7F–öâ$6†V6¶–ær†öÖV'&Wr6¶vRF‚  ¢6öÖÖæB×b'&WrâöFWböçVÆÂ#âcÀ¢ÇÂf–Â$†öÖV'&Wr—2Væf–Æ&ÆR ¢6öÖÖæB×b§âöFWböçVÆÂ#âcÀ¢ÇÂf–Â$†öÖV'&Wr6¶vR–ç7FÆÂF–Bæ÷B&÷f–FR§ ¢6öÖÖæB×bÇ6BâöFWböçVÆÂ#âcÀ¢ÇÂf–Â$†öÖV'&Wr6¶vR–ç7FÆÂF–Bæ÷B&÷f–FRÇ6B ¢6öÖÖæB×bçf–ÒâöFWböçVÆÂ#âcÀ¢ÇÂf–Â$†öÖV'&Wr6¶vR–ç7FÆÂF–Bæ÷B&÷f–FRçf–Ò  ¢6V7F–öâ%'Vææ–ær–ç7FÆÂfÆ–FF–öâ  ¢'Vâ6‚"G&Wõ÷&ö÷B÷67&—G2÷FW7BÖ–ç7FÆÂç6‚  ¢fÆ–FFUöÖ6÷5÷&öf–ÆP§Ð ¦Æör%7F'F–ær4’F÷Ff–ÆW2–ç7FÆÂ ¦Æör$„ôÔSÒD„ôÔR ¦Æör%tCÒEtB ¦Æör$DõDd”ÄU5ôÄô4D”ôãÒG&Wõ÷&ö÷B ¦Æör$DõDd”ÄU5õ$ôd”ÄU3ÒG&öf–ÆW2 ¦Æör$DõDd”ÄU5ô4•õ4´tUôÔôDSÒG6¶vUöÖöFR ¦Æör%DƒÒED‚  ¦–b²ÖböWF2ö÷2×&VÆV6RÓ²F†Và¢Æör" ¢Æör"öWF2ö÷2×&VÆV6S¢ ¢6BöWF2ö÷2×&VÆV6P¦f ¦66R"B‡VæÖR×2’"–à¢F'v–â¢'VåöÖ6÷5ö–ç7FÆÀ¢³°¢Æ–çW‚¢'VåöÆ–çW…ö–ç7FÆÀ¢³°¢¢¢f–Â'Vç7W÷'FVB÷W&F–ær7—7FVÓ¢B‡VæÖR×2’ ¢³°¦W60 
+      ci_user_has jq \
+        || fail "native package install did not provide jq"
+      ci_user_has nvim \
+        || fail "native package install did not provide nvim"
+      ci_user_has pass-cli \
+        || fail "owned Linuxbrew supplements did not provide pass-cli"
+      ;;
+
+    linuxbrew)
+      ci_user_has brew \
+        || fail "Linuxbrew package test cannot find brew"
+      ci_user_has jq \
+        || fail "Linuxbrew package install did not provide jq"
+      ci_user_has lsd \
+        || fail "Linuxbrew package install did not provide lsd"
+      ci_user_has nvim \
+        || fail "Linuxbrew package install did not provide nvim"
+      ;;
+
+    degraded)
+      if ci_user_has brew; then
+        fail "degraded package test unexpectedly exposed Homebrew"
+      fi
+      ;;
+  esac
+
+  section "Running install validation"
+
+  run_as_ci_user env \
+    DOTFILES_CI=true \
+    DOTFILES_LOCATION="$repo_root" \
+    DOTFILES_PROFILES="$profiles" \
+    DOTFILES_CI_PACKAGE_MODE="$package_mode" \
+    DOTFILES_CI_EXPECT_PACKAGES="$expect_packages" \
+    sh "$repo_root/scripts/test-install.sh"
+
+  validate_linux_profile
+}
+
+validate_macos_profile() {
+  section "Validating selected profile"
+
+  run env \
+    DOTFILES_CI=true \
+    DOTFILES_LOCATION="$repo_root" \
+    DOTFILES_PROFILE_SET="$profiles" \
+    sh "$repo_root/scripts/test-profiles.sh"
+}
+
+run_macos_install() {
+  [ "$package_mode" = "brew" ] \
+    || fail "macOS CI requires DOTFILES_CI_PACKAGE_MODE=brew"
+
+  if [ -n "${HOMEBREW_CACHE:-}" ]; then
+    run mkdir -p "$HOMEBREW_CACHE"
+  fi
+
+  export DOTFILES_CI=true
+  export DOTFILES_LOCATION="$repo_root"
+  export DOTFILES_PROFILES="$profiles"
+  export DOTFILES_CI_PACKAGE_MODE="$package_mode"
+  export DOTFILES_CI_EXPECT_PACKAGES=true
+  export HOMEBREW_NO_ANALYTICS=1
+  export HOMEBREW_NO_AUTO_UPDATE=1
+  export PATH="$HOME/.local/bin:$PATH"
+
+  section "Running actual dotfiles install"
+
+  run sh "$repo_root/setup.sh"
+
+  section "Checking Homebrew package path"
+
+  command -v brew >/dev/null 2>&1 \
+    || fail "Homebrew is unavailable"
+  command -v jq >/dev/null 2>&1 \
+    || fail "Homebrew package install did not provide jq"
+  command -v lsd >/dev/null 2>&1 \
+    || fail "Homebrew package install did not provide lsd"
+  command -v nvim >/dev/null 2>&1 \
+    || fail "Homebrew package install did not provide nvim"
+
+  section "Running install validation"
+
+  run sh "$repo_root/scripts/test-install.sh"
+
+  validate_macos_profile
+}
+
+log "Starting CI dotfiles install"
+log "HOME=$HOME"
+log "PWD=$PWD"
+log "DOTFILES_LOCATION=$repo_root"
+log "DOTFILES_PROFILES=$profiles"
+log "DOTFILES_CI_PACKAGE_MODE=$package_mode"
+log "PATH=$PATH"
+
+if [ -f /etc/os-release ]; then
+  log ""
+  log "/etc/os-release:"
+  cat /etc/os-release
+fi
+
+case "$(uname -s)" in
+  Darwin)
+    run_macos_install
+    ;;
+  Linux)
+    run_linux_install
+    ;;
+  *)
+    fail "unsupported operating system: $(uname -s)"
+    ;;
+esac
