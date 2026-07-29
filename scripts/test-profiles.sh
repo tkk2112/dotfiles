@@ -1,13 +1,15 @@
 #!/bin/sh
 set -eu
 
-VALID_PROFILE_SETS="
+REPRESENTATIVE_PROFILE_SETS="
 workstation
-workstation,development
-workstation,laptop,development,owned
 headless
-headless,server,owned
-workstation,development,gaming,server,owned
+workstation,development
+workstation,laptop
+workstation,gaming
+headless,server
+workstation,owned
+workstation,laptop,development,gaming,server,owned
 "
 
 INVALID_PROFILE_SETS="
@@ -29,6 +31,35 @@ fail() {
 run() {
   printf '+ %s\n' "$*"
   "$@"
+}
+
+generate_all_profile_sets() {
+  for role in workstation headless; do
+    for development in "" development; do
+      for gaming in "" gaming; do
+        for server in "" server; do
+          for laptop in "" laptop; do
+            for owned in "" owned; do
+              profiles="$role"
+
+              for capability in \
+                "$development" \
+                "$gaming" \
+                "$server" \
+                "$laptop" \
+                "$owned"; do
+                if [ -n "$capability" ]; then
+                  profiles="$profiles,$capability"
+                fi
+              done
+
+              printf '%s\n' "$profiles"
+            done
+          done
+        done
+      done
+    done
+  done
 }
 
 profile_slug() {
@@ -65,6 +96,7 @@ test_tmux_profile() {
     if grep -Fq "tmux-plugins/tmux-battery" "$output"; then
       fail "non-laptop profile enabled tmux-battery"
     fi
+
     if grep -Fq '#{battery_percentage}' "$output"; then
       fail "non-laptop profile enabled the battery widget"
     fi
@@ -76,13 +108,16 @@ test_profile_set() {
   slug="$(profile_slug "$profiles")"
   config_file="$test_root/$slug.toml"
   destination="$test_root/$slug-home"
+  data_file="$test_root/$slug-data.json"
 
   printf '\n==> Testing profiles: %s\n' "$profiles"
 
   DOTFILES_CI=true DOTFILES_PROFILES="$profiles" \
-    run chezmoi init --config "$config_file" --source "$repo_root" --promptDefaults
+    run chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults
 
-  data_file="$test_root/$slug-data.json"
   chezmoi --config "$config_file" data >"$data_file"
 
   actual_profiles="$(jq -r '.profiles | join(",")' "$data_file")"
@@ -95,10 +130,13 @@ test_profile_set() {
     fail "profile mismatch: expected '$profiles', got '$actual_profiles'"
   fi
 
-  run chezmoi --config "$config_file" \
+  run chezmoi \
+    --config "$config_file" \
     --source "$repo_root" \
     --destination "$destination" \
-    apply --dry-run --exclude scripts,encrypted
+    apply \
+    --dry-run \
+    --exclude scripts,encrypted
 
   for script in "$repo_root"/home/.chezmoiscripts/*.tmpl; do
     output="$test_root/$(basename "$script" .tmpl)-$slug"
@@ -123,20 +161,54 @@ test_invalid_profile_set() {
   printf '\n==> Rejecting invalid profiles: %s\n' "$profiles"
 
   if DOTFILES_CI=true DOTFILES_PROFILES="$profiles" \
-    chezmoi init --config "$config_file" --source "$repo_root" --promptDefaults \
+    chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults \
     >"$output" 2>&1; then
     cat "$output"
     fail "invalid profile set was accepted: $profiles"
   fi
 }
 
-command -v chezmoi >/dev/null 2>&1 || fail "missing command: chezmoi"
-command -v jq >/dev/null 2>&1 || fail "missing command: jq"
+command -v chezmoi >/dev/null 2>&1 \
+  || fail "missing command: chezmoi"
+command -v jq >/dev/null 2>&1 \
+  || fail "missing command: jq"
 
-printf '%s\n' "$VALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
-  test_profile_set "$profiles"
-done
+profile_scope="${DOTFILES_PROFILE_SCOPE:-representative}"
 
-printf '%s\n' "$INVALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
-  test_invalid_profile_set "$profiles"
-done
+case "$profile_scope" in
+  representative | all) ;;
+  *) fail "unknown DOTFILES_PROFILE_SCOPE: $profile_scope" ;;
+esac
+
+if [ -n "${DOTFILES_PROFILE_SET:-}" ]; then
+  if [ "$profile_scope" = "all" ]; then
+    fail "DOTFILES_PROFILE_SET cannot be combined with DOTFILES_PROFILE_SCOPE=all"
+  fi
+
+  test_profile_set "$DOTFILES_PROFILE_SET"
+  exit 0
+fi
+
+case "$profile_scope" in
+  representative)
+    valid_profile_sets="$REPRESENTATIVE_PROFILE_SETS"
+    ;;
+  all)
+    valid_profile_sets="$(generate_all_profile_sets)"
+    ;;
+esac
+
+printf '%s\n' "$valid_profile_sets" \
+  | awk 'NF' \
+  | while IFS= read -r profiles; do
+    test_profile_set "$profiles"
+  done
+
+printf '%s\n' "$INVALID_PROFILE_SETS" \
+  | awk 'NF' \
+  | while IFS= read -r profiles; do
+    test_invalid_profile_set "$profiles"
+  done
