@@ -53,7 +53,7 @@ else
 
     if command -v apt-get >/dev/null 2>&1; then
       run apt-get update
-      run env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
+      run env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@" build-essential
     elif command -v dnf >/dev/null 2>&1; then
       run dnf install -y "$@"
     elif command -v apk >/dev/null 2>&1; then
