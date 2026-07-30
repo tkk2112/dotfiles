@@ -164,18 +164,60 @@ local function parse_output(cwd, lines, errorformat)
   end)
 end
 
+local function first_valid_index(items)
+  for index, item in ipairs(items) do
+    if item.valid == 1 and item.lnum and item.lnum > 0 then
+      return index
+    end
+  end
+
+  return nil
+end
+
 local function replace_quickfix(title, items, context)
-  vim.fn.setqflist({}, "r", {
+  local options = {
     title = title,
     items = items,
     context = context,
-  })
+  }
+
+  local index = first_valid_index(items)
+
+  if index then
+    options.idx = index
+  end
+
+  vim.fn.setqflist({}, "r", options)
+end
+
+local function find_quickfix_window()
+  for _, window in ipairs(vim.api.nvim_list_wins()) do
+    local info = vim.fn.getwininfo(window)[1]
+
+    if info and info.quickfix == 1 and info.loclist == 0 then
+      return window
+    end
+  end
+
+  return nil
 end
 
 local function open_quickfix_without_focus()
   local current_window = vim.api.nvim_get_current_win()
 
   vim.cmd("silent botright copen")
+
+  local quickfix_window = find_quickfix_window()
+  local quickfix_info = vim.fn.getqflist({
+    idx = 0,
+  })
+
+  if quickfix_window and vim.api.nvim_win_is_valid(quickfix_window) and quickfix_info.idx and quickfix_info.idx > 0 then
+    vim.api.nvim_win_set_cursor(quickfix_window, {
+      quickfix_info.idx,
+      0,
+    })
+  end
 
   if vim.api.nvim_win_is_valid(current_window) then
     vim.api.nvim_set_current_win(current_window)
@@ -289,6 +331,10 @@ function M.parse_result(cwd, result, errorformat)
   }
 end
 
+function M.first_valid_index(items)
+  return first_valid_index(items)
+end
+
 function M.replace(title, items, context)
   replace_quickfix(title, items, context)
 end
@@ -301,48 +347,130 @@ function M.open(mode, exit_code, watch)
   end
 end
 
-function M.run(options)
+function M.run(options, on_complete)
   local prepared, prepare_error = M.prepare(options)
 
   if not prepared then
     return nil, prepare_error
   end
 
-  local ok, result = pcall(function()
-    return vim
-      .system(options.argv, {
-        cwd = options.cwd,
-        env = options.env,
-        text = true,
-      })
-      :wait()
-  end)
-
-  if not ok then
-    return nil, "Could not run command: " .. tostring(result)
-  end
-
-  local parsed, parse_error = M.parse_result(options.cwd, result, prepared.errorformat)
-
-  if not parsed then
-    return nil, "Could not parse command output: " .. parse_error
-  end
-
-  M.replace(options.title or table.concat(options.argv, " "), parsed.displayed_items, {
+  local title = options.title or table.concat(options.argv, " ")
+  local context = {
     cwd = options.cwd,
     compiler = options.compiler,
     watch = false,
-  })
-
-  M.open(prepared.open, result.code, false)
-
-  return {
-    code = result.code,
-    signal = result.signal,
-    stdout = result.stdout,
-    stderr = result.stderr,
-    items = parsed.displayed_items,
   }
+
+  local stdout_chunks = {}
+  local stderr_chunks = {}
+  local refresh_pending = false
+  local finished = false
+
+  local function completed_result(result)
+    return {
+      code = result.code,
+      signal = result.signal,
+      stdout = table.concat(stdout_chunks),
+      stderr = table.concat(stderr_chunks),
+    }
+  end
+
+  local function refresh_output()
+    refresh_pending = false
+
+    if finished then
+      return
+    end
+
+    local lines = combined_lines(table.concat(stdout_chunks), table.concat(stderr_chunks))
+
+    M.replace(title .. " [running]", raw_quickfix_items(lines), context)
+  end
+
+  local function schedule_refresh()
+    if refresh_pending or finished then
+      return
+    end
+
+    refresh_pending = true
+    vim.schedule(refresh_output)
+  end
+
+  M.replace(title .. " [running]", {}, context)
+
+  -- A manually started build should show that it is doing something.
+  -- Focus remains in the editing window.
+  if prepared.open ~= "never" then
+    open_quickfix_without_focus()
+  end
+
+  local ok, process_or_error = pcall(vim.system, options.argv, {
+    cwd = options.cwd,
+    env = options.env,
+    text = true,
+
+    stdout = function(err, data)
+      if err then
+        table.insert(stderr_chunks, tostring(err) .. "\n")
+      end
+
+      if data then
+        table.insert(stdout_chunks, data)
+        schedule_refresh()
+      end
+    end,
+
+    stderr = function(err, data)
+      if err then
+        table.insert(stderr_chunks, tostring(err) .. "\n")
+      end
+
+      if data then
+        table.insert(stderr_chunks, data)
+        schedule_refresh()
+      end
+    end,
+  }, function(result)
+    vim.schedule(function()
+      finished = true
+
+      local completed = completed_result(result)
+      local parsed, parse_error = M.parse_result(options.cwd, completed, prepared.errorformat)
+
+      if not parsed then
+        local lines = combined_lines(completed.stdout, completed.stderr)
+
+        M.replace(title, raw_quickfix_items(lines), context)
+        M.open(prepared.open, completed.code, false)
+
+        if on_complete then
+          on_complete(nil, "Could not parse command output: " .. parse_error)
+        end
+
+        return
+      end
+
+      M.replace(title, parsed.displayed_items, context)
+      M.open(prepared.open, completed.code, false)
+
+      if on_complete then
+        on_complete({
+          code = completed.code,
+          signal = completed.signal,
+          stdout = completed.stdout,
+          stderr = completed.stderr,
+          items = parsed.displayed_items,
+        })
+      end
+    end)
+  end)
+
+  if not ok then
+    finished = true
+    return nil, "Could not start command: " .. tostring(process_or_error)
+  end
+
+  return process_or_error
 end
 
 return M

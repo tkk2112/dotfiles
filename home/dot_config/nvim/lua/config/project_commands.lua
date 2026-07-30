@@ -255,34 +255,148 @@ local function trust_project_commands(config_path)
   return true
 end
 
-local function run_terminal(cwd, environment, spec)
-  vim.cmd("botright 15split")
-
-  local window = vim.api.nvim_get_current_win()
-  local buffer = vim.api.nvim_create_buf(false, true)
-
-  vim.api.nvim_win_set_buf(window, buffer)
-  vim.bo[buffer].bufhidden = "wipe"
-
-  local job = vim.fn.jobstart(shell_argv(spec.command), {
-    cwd = cwd,
-    env = environment,
-    term = true,
-  })
-
-  if job <= 0 then
-    if vim.api.nvim_buf_is_valid(buffer) then
-      vim.api.nvim_buf_delete(buffer, {
-        force = true,
-      })
-    end
-
-    vim.notify("Could not start project command: " .. spec.command, vim.log.levels.ERROR)
-
+local function append_job_output(output, data)
+  if type(data) ~= "table" or #data == 0 then
     return
   end
 
-  vim.cmd("startinsert")
+  output[#output] = output[#output] .. (data[1] or "")
+
+  for index = 2, #data do
+    table.insert(output, data[index])
+  end
+end
+
+local function run_terminal(cwd, environment, spec)
+  local argv = shell_argv(spec.command)
+  local description = command_description(spec)
+  local prepared
+
+  if spec.compiler then
+    local prepare_error
+
+    prepared, prepare_error = quickfix.prepare({
+      argv = argv,
+      cwd = cwd,
+      env = environment,
+      compiler = spec.compiler,
+      open = spec.open or "errors",
+      title = description,
+    })
+
+    if not prepared then
+      vim.notify(prepare_error, vim.log.levels.ERROR)
+      return
+    end
+  end
+
+  local editor_window = vim.api.nvim_get_current_win()
+
+  vim.cmd("botright 15split")
+
+  local terminal_window = vim.api.nvim_get_current_win()
+  local buffer = vim.api.nvim_create_buf(false, true)
+  local output = { "" }
+
+  vim.api.nvim_win_set_buf(terminal_window, buffer)
+  vim.bo[buffer].bufhidden = "wipe"
+
+  local job = vim.fn.jobstart(argv, {
+    cwd = cwd,
+    env = environment,
+    term = true,
+
+    on_stdout = function(_, data)
+      if prepared then
+        append_job_output(output, data)
+      end
+    end,
+
+    on_exit = function(_, exit_code)
+      if not prepared then
+        return
+      end
+
+      vim.schedule(function()
+        local result = {
+          code = exit_code,
+          signal = 0,
+          stdout = table.concat(output, "\n"),
+          stderr = "",
+        }
+
+        local parsed, parse_error = quickfix.parse_result(cwd, result, prepared.errorformat)
+
+        if not parsed then
+          vim.notify("Could not parse command output:\n" .. parse_error, vim.log.levels.ERROR)
+          return
+        end
+
+        quickfix.replace(description, parsed.displayed_items, {
+          cwd = cwd,
+          compiler = spec.compiler,
+          watch = false,
+        })
+
+        local first_valid = quickfix.first_valid_index(parsed.displayed_items)
+
+        local show_quickfix = prepared.open == "always"
+          or (prepared.open == "errors" and exit_code ~= 0 and first_valid ~= nil)
+
+        if show_quickfix then
+          -- The build process has exited, so the terminal can safely be replaced.
+          if vim.api.nvim_win_is_valid(terminal_window) then
+            vim.api.nvim_win_close(terminal_window, true)
+          end
+
+          -- We have already evaluated the configured policy above.
+          quickfix.open("always", exit_code, false)
+        end
+
+        if exit_code == 0 then
+          vim.notify(
+            string.format("%s completed (%d quickfix entries)", description, #parsed.displayed_items),
+            vim.log.levels.INFO
+          )
+        else
+          vim.notify(
+            string.format(
+              "%s failed with exit code %d (%d quickfix entries)",
+              description,
+              exit_code,
+              #parsed.displayed_items
+            ),
+            vim.log.levels.ERROR
+          )
+        end
+      end)
+    end,
+  })
+
+  if job <= 0 then
+    if vim.api.nvim_win_is_valid(terminal_window) then
+      vim.api.nvim_win_close(terminal_window, true)
+    end
+
+    if vim.api.nvim_win_is_valid(editor_window) then
+      vim.api.nvim_set_current_win(editor_window)
+    end
+
+    vim.notify("Could not start project command: " .. spec.command, vim.log.levels.ERROR)
+    return
+  end
+
+  -- Terminal output follows automatically while its cursor is at the end.
+  vim.api.nvim_win_set_cursor(terminal_window, {
+    vim.api.nvim_buf_line_count(buffer),
+    0,
+  })
+
+  if spec.focus == false and vim.api.nvim_win_is_valid(editor_window) then
+    vim.api.nvim_set_current_win(editor_window)
+  else
+    vim.cmd("startinsert")
+  end
 end
 
 local function pad_right(value, width)
@@ -415,29 +529,35 @@ function M.run(project_root, config_path, spec, command_key)
   end
 
   if spec.output == "quickfix" then
-    local result, err = quickfix_watch.run({
+    local process, err = quickfix.run({
       argv = shell_argv(spec.command),
       cwd = cwd,
       env = environment,
       compiler = spec.compiler,
       open = spec.open or "errors",
       title = description,
-    })
+    }, function(result, run_error)
+      if not result then
+        vim.notify(run_error, vim.log.levels.ERROR)
+        return
+      end
 
-    if not result then
+      if result.code == 0 then
+        vim.notify(string.format("%s completed (%d quickfix entries)", description, #result.items), vim.log.levels.INFO)
+      else
+        vim.notify(
+          string.format("%s failed with exit code %d (%d quickfix entries)", description, result.code, #result.items),
+          vim.log.levels.ERROR
+        )
+      end
+    end)
+
+    if not process then
       vim.notify(err, vim.log.levels.ERROR)
       return
     end
 
-    if result.code == 0 then
-      vim.notify(string.format("%s completed (%d quickfix entries)", description, #result.items), vim.log.levels.INFO)
-    else
-      vim.notify(
-        string.format("%s failed with exit code %d (%d quickfix entries)", description, result.code, #result.items),
-        vim.log.levels.ERROR
-      )
-    end
-
+    vim.notify(description .. " started", vim.log.levels.INFO)
     return
   end
 

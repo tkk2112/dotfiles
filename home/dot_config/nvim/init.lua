@@ -8,12 +8,11 @@ local project = require("config.project")
 local project_sessions = require("config.project_sessions")
 local project_settings = require("config.project_settings")
 
-project_settings.setup()
-
 project_sessions.setup(function()
   return project_settings.root(0)
 end)
 
+project_settings.setup()
 project.setup()
 
 require("config.autosave").setup()
