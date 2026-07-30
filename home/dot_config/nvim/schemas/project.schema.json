@@ -32,6 +32,9 @@
     },
     "commands": {
       "$ref": "#/$defs/commands"
+    },
+    "lsp": {
+      "$ref": "#/$defs/lsp"
     }
   },
   "$defs": {
@@ -139,6 +142,10 @@
             "quickfix-watch"
           ]
         },
+        "focus": {
+          "type": "boolean",
+          "description": "Whether a terminal command should receive focus when started."
+        },
         "cwd": {
           "type": "string",
           "minLength": 1,
@@ -192,6 +199,38 @@
             "$ref": "#/$defs/command"
           }
         ]
+      }
+    },
+    "lspServer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cmd": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Project-specific LSP executable and base arguments. Replaces the default server command. Supports ${projectRoot} and ${env:NAME}.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "args": {
+          "type": "array",
+          "description": "Arguments appended to the resolved LSP command. Supports ${projectRoot} and ${env:NAME}.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "lsp": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_.-]+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/lspServer"
       }
     }
   }
