@@ -7,7 +7,7 @@ local buffer = require("config.lib.buffer")
 local function save_on_focus_enabled(bufnr)
   local ok, project_settings = pcall(require, "config.project_settings")
   if not ok then
-    return true
+    return false
   end
 
   return project_settings.save_on_focus(bufnr)
