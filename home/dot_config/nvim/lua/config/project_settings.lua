@@ -436,6 +436,7 @@ function M.setup()
   })
 
   vim.api.nvim_create_autocmd({
+    "VimEnter",
     "BufReadPost",
     "BufNewFile",
     "BufEnter",
