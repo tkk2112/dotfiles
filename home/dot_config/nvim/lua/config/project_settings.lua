@@ -182,9 +182,28 @@ function M.config_path(bufnr)
   return project_config_path(M.root(bufnr or 0))
 end
 
-function M.get(bufnr)
-  local root = M.root(bufnr or 0)
+function M.config_path_for_root(root)
+  if type(root) ~= "string" or root == "" then
+    return nil
+  end
+
+  root = paths.real(root)
+
+  return root and project_config_path(root) or nil
+end
+
+function M.get_for_root(root)
+  if type(root) ~= "string" or root == "" then
+    return {}
+  end
+
+  root = paths.real(root)
+
   return root and get_config(root) or {}
+end
+
+function M.get(bufnr)
+  return M.get_for_root(M.root(bufnr or 0))
 end
 
 function M.relative_path(bufnr)
