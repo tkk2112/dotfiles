@@ -42,19 +42,26 @@ local denied_options = {
   exrc = true,
 }
 
+local function cwd_project_root()
+  local root = vim.fs.root(vim.fn.getcwd(), project_marker)
+
+  return root and paths.absolute(root) or nil
+end
+
 local function find_project_root(bufnr)
   bufnr = bufnr or 0
 
   if buffer.is_file(bufnr) then
-    local root = vim.fs.root(vim.api.nvim_buf_get_name(bufnr), project_marker)
+    local filename = vim.api.nvim_buf_get_name(bufnr)
+    local root = vim.fs.root(filename, project_marker)
 
-    if root then
-      return paths.absolute(root)
-    end
+    -- A real file must belong to a project through its own path.
+    -- Never let an unrelated file inherit the cwd project's settings.
+    return root and paths.absolute(root) or nil
   end
 
-  local cwd_root = vim.fs.root(vim.fn.getcwd(), project_marker)
-  return cwd_root and paths.absolute(cwd_root) or nil
+  -- Empty startup buffers and other non-file buffers may use the cwd project.
+  return cwd_project_root()
 end
 
 local function project_config_path(root)
@@ -176,6 +183,23 @@ end
 
 function M.root(bufnr)
   return find_project_root(bufnr or 0)
+end
+
+function M.is_active_project_file(bufnr)
+  bufnr = bufnr or 0
+
+  if not buffer.is_file(bufnr) then
+    return false
+  end
+
+  local file_root = find_project_root(bufnr)
+  local active_root = cwd_project_root()
+
+  if not file_root or not active_root then
+    return false
+  end
+
+  return paths.real(file_root) == paths.real(active_root)
 end
 
 function M.config_path(bufnr)
@@ -307,11 +331,23 @@ function M.get_option(bufnr, option, default)
 end
 
 function M.save_on_focus(bufnr)
-  return M.get_bool(bufnr or 0, "save_on_focus", true)
+  bufnr = bufnr or 0
+
+  if not M.is_active_project_file(bufnr) then
+    return false
+  end
+
+  return M.get_bool(bufnr, "save_on_focus", true)
 end
 
 function M.format_on_save(bufnr)
-  return M.get_bool(bufnr or 0, "format_on_save", false)
+  bufnr = bufnr or 0
+
+  if not M.is_active_project_file(bufnr) then
+    return false
+  end
+
+  return M.get_bool(bufnr, "format_on_save", false)
 end
 
 function M.apply_filetype(bufnr)
