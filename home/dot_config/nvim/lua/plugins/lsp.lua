@@ -27,6 +27,23 @@ return {
     "neovim/nvim-lspconfig",
     config = function()
       local executables = require("config.executables")
+      local project_lsp = require("config.project_lsp")
+
+      local clangd_command = vim.deepcopy(vim.lsp.config.clangd.cmd)
+
+      for _, argument in ipairs({
+        "--background-index",
+        "--clang-tidy",
+      }) do
+        if not vim.tbl_contains(clangd_command, argument) then
+          table.insert(clangd_command, argument)
+        end
+      end
+
+      vim.lsp.config("clangd", {
+        cmd = project_lsp.command("clangd", clangd_command),
+      })
+
       local cmake_language_server = executables.find("cmake-language-server", {
         "/opt/homebrew/bin/cmake-language-server",
       })
