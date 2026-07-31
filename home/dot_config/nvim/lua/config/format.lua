@@ -127,18 +127,6 @@ local function format_enabled(bufnr)
   return project_settings.format_on_save(bufnr)
 end
 
-local function has_lsp_formatter(bufnr)
-  local clients = vim.lsp.get_clients({ bufnr = bufnr })
-
-  for _, client in ipairs(clients) do
-    if client:supports_method("textDocument/formatting", bufnr) then
-      return true
-    end
-  end
-
-  return false
-end
-
 local function buffer_text(bufnr)
   return table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
 end
@@ -212,16 +200,44 @@ local function format_with_external(bufnr, formatter, notify_missing)
   return true
 end
 
+local lsp_formatter_by_filetype = {
+  c = "clangd",
+  cpp = "clangd",
+  objc = "clangd",
+  objcpp = "clangd",
+}
+
+local function lsp_formatter(bufnr)
+  local expected_name = lsp_formatter_by_filetype[vim.bo[bufnr].filetype]
+
+  local clients = vim.lsp.get_clients({
+    bufnr = bufnr,
+    method = "textDocument/formatting",
+  })
+
+  for _, client in ipairs(clients) do
+    if not expected_name or client.name == expected_name then
+      return client
+    end
+  end
+
+  return nil
+end
+
 local function format_with_lsp(bufnr, notify_missing)
-  if not has_lsp_formatter(bufnr) then
+  local client = lsp_formatter(bufnr)
+
+  if not client then
     if notify_missing then
       vim.notify("No formatter attached", vim.log.levels.WARN)
     end
+
     return false
   end
 
   vim.lsp.buf.format({
     bufnr = bufnr,
+    id = client.id,
     timeout_ms = 2000,
   })
 
