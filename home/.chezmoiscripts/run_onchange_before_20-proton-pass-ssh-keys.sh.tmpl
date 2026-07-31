@@ -11,7 +11,6 @@ fi
 # Bump this value in ssh.yaml after rotating or replacing a Proton Pass key.
 # chezmoi SSH key revision: {{ .ssh.revision }}
 
-public_only={{ if eq .sshAgent "proton-pass" }}1{{ else }}0{{ end }}
 ssh_dir="$HOME/.ssh"
 keys_dir="$ssh_dir/keys"
 state_dir="$HOME/.config/chezmoi"
@@ -19,6 +18,15 @@ manifest="$state_dir/proton-pass-ssh-keys.manifest"
 manifest_tmp=
 tmpdir=
 fetch_tools_checked=0
+public_only={{ if eq .sshAgent "proton-pass" }}1{{ else }}0{{ end }}
+
+if [ "$public_only" -eq 1 ]; then
+  # Used as IdentityFile while the private key remains in the SSH agent.
+  public_key_mode=600
+else
+  # Conventional public-key sidecar beside a local private key.
+  public_key_mode=644
+fi
 
 cleanup() {
   rc=$?
@@ -131,7 +139,7 @@ provision_key() {
     }
   ' "$raw_public" >"$public_file"
 
-  chmod 644 "$public_file"
+  chmod "$public_key_mode" "$public_file"
 
   if [ "$public_only" -eq 0 ]; then
     pass-cli item view \
@@ -173,7 +181,7 @@ while IFS= read -r name; do
   [ -n "$name" ] || continue
 
   mv -f -- "$tmpdir/$name.pub" "$keys_dir/$name.pub"
-  chmod 644 "$keys_dir/$name.pub"
+  chmod "$public_key_mode" "$keys_dir/$name.pub"
 
   if [ "$public_only" -eq 1 ]; then
     if [ -e "$keys_dir/$name" ] || [ -L "$keys_dir/$name" ]; then
