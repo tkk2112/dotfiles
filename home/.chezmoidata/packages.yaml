@@ -231,6 +231,9 @@ packages:
         dnf: yubikey-manager
         pacman: yubikey-manager
         brew: ykman
+    - name: wl-clipboard
+      group: workstation
+      managers: [apt, dnf, pacman]
 
     # Server: Service and remote-administration tools.
     - name: bind-utils
