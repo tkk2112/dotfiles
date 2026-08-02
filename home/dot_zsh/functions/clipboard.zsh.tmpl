@@ -1,0 +1,72 @@
+clipcopy() {
+  emulate -L zsh
+  setopt localoptions pipefail
+
+  # tmux can propagate the clipboard through the attached terminal,
+  # including through an SSH connection.
+  if [[ -n ${TMUX:-} ]] && (( $+commands[tmux] )); then
+    command tmux load-buffer -w -
+    return
+  fi
+
+  # Outside tmux on a remote host, send an OSC 52 clipboard-write
+  # sequence directly to the local terminal.
+  if [[ -n ${SSH_CONNECTION:-} || -n ${SSH_TTY:-} ]]; then
+    local encoded
+
+    if [[ ! -w /dev/tty ]]; then
+      print -u2 -- 'clipcopy: no controlling terminal available'
+      return 1
+    fi
+
+    encoded=$(
+      command base64 |
+        command tr -d '\r\n'
+    ) || return
+
+    printf '\033]52;c;%s\033\\' "$encoded" > /dev/tty
+    return
+  fi
+
+{{ if eq .chezmoi.os "linux" }}
+  if (( $+commands[wl-copy] )); then
+    command wl-copy
+    return
+  fi
+{{ else if eq .chezmoi.os "darwin" }}
+  if (( $+commands[pbcopy] )); then
+    command pbcopy
+    return
+  fi
+{{ end }}
+
+  print -u2 -- 'clipcopy: no clipboard backend available'
+  return 127
+}
+
+clippaste() {
+  emulate -L zsh
+
+  # Reading the local terminal's clipboard from a remote process is
+  # deliberately unsupported. Use the terminal's paste shortcut instead.
+  if [[ -n ${SSH_CONNECTION:-} || -n ${SSH_TTY:-} ]]; then
+    print -u2 -- \
+      'clippaste: unavailable over SSH; use the terminal paste shortcut'
+    return 1
+  fi
+
+{{ if eq .chezmoi.os "linux" }}
+  if (( $+commands[wl-paste] )); then
+    command wl-paste --no-newline
+    return
+  fi
+{{ else if eq .chezmoi.os "darwin" }}
+  if (( $+commands[pbpaste] )); then
+    command pbpaste
+    return
+  fi
+{{ end }}
+
+  print -u2 -- 'clippaste: no clipboard backend available'
+  return 127
+}
