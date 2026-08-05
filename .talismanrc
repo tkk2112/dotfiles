@@ -3,6 +3,9 @@ threshold: high
 version: "1.0"
 
 fileignoreconfig:
+  - filename: home/.ignored-ssh.yaml.age
+    checksum: f67f96c735d0160bd20a8105f6db377f20154ae9d97ee79fab851d2bf3966b4a
+
   - filename: home/private_dot_ssh/conf.d/encrypted_10-specific.conf.tmpl.age
     checksum: 99144f6beb3787a97bb14dc2ab32d21c9b890549f2dd1d7e8deff02fd954df51
 
@@ -44,10 +47,6 @@ fileignoreconfig:
   - filename: home/.chezmoidata.yaml
     allowed_patterns:
       - 'defaultAuthorizedKey:[[:space:]]+ssh-ed25519[[:space:]]+[A-Za-z0-9+/]+([[:space:]]+[^[:space:]]+)?'
-
-  - filename: home/.chezmoidata/ssh.yaml
-    allowed_patterns:
-      - 'pass://[A-Za-z0-9_-]+={0,2}/[A-Za-z0-9_-]+={0,2}'
 
   - filename: home/.chezmoi.toml.tmpl
     allowed_patterns:

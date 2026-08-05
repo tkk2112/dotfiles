@@ -1,26 +1,31 @@
 {{- $machine := .machine -}}
-{{- $data := joinPath .chezmoi.sourceDir ".ignored-ssh.yaml.age" | include | decrypt | fromYaml -}}
-{{- $ssh := $data.ssh -}}
 
+{{- $ciValue := env "DOTFILES_CI" | default (env "CI") -}}
+{{- $inCI := has $ciValue (list "1" "true" "TRUE" "yes" "YES") -}}
+
+{{- $identityFile := joinPath .chezmoi.homeDir ".config/chezmoi/key.txt" -}}
+{{- $hasIdentity := stat $identityFile -}}
+
+{{- $keys := dict -}}
+{{- $canProvisionKeys := and (not $inCI) $hasIdentity -}}
+
+{{- if $canProvisionKeys -}}
+{{-   $data := joinPath .chezmoi.sourceDir ".ignored-ssh.yaml.age" | include | decrypt | fromYaml -}}
+{{-   $keys = $data.ssh.keys -}}
+{{- end -}}
 #!/bin/sh
 set -eu
 
-if ! command -v pass-cli >/dev/null 2>&1; then
-  printf '%s\n' \
-    'Skipping Proton Pass SSH key provisioning; pass-cli is unavailable'
-  exit 0
-fi
-
-# Bump this value in ssh.yaml after rotating or replacing a Proton Pass key.
-# chezmoi SSH key revision: {{ $ssh.revision }}
+# Bump this value in versions.yaml after rotating or replacing a Proton Pass key.
+# chezmoi SSH key revision: {{ .revisions.protonPassSSHKeys }}
 
 ssh_dir="$HOME/.ssh"
 keys_dir="$ssh_dir/keys"
 state_dir="$HOME/.config/chezmoi"
 manifest="$state_dir/proton-pass-ssh-keys.manifest"
-manifest_tmp=
-tmpdir=
-fetch_tools_checked=0
+
+in_ci={{ if $inCI }}1{{ else }}0{{ end }}
+key_inventory_available={{ if $canProvisionKeys }}1{{ else }}0{{ end }}
 public_only={{ if eq .sshAgent "proton-pass" }}1{{ else }}0{{ end }}
 
 if [ "$public_only" -eq 1 ]; then
@@ -30,23 +35,6 @@ else
   # Conventional public-key sidecar beside a local private key.
   public_key_mode=644
 fi
-
-cleanup() {
-  rc=$?
-  trap - 0 1 2 15
-
-  if [ -n "${manifest_tmp:-}" ]; then
-    rm -f -- "$manifest_tmp"
-  fi
-
-  if [ -n "${tmpdir:-}" ]; then
-    rm -rf -- "$tmpdir"
-  fi
-
-  exit "$rc"
-}
-
-trap cleanup 0 1 2 15
 
 mkdir -p "$ssh_dir" "$state_dir"
 chmod 700 "$ssh_dir" "$state_dir"
@@ -65,10 +53,48 @@ fi
 mkdir -p "$keys_dir"
 chmod 700 "$keys_dir"
 
+if [ "$in_ci" -eq 1 ]; then
+  printf '%s\n' 'Skipping Proton Pass SSH key provisioning in CI'
+  exit 0
+fi
+
+if [ "$key_inventory_available" -ne 1 ]; then
+  printf '%s\n' \
+    'Skipping Proton Pass SSH key provisioning; chezmoi age identity is unavailable'
+  exit 0
+fi
+
+if ! command -v pass-cli >/dev/null 2>&1; then
+  printf '%s\n' \
+    'Skipping Proton Pass SSH key provisioning; pass-cli is unavailable'
+  exit 0
+fi
+
+manifest_tmp=
+tmpdir=
+fetch_tools_checked=0
+
+cleanup() {
+  rc=$?
+  trap - 0 1 2 15
+
+  if [ -n "${manifest_tmp:-}" ]; then
+    rm -f -- "$manifest_tmp"
+  fi
+
+  if [ -n "${tmpdir:-}" ]; then
+    rm -rf -- "$tmpdir"
+  fi
+
+  exit "$rc"
+}
+
+trap cleanup 0 1 2 15
+
 umask 077
 tmpdir=$(mktemp -d "$keys_dir/.proton-pass-ssh.XXXXXX")
 desired_manifest="$tmpdir/manifest"
-: > "$desired_manifest"
+: >"$desired_manifest"
 
 require_fetch_tools() {
   if [ "$fetch_tools_checked" -eq 1 ]; then
@@ -173,7 +199,7 @@ provision_key() {
   printf '%s\n' "$name" >>"$desired_manifest"
 }
 
-{{- range $name, $key := $ssh.keys }}
+{{- range $name, $key := $keys }}
 {{- if has $machine $key.machines }}
 provision_key {{ $name | quote }} {{ $key.uri | quote }}
 {{- end }}
@@ -210,11 +236,11 @@ if [ -f "$manifest" ]; then
         "$keys_dir/$old_name" \
         "$keys_dir/$old_name.pub"
     fi
-  done < "$manifest"
+  done <"$manifest"
 fi
 
 manifest_tmp="$state_dir/.proton-pass-ssh-keys.manifest.tmp.$$"
-cat "$desired_manifest" > "$manifest_tmp"
+cat "$desired_manifest" >"$manifest_tmp"
 chmod 600 "$manifest_tmp"
 mv -f -- "$manifest_tmp" "$manifest"
 manifest_tmp=
@@ -225,7 +251,7 @@ else
   key_description='Proton Pass SSH key pair(s)'
 fi
 
-printf 'Provisioned %s %s for %s\n' \
+printf 'provisioned %s %s for %s\n' \
   "$(wc -l <"$desired_manifest" | tr -d '[:space:]')" \
   "$key_description" \
   {{ $machine | quote }}
