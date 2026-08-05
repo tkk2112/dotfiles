@@ -1,4 +1,7 @@
 {{- $machine := .machine -}}
+{{- $data := joinPath .chezmoi.sourceDir ".ignored-ssh.yaml.age" | include | decrypt | fromYaml -}}
+{{- $ssh := $data.ssh -}}
+
 #!/bin/sh
 set -eu
 
@@ -9,7 +12,7 @@ if ! command -v pass-cli >/dev/null 2>&1; then
 fi
 
 # Bump this value in ssh.yaml after rotating or replacing a Proton Pass key.
-# chezmoi SSH key revision: {{ .ssh.revision }}
+# chezmoi SSH key revision: {{ $ssh.revision }}
 
 ssh_dir="$HOME/.ssh"
 keys_dir="$ssh_dir/keys"
@@ -170,7 +173,7 @@ provision_key() {
   printf '%s\n' "$name" >>"$desired_manifest"
 }
 
-{{- range $name, $key := .ssh.keys }}
+{{- range $name, $key := $ssh.keys }}
 {{- if has $machine $key.machines }}
 provision_key {{ $name | quote }} {{ $key.uri | quote }}
 {{- end }}
