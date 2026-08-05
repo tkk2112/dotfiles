@@ -517,7 +517,7 @@ local function apply_diagnostics(roles)
   })
 end
 
-local function apply_diffs(palette)
+local function apply_diffs(palette, roles)
   set_all({
     DiffAdd = {
       fg = palette.green,
@@ -535,6 +535,10 @@ local function apply_diffs(palette)
       fg = palette.background,
       bg = palette.blue,
       bold = true,
+    },
+    GitSignsCurrentLineBlame = {
+      fg = roles.comment,
+      italic = roles.comment_italic,
     },
   })
 end
@@ -753,7 +757,7 @@ function M.apply(mode)
   apply_ui(palette, roles)
   apply_syntax(roles)
   apply_diagnostics(roles)
-  apply_diffs(palette)
+  apply_diffs(palette, roles)
   apply_treesitter(roles)
   apply_lsp_semantic_tokens(roles)
   apply_legacy_c_cpp(roles)
