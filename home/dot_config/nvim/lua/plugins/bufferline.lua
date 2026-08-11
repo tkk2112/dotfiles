@@ -20,15 +20,10 @@ return {
           local buftype = vim.bo[bufnr].buftype
           local filetype = vim.bo[bufnr].filetype
 
-          if filetype == "grug-far" then
+          if vim.tbl_contains({ "grug-far", "NvimTree", "oil" }, filetype) then
             return false
           end
-
           if buftype == "terminal" then
-            return false
-          end
-
-          if filetype == "oil" then
             return false
           end
 
@@ -36,6 +31,11 @@ return {
         end,
 
         offsets = {
+          {
+            filetype = "NvimTree",
+            text = "Project",
+            text_align = "center",
+          },
           {
             filetype = "oil",
             text = "Files",

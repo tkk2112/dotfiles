@@ -226,7 +226,10 @@ local function apply_ui(palette, roles)
     ColorColumn = {
       bg = palette.surface,
     },
-
+    NvimTreeCursorLine = {
+      bg = palette.selection,
+      bold = true,
+    },
     Visual = {
       bg = palette.selection,
     },
