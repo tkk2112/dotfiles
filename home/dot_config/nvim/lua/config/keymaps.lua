@@ -86,6 +86,7 @@ local function is_jump_noise_buffer(bufnr)
   end
 
   return vim.tbl_contains({
+    "NvimTree",
     "grug-far",
     "help",
     "lazy",
