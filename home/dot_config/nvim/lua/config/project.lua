@@ -2,6 +2,7 @@
 
 local M = {}
 
+local file_mru = require("config.file_mru")
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
 
@@ -231,6 +232,31 @@ local function ensure_project(value)
   return root, created_config
 end
 
+local function list_project_files(root)
+  local result = vim
+    .system({
+      "rg",
+      "--files",
+      "--hidden",
+      "--glob",
+      "!.git",
+    }, {
+      cwd = root,
+      text = true,
+    })
+    :wait()
+
+  if result.code ~= 0 then
+    vim.notify("Failed listing project files:\n" .. (result.stderr or ""), vim.log.levels.ERROR)
+    return nil
+  end
+
+  return vim.split(result.stdout or "", "\n", {
+    plain = true,
+    trimempty = true,
+  })
+end
+
 function M.root(path)
   return vim.fs.root(path or 0, project_marker) or vim.fn.getcwd()
 end
@@ -347,9 +373,49 @@ function M.pick()
 end
 
 function M.find_files()
-  require("fzf-lua").files({
-    cwd = M.root(),
-  })
+  local root = M.root()
+  local files = list_project_files(root)
+
+  if not files then
+    return
+  end
+
+  local opts = require("fzf-lua.config").normalize_opts({
+    cwd = root,
+    fzf_opts = {
+      ["--scheme"] = "history",
+    },
+  }, "files")
+
+  if not opts then
+    return
+  end
+
+  local file_actions = require("fzf-lua.actions")
+  local tracked_actions = {
+    file_actions.file_edit,
+    file_actions.file_split,
+    file_actions.file_vsplit,
+    file_actions.file_tabedit,
+  }
+
+  for key, action in pairs(opts.actions or {}) do
+    if vim.tbl_contains(tracked_actions, action) then
+      local original = action
+
+      opts.actions[key] = function(selected, action_opts)
+        original(selected, action_opts)
+
+        local filename = vim.api.nvim_buf_get_name(0)
+
+        if filename ~= "" then
+          file_mru.touch(filename)
+        end
+      end
+    end
+  end
+
+  require("fzf-lua.core").fzf_exec(file_mru.order(root, files), opts)
 end
 
 function M.live_grep()
@@ -376,6 +442,8 @@ function M.print_root()
 end
 
 function M.setup()
+  file_mru.setup()
+
   local group = vim.api.nvim_create_augroup("dotfiles_project_tracking", {
     clear = true,
   })
