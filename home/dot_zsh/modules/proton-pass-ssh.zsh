@@ -542,6 +542,11 @@ Commands:
   pp-ssh-fingerprint TITLE
       Print the stored public key fingerprint.
 
+  pp-ssh-inspect [--uri] TITLE
+      Show metadata and Proton Pass identifiers for a stored SSH key.
+      --uri prints only pass://SHARE_ID/ITEM_ID for scripting or chezmoi use.
+
+
 Managed metadata fields:
   pp_managed
   pp_source
@@ -1348,4 +1353,49 @@ pp-ssh-status() {
 
   print -u2 -- "local key differs from Proton Pass: $title"
   return 1
+}
+
+pp-ssh-inspect() {
+  emulate -L zsh
+  setopt localoptions errreturn pipefail
+
+  local title=$1
+  local vault=$(_pp_ssh_vault)
+  local share_id item_id
+  local ref comment
+
+  ref=$(_pp_ssh_resolve_item "$title" "$vault")
+  IFS=$'\t' read -r share_id item_id <<<"$ref"
+
+  comment=$(
+    _pp_ssh_field "$share_id" "$item_id" public_key \
+      | command awk '
+        NF >= 3 {
+          $1 = ""
+          $2 = ""
+          sub(/^[[:space:]]+/, "")
+          print
+          exit
+        }
+      '
+  )
+
+  printf '%-23s %s\n' 'Title:' "$title"
+  printf '%-23s %s\n' 'Comment:' "${comment:-<none>}"
+  printf '%-23s %s\n' 'Vault:' "$vault"
+  printf '%-23s %s\n' 'Share ID:' "$share_id"
+  printf '%-23s %s\n' 'Item ID:' "$item_id"
+  printf '%-23s pass://%s/%s\n' 'URI:' "$share_id" "$item_id"
+
+  printf '%-23s %s\n' \
+    'Key type:' \
+    "$(_pp_ssh_field "$share_id" "$item_id" pp_key_type)"
+
+  printf '%-23s %s\n' \
+    'Source:' \
+    "$(_pp_ssh_field "$share_id" "$item_id" pp_source)"
+
+  printf '%-23s %s\n' \
+    'Passphrase protected:' \
+    "$(_pp_ssh_field "$share_id" "$item_id" pp_passphrase_protected)"
 }
