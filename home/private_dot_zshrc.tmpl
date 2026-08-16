@@ -89,6 +89,8 @@ plugins+=(
 ZSH_THEME="powerlevel10k/powerlevel10k"
 source "$ZSH/oh-my-zsh.sh"
 
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
+
 source "$HOME/.zsh/options.zsh"
 source "$HOME/.zsh/history.zsh"
 source "$HOME/.zsh/keybindings.zsh"
