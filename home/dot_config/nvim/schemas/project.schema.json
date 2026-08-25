@@ -221,6 +221,14 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "settings": {
+          "type": "object",
+          "description": "Project-specific LSP settings. String values support ${projectRoot} and ${env:NAME}."
+        },
+        "init_options": {
+          "type": "object",
+          "description": "Project-specific LSP initialization options. String values support ${projectRoot} and ${env:NAME}."
         }
       }
     },

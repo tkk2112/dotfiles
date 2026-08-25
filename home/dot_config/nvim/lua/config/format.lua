@@ -205,6 +205,7 @@ local lsp_formatter_by_filetype = {
   cpp = "clangd",
   objc = "clangd",
   objcpp = "clangd",
+  python = "ruff",
 }
 
 local function lsp_formatter(bufnr)

@@ -13,7 +13,7 @@ return {
     opts = {
       -- Intentionally avoids Node/npm-backed servers.
       ensure_installed = {
-        "pylsp",
+        "ruff",
         "clangd",
         "zls",
         "lemminx",
@@ -29,8 +29,26 @@ return {
       local executables = require("config.executables")
       local project_lsp = require("config.project_lsp")
 
-      local clangd_command = vim.deepcopy(vim.lsp.config.clangd.cmd)
+      vim.lsp.config("pylsp", {
+        before_init = project_lsp.before_init("pylsp"),
+        settings = {
+          pylsp = {
+            plugins = {
+              autopep8 = { enabled = false },
+              yapf = { enabled = false },
+              pycodestyle = { enabled = false },
+              pyflakes = { enabled = false },
+              mccabe = { enabled = false },
+            },
+          },
+        },
+      })
 
+      vim.lsp.config("ruff", {
+        before_init = project_lsp.before_init("ruff"),
+      })
+
+      local clangd_command = vim.deepcopy(vim.lsp.config.clangd.cmd)
       for _, argument in ipairs({
         "--background-index",
         "--clang-tidy",
@@ -73,7 +91,7 @@ return {
         },
       })
 
-      for _, server in ipairs({ "pylsp", "clangd", "zls", "lemminx", "lua_ls", "cmake" }) do
+      for _, server in ipairs({ "pylsp", "ruff", "clangd", "zls", "lemminx", "lua_ls", "cmake" }) do
         vim.lsp.enable(server)
       end
     end,
