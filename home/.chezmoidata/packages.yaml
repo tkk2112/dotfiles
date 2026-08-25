@@ -17,7 +17,13 @@ packages:
       tap: darrylmorley/whatcable
       cask: whatcable
 
-  uv_tools: []
+  uv_tools:
+    - name: python-lsp-server
+      group: development
+      package: "python-lsp-server[all]"
+      command: pylsp
+      with:
+        - pylsp-mypy
 
   catalog:
     # Core: Always-installed CLI foundation.
@@ -141,9 +147,6 @@ packages:
     - name: pkg-config
       group: development
       managers: [apt]
-    - name: python-lsp-server
-      group: development
-      managers: [brew, pacman]
     - name: rr
       group: development
       managers: [apt, dnf]

@@ -97,7 +97,33 @@ local function empty_override()
   return {
     cmd = nil,
     args = {},
+    settings = nil,
+    init_options = nil,
   }
+end
+
+local function expand_tree(value, project_root)
+  if type(value) == "string" then
+    return expand_value(value, project_root)
+  end
+
+  if type(value) ~= "table" then
+    return vim.deepcopy(value)
+  end
+
+  local result = vim.deepcopy(value)
+
+  for key, child in pairs(value) do
+    local expanded, expansion_error = expand_tree(child, project_root)
+
+    if expanded == nil then
+      return nil, expansion_error
+    end
+
+    result[key] = expanded
+  end
+
+  return result
 end
 
 local function project_override(server_name, root_dir)
@@ -154,7 +180,25 @@ local function project_override(server_name, root_dir)
     override.args = arguments
   end
 
-  if override.cmd or #override.args > 0 then
+  for _, field in ipairs({ "settings", "init_options" }) do
+    local value = server[field]
+
+    if value ~= nil then
+      if not is_object(value) then
+        return nil, string.format("Project LSP %s for %s must be an object", field, server_name)
+      end
+
+      local expanded, expansion_error = expand_tree(value, project_root)
+
+      if not expanded then
+        return nil, string.format("Project LSP %s for %s is invalid: %s", field, server_name, expansion_error)
+      end
+
+      override[field] = expanded
+    end
+  end
+
+  if override.cmd or #override.args > 0 or override.settings or override.init_options then
     local config_path = project_settings.config_path_for_root(project_root)
 
     local trusted, trust_error = verify_project_trust(config_path)
@@ -165,6 +209,28 @@ local function project_override(server_name, root_dir)
   end
 
   return override
+end
+
+function M.before_init(server_name)
+  return function(params, config)
+    local override, override_error = project_override(server_name, config.root_dir)
+
+    if not override then
+      vim.notify(override_error, vim.log.levels.WARN)
+      return
+    end
+
+    if override.settings then
+      config.settings = vim.tbl_deep_extend("force", config.settings or {}, override.settings)
+    end
+
+    if override.init_options then
+      local init_options = vim.tbl_deep_extend("force", config.init_options or {}, override.init_options)
+
+      config.init_options = init_options
+      params.initializationOptions = init_options
+    end
+  end
 end
 
 function M.resolve_command(server_name, default_command, root_dir)

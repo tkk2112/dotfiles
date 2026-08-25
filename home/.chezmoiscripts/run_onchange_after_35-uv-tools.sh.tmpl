@@ -66,11 +66,6 @@ run() {
 }
 
 printf '%s\n' "$UV_TOOLS" | awk 'NF' | while IFS='|' read -r package command with1 with2 with3 with4 with5; do
-  if command -v "$command" >/dev/null 2>&1; then
-    printf 'uv tool already available: %s\n' "$command"
-    continue
-  fi
-
   set -- uv tool install "$package"
 
   for dep in "$with1" "$with2" "$with3" "$with4" "$with5"; do
