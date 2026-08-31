@@ -1,5 +1,5 @@
 local function project_root()
-  return require("config.project").current_root()
+  return require("config.project").scope_root()
 end
 
 local function toggle_tree()

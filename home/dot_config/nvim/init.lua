@@ -9,7 +9,7 @@ local project_sessions = require("config.project_sessions")
 local project_settings = require("config.project_settings")
 
 project_sessions.setup(function()
-  return project_settings.root(0)
+  return project.session_root()
 end)
 
 project_settings.setup()
