@@ -274,6 +274,18 @@ local function change_directory(root)
   }, {})
 end
 
+function M.adopt(root)
+  root = paths.real(root)
+
+  if not root then
+    return false
+  end
+
+  active_root = root
+
+  return true
+end
+
 function M.path()
   local root = resolve_current_root()
   return root and session_path(root) or nil

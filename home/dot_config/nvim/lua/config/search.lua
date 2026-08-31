@@ -9,7 +9,7 @@ end
 function M.project()
   require("grug-far").open({
     prefills = {
-      paths = project.current_root(),
+      paths = project.scope_root(),
     },
   })
 end

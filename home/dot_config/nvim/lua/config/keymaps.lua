@@ -226,14 +226,45 @@ function M.setup()
   map_shortcuts("i", shortcuts.home_files, from_insert(search.find_files_from_home), { desc = "Find file from home" })
 
   -- Projects
-  map("n", "<leader>pp", project.pick, { desc = "Pick project" })
-  map("n", "<leader>pa", project.add_current, { desc = "Add current directory as project" })
-  map("n", "<leader>pA", project.add_path, { desc = "Add project by path" })
-  map("n", "<leader>pc", project.print_root, { desc = "Print project root" })
-  map("n", "<leader>pg", project.live_grep, { desc = "Grep project" })
-  map("n", "<leader>pr", project_settings.reload, { desc = "Reload project settings" })
-  map("n", "<leader>ps", project_settings.print, { desc = "Print project settings" })
-  map("n", "<leader>pS", project.edit_config, { desc = "Edit project settings" })
+  map("n", "<leader>pp", project.pick, { desc = "Pick project or subproject" })
+  map("n", "<leader>ps", project.pick_scope, { desc = "Pick project scope" })
+
+  map("n", "<leader>pA", project.add_current, {
+    desc = "Add current directory as project",
+  })
+  map("n", "<leader>pD", project.add_path, {
+    desc = "Add project by path",
+  })
+
+  map("n", "<leader>pf", project.find_files, {
+    desc = "Find file in project scope",
+  })
+  map("n", "<leader>pF", project.find_files_project, {
+    desc = "Find file in full project",
+  })
+  map("n", "<leader>pg", project.live_grep, {
+    desc = "Grep project scope",
+  })
+  map("n", "<leader>pG", project.live_grep_project, {
+    desc = "Grep full project",
+  })
+
+  map("n", "<leader>pc", project.cd_root, {
+    desc = "Change to project scope root",
+  })
+  map("n", "<leader>pC", project.print_root, {
+    desc = "Print project scope root",
+  })
+
+  map("n", "<leader>pr", project_settings.reload, {
+    desc = "Reload project settings",
+  })
+  map("n", "<leader>px", project_settings.print, {
+    desc = "Print project settings",
+  })
+  map("n", "<leader>pX", project.edit_config, {
+    desc = "Edit project settings",
+  })
 
   -- Navigation
   map("n", "<M-Left>", function()
