@@ -25,6 +25,13 @@ vim.opt.hlsearch = true
 vim.opt.incsearch = true
 
 -- Clipboard
+if vim.env.SSH_CONNECTION or vim.env.SSH_TTY then
+  if vim.env.TMUX then
+    vim.g.clipboard = "tmux"
+  else
+    vim.g.clipboard = "osc52"
+  end
+end
 vim.opt.clipboard = "unnamedplus"
 
 -- Undo/recovery
