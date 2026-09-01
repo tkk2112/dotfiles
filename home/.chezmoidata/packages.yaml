@@ -11,12 +11,6 @@ packages:
       - kylegospo/grub-btrfs
       - scottames/ghostty
 
-  casks:
-    - name: whatcable
-      group: development
-      tap: darrylmorley/whatcable
-      cask: whatcable
-
   uv_tools:
     - name: python-lsp-server
       group: development
@@ -24,6 +18,12 @@ packages:
       command: pylsp
       with:
         - pylsp-mypy
+
+  casks:
+    - name: whatcable
+      group: development
+      tap: darrylmorley/whatcable
+      cask: whatcable
 
   catalog:
     # Core: Always-installed CLI foundation.

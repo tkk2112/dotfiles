@@ -4,10 +4,10 @@ version: "1.0"
 
 fileignoreconfig:
   - filename: home/.ignored-ssh.yaml.age
-    checksum: f67f96c735d0160bd20a8105f6db377f20154ae9d97ee79fab851d2bf3966b4a
+    checksum: 6ed7b5276333bc4f9eaf2d23ac4b3ed63e0d0ff22f3e09a90ba7ad6557b2955a
 
   - filename: home/private_dot_ssh/conf.d/encrypted_10-specific.conf.tmpl.age
-    checksum: 99144f6beb3787a97bb14dc2ab32d21c9b890549f2dd1d7e8deff02fd954df51
+    checksum: 06e3cee6e156a840a202b148b2e2151f80632deccec853fb85d0be95407c21f1
 
   - filename: home/private_dot_ssh/conf.d/encrypted_20-vacuums.conf.tmpl.age
     checksum: bdfa22bfbc808cd7f872b19bce608d17525fb0a997e261830f1bb480126e9c85
