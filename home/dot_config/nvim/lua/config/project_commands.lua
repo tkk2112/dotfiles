@@ -5,7 +5,7 @@
 -- and errorformat support so diagnostics are jumpable.
 --
 -- Supported macros:
---   ${projectRoot}  Project root containing .nvim/project.json
+--   ${projectRoot}  Active project/subproject command scope root
 --   ${cwd}          Resolved command working directory; env values only
 --   ${env:NAME}     Environment variable inherited by Neovim
 
@@ -175,7 +175,7 @@ local function resolve_command_cwd(project_root, configured_cwd, inherited_env)
     cwd = home .. "/" .. cwd:sub(3)
   end
 
-  -- Plain relative paths are relative to the project root.
+  -- Plain relative paths are relative to the active command scope root.
   if not paths.is_absolute(cwd) then
     cwd = project_root .. "/" .. cwd
   end
@@ -231,25 +231,39 @@ local function resolve_command_environment(project_root, cwd, configured_env, in
   return environment
 end
 
-local function trust_project_commands(config_path)
-  if not config_path or vim.fn.filereadable(config_path) == 0 then
+local function config_paths_list(config_paths)
+  if type(config_paths) == "string" then
+    return { config_paths }
+  end
+
+  return type(config_paths) == "table" and config_paths or {}
+end
+
+local function trust_project_commands(config_paths)
+  local paths_to_trust = config_paths_list(config_paths)
+
+  if #paths_to_trust == 0 then
     vim.notify("Project config is not readable", vim.log.levels.ERROR)
-
     return false
   end
 
-  local ok, contents = pcall(vim.secure.read, config_path)
+  for _, config_path in ipairs(paths_to_trust) do
+    if vim.fn.filereadable(config_path) == 0 then
+      vim.notify("Project config is not readable: " .. config_path, vim.log.levels.ERROR)
+      return false
+    end
 
-  if not ok then
-    vim.notify("Could not verify project config trust: " .. contents, vim.log.levels.ERROR)
+    local ok, contents = pcall(vim.secure.read, config_path)
 
-    return false
-  end
+    if not ok then
+      vim.notify("Could not verify project config trust: " .. tostring(contents), vim.log.levels.ERROR)
+      return false
+    end
 
-  if not contents then
-    vim.notify("Project commands were not trusted", vim.log.levels.WARN)
-
-    return false
+    if not contents then
+      vim.notify("Project commands were not trusted: " .. config_path, vim.log.levels.WARN)
+      return false
+    end
   end
 
   return true
@@ -489,11 +503,12 @@ local function choose_entry(entries)
   return nil
 end
 
-function M.run(project_root, config_path, spec, command_key)
+function M.run(project_root, config_paths, spec, command_key)
   local description = command_description(spec)
+  local config_id = table.concat(config_paths_list(config_paths), "|")
 
   local watch_id = table.concat({
-    config_path or project_root,
+    config_id ~= "" and config_id or project_root,
     command_key or spec.command,
   }, "::")
 
@@ -507,7 +522,7 @@ function M.run(project_root, config_path, spec, command_key)
     return
   end
 
-  if not trust_project_commands(config_path) then
+  if not trust_project_commands(config_paths) then
     return
   end
 
@@ -588,15 +603,15 @@ function M.run(project_root, config_path, spec, command_key)
   run_terminal(cwd, environment, spec)
 end
 
-function M.open(project_root, config_path, entries)
+function M.open(project_root, config_paths, entries)
   local entry = choose_entry(entries)
 
   if entry then
-    M.run(project_root, config_path, entry.spec, entry.key)
+    M.run(project_root, config_paths, entry.spec, entry.key)
   end
 end
 
-function M.attach(bufnr, project_root, config_path, commands)
+function M.attach(bufnr, project_root, config_paths, commands)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
@@ -612,7 +627,7 @@ function M.attach(bufnr, project_root, config_path, commands)
   end
 
   vim.keymap.set("n", mapping, function()
-    M.open(project_root, config_path, entries)
+    M.open(project_root, config_paths, entries)
   end, {
     buffer = bufnr,
     silent = true,

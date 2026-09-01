@@ -19,6 +19,7 @@ local M = {}
 local buffer = require("config.lib.buffer")
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
+local project_scope = require("config.project_scope")
 
 local project_marker = ".nvim"
 local project_config = "project.json"
@@ -99,12 +100,11 @@ local function write_project_config(filename, config)
   return true
 end
 
-local function get_config(root)
-  if not root then
+local function get_config_path(config_path)
+  if not config_path then
     return {}
   end
 
-  local config_path = project_config_path(root)
   local mtime = vim.fn.getftime(config_path)
   local cached = config_cache[config_path]
 
@@ -120,6 +120,10 @@ local function get_config(root)
   }
 
   return config
+end
+
+local function get_config(root)
+  return get_config_path(project_config_path(root))
 end
 
 -- Empty tables are treated as objects. This is useful because JSON objects and
@@ -158,6 +162,42 @@ end
 
 local function table_or_empty(value)
   return type(value) == "table" and value or {}
+end
+
+local function merge_commands(base, override)
+  local result = vim.deepcopy(table_or_empty(base))
+
+  for key, value in pairs(table_or_empty(override)) do
+    result[key] = vim.deepcopy(value)
+  end
+
+  return result
+end
+
+local function command_context(project_root)
+  if not project_root then
+    return nil
+  end
+
+  local project_path = project_config_path(project_root)
+  local project_commands = table_or_empty(get_config(project_root).commands)
+  local selected = project_scope.selected(project_root)
+
+  if not selected then
+    return {
+      root = project_root,
+      config_paths = { project_path },
+      commands = project_commands,
+    }
+  end
+
+  local scope_commands = table_or_empty(get_config_path(selected.config_path).commands)
+
+  return {
+    root = selected.root,
+    config_paths = { project_path, selected.config_path },
+    commands = merge_commands(project_commands, scope_commands),
+  }
 end
 
 local function apply_project_option(option, value)
@@ -442,8 +482,20 @@ end
 local project_commands = require("config.project_commands")
 
 function M.commands(bufnr)
-  local commands = M.get(bufnr or 0).commands
-  return type(commands) == "table" and commands or {}
+  local context = command_context(M.root(bufnr or 0))
+
+  return context and context.commands or {}
+end
+
+local function apply_commands(bufnr)
+  local context = command_context(M.root(bufnr))
+
+  project_commands.attach(
+    bufnr,
+    context and context.root or nil,
+    context and context.config_paths or nil,
+    context and context.commands or {}
+  )
 end
 
 function M.apply(bufnr)
@@ -453,7 +505,7 @@ function M.apply(bufnr)
     return
   end
 
-  project_commands.attach(bufnr, M.root(bufnr), M.config_path(bufnr), M.commands(bufnr))
+  apply_commands(bufnr)
 
   if not buffer.is_file(bufnr) then
     return
@@ -506,6 +558,24 @@ function M.setup()
     group = group,
     callback = function(event)
       M.apply_options(event.buf)
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("User", {
+    group = group,
+    pattern = "ProjectScopeChanged",
+    callback = function(event)
+      local project_root = event.data and paths.real(event.data.project_root) or nil
+
+      if not project_root then
+        return
+      end
+
+      for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_valid(bufnr) and M.root(bufnr) == project_root then
+          apply_commands(bufnr)
+        end
+      end
     end,
   })
 
