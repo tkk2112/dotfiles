@@ -13,6 +13,7 @@ return {
     opts = {
       -- Intentionally avoids Node/npm-backed servers.
       ensure_installed = {
+        "ty",
         "ruff",
         "clangd",
         "zls",
@@ -30,7 +31,17 @@ return {
       local project_lsp = require("config.project_lsp")
 
       vim.lsp.config("pylsp", {
+        root_dir = project_lsp.root_dir("pylsp", {
+          "pyproject.toml",
+          "setup.py",
+          "setup.cfg",
+          "requirements.txt",
+          "Pipfile",
+          ".git",
+        }, true),
+
         before_init = project_lsp.before_init("pylsp"),
+
         settings = {
           pylsp = {
             plugins = {
@@ -45,7 +56,27 @@ return {
       })
 
       vim.lsp.config("ruff", {
+        root_dir = project_lsp.root_dir("ruff", {
+          "pyproject.toml",
+          "ruff.toml",
+          ".ruff.toml",
+          ".git",
+        }, true),
+
         before_init = project_lsp.before_init("ruff"),
+      })
+
+      vim.lsp.config("ty", {
+        root_dir = project_lsp.root_dir("ty", {
+          "ty.toml",
+          "pyproject.toml",
+          "setup.py",
+          "setup.cfg",
+          "requirements.txt",
+          ".git",
+        }, false),
+
+        before_init = project_lsp.before_init("ty"),
       })
 
       local clangd_command = vim.deepcopy(vim.lsp.config.clangd.cmd)
@@ -91,7 +122,7 @@ return {
         },
       })
 
-      for _, server in ipairs({ "pylsp", "ruff", "clangd", "zls", "lemminx", "lua_ls", "cmake" }) do
+      for _, server in ipairs({ "pylsp", "ruff", "ty", "clangd", "zls", "lemminx", "lua_ls", "cmake" }) do
         vim.lsp.enable(server)
       end
     end,

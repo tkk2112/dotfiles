@@ -283,4 +283,37 @@ function M.command(server_name, default_command)
   end
 end
 
+function M.enabled(server_name, bufnr, default)
+  bufnr = bufnr or 0
+
+  local config = project_settings.get(bufnr)
+  local lsp = config.lsp
+
+  if not is_object(lsp) then
+    return default
+  end
+
+  local server = lsp[server_name]
+
+  if not is_object(server) or server.enabled == nil then
+    return default
+  end
+
+  return server.enabled == true
+end
+
+function M.root_dir(server_name, root_markers, default_enabled)
+  return function(bufnr, on_dir)
+    if not M.enabled(server_name, bufnr, default_enabled) then
+      return
+    end
+
+    local root = vim.fs.root(bufnr, root_markers)
+
+    if root then
+      on_dir(root)
+    end
+  end
+end
+
 return M
