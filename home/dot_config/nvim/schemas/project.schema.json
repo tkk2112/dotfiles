@@ -232,6 +232,10 @@
         "init_options": {
           "type": "object",
           "description": "Project-specific LSP initialization options. String values support ${projectRoot} and ${env:NAME}."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable this LSP for the project. If omitted, the global default is used."
         }
       }
     },
