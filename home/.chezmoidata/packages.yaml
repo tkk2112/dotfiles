@@ -277,6 +277,10 @@ packages:
       managers: [dnf]
 
     # macOS: Homebrew-only workstation helpers.
+    - name: borders
+      managers: [brew]
+      names:
+        brew: FelixKratz/formulae/borders
     - name: coreutils
       group: workstation
       managers: [brew]

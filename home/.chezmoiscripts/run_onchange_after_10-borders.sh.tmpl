@@ -1,0 +1,18 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+set -eu
+
+# bordersrc hash: {{ include "dot_config/borders/executable_bordersrc" | sha256sum }}
+
+if ! command -v brew >/dev/null 2>&1; then
+  printf 'Homebrew is not installed; skipping borders service\n' >&2
+  exit 0
+fi
+
+if ! brew list --formula borders >/dev/null 2>&1; then
+  printf 'borders is not installed; skipping borders service\n' >&2
+  exit 0
+fi
+
+brew services restart borders
+{{- end -}}
