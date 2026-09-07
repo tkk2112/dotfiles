@@ -67,3 +67,5 @@
 	track = "!git branch --set-upstream-to $(git for-each-ref --format=\"%(refname:short)\" $(git symbolic-ref HEAD))"
 	up = remote update
 	backup = "!git push --force-with-lease backup HEAD:$(git symbolic-ref --short HEAD)"
+	pc = physics-commit
+	tc = turing-commit
