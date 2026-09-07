@@ -69,3 +69,21 @@
 	backup = "!git push --force-with-lease backup HEAD:$(git symbolic-ref --short HEAD)"
 	pc = physics-commit
 	tc = turing-commit
+      mr = "!f() { \
+        branch=\"$1\"; \
+        target=\"${2:-$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')}\"; \
+        if [ -z \"$target\" ]; then \
+            if git show-ref --verify --quiet refs/remotes/origin/main; then \
+                target=main; \
+            elif git show-ref --verify --quiet refs/remotes/origin/master; then \
+                target=master; \
+            else \
+                echo 'Could not determine merge request target branch' >&2; \
+                return 1; \
+            fi; \
+        fi; \
+        git checkout -b \"$branch\" && \
+        git push --set-upstream origin HEAD:\"$branch\" \
+            -o merge_request.create \
+            -o merge_request.target=\"$target\"; \
+    }; f"
