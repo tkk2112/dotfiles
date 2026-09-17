@@ -2,7 +2,25 @@ local M = {}
 
 local project_definition = require("config.project_definition")
 local project_index = require("config.project_index")
+local project_scope = require("config.project_scope")
+
 local paths = require("config.lib.path")
+local synced_projects = {}
+
+local function sync_project(project_root, force, prune)
+  project_root = paths.real(project_root)
+
+  if not project_root then
+    return
+  end
+
+  if synced_projects[project_root] and not force then
+    return
+  end
+
+  project_scope.sync_index(project_root, prune)
+  synced_projects[project_root] = true
+end
 
 local function path_for(value)
   if value == nil then
@@ -84,6 +102,8 @@ local function register_definition(definition)
     return nil, err
   end
 
+  sync_project(record.root, true, false)
+
   return record
 end
 
@@ -94,10 +114,6 @@ local function discover(path)
     return nil, definition_error
   end
 
-  -- An in-tree project definition may only discover the path from which the
-  -- search started. This prevents a project.json containing an unrelated root
-  -- from hijacking files merely because its .nvim directory was encountered
-  -- while walking upward.
   if not paths.is_within(path, definition.root) then
     return nil
   end
@@ -108,7 +124,9 @@ local function discover(path)
     return nil, register_error
   end
 
-  return context_from_record(record, "discovered")
+  local resolved = project_index.find(path) or record
+
+  return context_from_record(resolved, "discovered")
 end
 
 function M.resolve(value, options)
@@ -123,6 +141,12 @@ function M.resolve(value, options)
   local record = project_index.find(path)
 
   if record then
+    sync_project(record.project_root, false, false)
+
+    -- Synchronizing the parent may have added a more-specific subproject record,
+    -- so resolve once more before constructing the context.
+    record = project_index.find(path) or record
+
     local context = context_from_record(record, "index")
 
     if context then
@@ -199,6 +223,26 @@ function M.scope_config_path(value, options)
   local context = M.resolve(value, options)
 
   return context and context.scope_config_path or nil
+end
+
+function M.refresh(value)
+  local path = path_for(value)
+
+  if not path then
+    return nil
+  end
+
+  local record = project_index.find(path)
+
+  if not record then
+    return M.resolve(path)
+  end
+
+  sync_project(record.project_root, true, true)
+
+  record = project_index.find(path)
+
+  return record and context_from_record(record, "index") or nil
 end
 
 return M

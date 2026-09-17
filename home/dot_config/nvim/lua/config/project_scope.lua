@@ -6,6 +6,7 @@ local M = {}
 
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
+local project_index = require("config.project_index")
 
 local project_marker = ".nvim"
 local project_config = "project.json"
@@ -17,15 +18,32 @@ local function directory_exists(path)
 end
 
 local function project_config_path(root)
+  root = paths.real(root)
+
+  if not root then
+    return nil
+  end
+
+  local record = project_index.get(root)
+
+  if record and record.root == record.project_root and record.config_path then
+    return record.config_path
+  end
+
   return root .. "/" .. project_marker .. "/" .. project_config
 end
 
 local function read_project_config(root)
-  local config, err = json.read(project_config_path(root))
+  local config_path = project_config_path(root)
+
+  if not config_path then
+    return {}
+  end
+
+  local config, err = json.read(config_path)
 
   if err then
-    vim.notify("Failed reading project config: " .. project_config_path(root) .. "\n" .. err, vim.log.levels.ERROR)
-
+    vim.notify("Failed reading project config: " .. config_path .. "\n" .. err, vim.log.levels.ERROR)
     return {}
   end
 
@@ -113,6 +131,46 @@ function M.list(project_root)
   end)
 
   return result
+end
+
+function M.sync_index(project_root, prune)
+  project_root = paths.real(project_root)
+
+  if not project_root then
+    return {}
+  end
+
+  local subprojects = M.list(project_root)
+  local indexed = {}
+
+  for _, subproject in ipairs(subprojects) do
+    local record, err = project_index.upsert({
+      root = subproject.root,
+      project_root = project_root,
+      config_path = subproject.config_path,
+      kind = "subproject",
+      name = subproject.name,
+    })
+
+    if not record then
+      vim.notify(
+        string.format("Could not index subproject %s: %s", subproject.name, tostring(err)),
+        vim.log.levels.WARN
+      )
+    else
+      indexed[subproject.root] = true
+    end
+  end
+
+  if prune then
+    for _, record in ipairs(project_index.children(project_root)) do
+      if record.kind == "subproject" and not indexed[record.root] then
+        project_index.forget(record.root)
+      end
+    end
+  end
+
+  return subprojects
 end
 
 function M.find(project_root, value)

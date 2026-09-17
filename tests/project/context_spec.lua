@@ -223,4 +223,84 @@ describe("project context", function()
       assert.is_nil(context.resolve(path))
     end)
   end)
+
+  it("indexes and resolves subprojects during project discovery", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local subproject = mkdir(vim.fs.joinpath(root, "tools", "stardust"))
+      local nested = mkdir(vim.fs.joinpath(subproject, "src"))
+
+      local project_config = write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+        root = "..",
+        global = {},
+        subprojects = {
+          stardust = {
+            root = "tools/stardust",
+          },
+        },
+      })
+
+      local subproject_config = write_json(vim.fs.joinpath(root, ".nvim", "subprojects", "stardust.json"), {
+        global = {},
+      })
+
+      local result = assert(context.resolve(nested))
+
+      assert.are.equal(root, result.project_root)
+      assert.are.equal(subproject, result.scope_root)
+      assert.are.equal(project_config, result.config_path)
+      assert.are.equal(subproject_config, result.scope_config_path)
+      assert.are.equal("subproject", result.kind)
+      assert.are.equal("stardust", result.scope_name)
+
+      local record = assert(index.get(subproject))
+
+      assert.are.equal(subproject, record.root)
+      assert.are.equal(root, record.project_root)
+      assert.are.equal(subproject_config, record.config_path)
+      assert.are.equal("subproject", record.kind)
+      assert.are.equal("stardust", record.name)
+    end)
+  end)
+
+  it("removes stale subproject records when project scopes are refreshed", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local subproject = mkdir(vim.fs.joinpath(root, "tools", "stardust"))
+      local nested = mkdir(vim.fs.joinpath(subproject, "src"))
+
+      local config = vim.fs.joinpath(root, ".nvim", "project.json")
+
+      write_json(config, {
+        root = "..",
+        global = {},
+        subprojects = {
+          stardust = {
+            root = "tools/stardust",
+          },
+        },
+      })
+
+      write_json(vim.fs.joinpath(root, ".nvim", "subprojects", "stardust.json"), {
+        global = {},
+      })
+
+      assert.are.equal(subproject, assert(context.resolve(nested)).scope_root)
+      assert.is_not_nil(index.get(subproject))
+
+      write_json(config, {
+        root = "..",
+        global = {},
+        subprojects = {},
+      })
+
+      local refreshed = assert(context.refresh(root))
+
+      assert.are.equal(root, refreshed.project_root)
+      assert.are.equal(root, refreshed.scope_root)
+
+      assert.is_nil(index.get(subproject))
+      assert.is_not_nil(index.get(root))
+    end)
+  end)
 end)
