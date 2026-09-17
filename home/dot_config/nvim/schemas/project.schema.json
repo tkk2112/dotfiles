@@ -7,6 +7,11 @@
     "global"
   ],
   "properties": {
+    "root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Project root. Relative paths are resolved relative to the directory containing project.json."
+    },
     "global": {
       "$ref": "#/$defs/settings"
     },
