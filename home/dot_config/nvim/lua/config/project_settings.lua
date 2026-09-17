@@ -1,28 +1,23 @@
--- Loads .nvim/project.json and applies safe project settings buffer-locally.
+-- Loads project settings and applies safe settings buffer-locally.
+--
+-- Project ownership and configuration paths are resolved through
+-- config.project_context. This allows settings to come from:
+--
+--   - .nvim/project.json inside the project
+--   - an indexed external project definition
+--   - eventually inherited worktree definitions
 --
 -- Settings are resolved in this order:
 --   global -> language -> file
---
--- Each layer uses the same nested structure:
---   {
---     vim = {
---       opt = {
---         shiftwidth = 2,
---       },
---     },
---     save_on_focus = true,
---     format_on_save = false,
---   }
 
 local M = {}
 
 local buffer = require("config.lib.buffer")
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
+local project_context = require("config.project_context")
 local project_scope = require("config.project_scope")
 
-local project_marker = ".nvim"
-local project_config = "project.json"
 local config_cache = {}
 
 -- Project configuration is data, not code. Deny options that affect command
@@ -44,21 +39,20 @@ local denied_options = {
 }
 
 local function cwd_project_root()
-  local root = vim.fs.root(vim.fn.getcwd(), project_marker)
+  local context = project_context.resolve_cwd()
 
-  return root and paths.absolute(root) or nil
+  return context and context.project_root or nil
 end
 
 local function find_project_root(bufnr)
   bufnr = bufnr or 0
 
   if buffer.is_file(bufnr) then
-    local filename = vim.api.nvim_buf_get_name(bufnr)
-    local root = vim.fs.root(filename, project_marker)
+    local context = project_context.resolve_buffer(bufnr)
 
     -- A real file must belong to a project through its own path.
     -- Never let an unrelated file inherit the cwd project's settings.
-    return root and paths.absolute(root) or nil
+    return context and context.project_root or nil
   end
 
   -- Empty startup buffers and other non-file buffers may use the cwd project.
@@ -66,10 +60,26 @@ local function find_project_root(bufnr)
 end
 
 local function project_config_path(root)
-  return root and (root .. "/" .. project_marker .. "/" .. project_config) or nil
+  root = paths.real(root)
+
+  if not root then
+    return nil
+  end
+
+  local context = project_context.resolve_path(root)
+
+  if not context or context.project_root ~= root then
+    return nil
+  end
+
+  return context.config_path
 end
 
 local function read_project_config(filename)
+  if not filename then
+    return {}
+  end
+
   local config, err = json.read(filename)
 
   if err then
@@ -90,6 +100,10 @@ local function read_project_config(filename)
 end
 
 local function write_project_config(filename, config)
+  if not filename then
+    return false
+  end
+
   local ok, err = json.write(filename, config)
 
   if not ok then
@@ -180,22 +194,30 @@ local function command_context(project_root)
   end
 
   local project_path = project_config_path(project_root)
-  local project_commands = table_or_empty(get_config(project_root).commands)
+  local project_commands = table_or_empty(get_config_path(project_path).commands)
   local selected = project_scope.selected(project_root)
+
+  local config_paths = {}
+
+  if project_path then
+    table.insert(config_paths, project_path)
+  end
 
   if not selected then
     return {
       root = project_root,
-      config_paths = { project_path },
+      config_paths = config_paths,
       commands = project_commands,
     }
   end
 
   local scope_commands = table_or_empty(get_config_path(selected.config_path).commands)
 
+  table.insert(config_paths, selected.config_path)
+
   return {
     root = selected.root,
-    config_paths = { project_path, selected.config_path },
+    config_paths = config_paths,
     commands = merge_commands(project_commands, scope_commands),
   }
 end
@@ -426,7 +448,13 @@ function M.set_filetype(bufnr, filetype)
     return
   end
 
-  local config_path = project_config_path(root)
+  local config_path = M.config_path(bufnr)
+
+  if not config_path then
+    vim.notify("Could not resolve project config", vim.log.levels.ERROR)
+    return
+  end
+
   local config = vim.deepcopy(M.get(bufnr))
 
   if type(config.files) ~= "table" then
@@ -449,7 +477,10 @@ function M.set_filetype(bufnr, filetype)
   config_cache[config_path] = nil
   vim.bo[bufnr].filetype = filetype
 
-  vim.notify(string.format("Set %s filetype to %s in %s", relative, filetype, project_config), vim.log.levels.INFO)
+  vim.notify(
+    string.format("Set %s filetype to %s in %s", relative, filetype, vim.fs.basename(config_path)),
+    vim.log.levels.INFO
+  )
 end
 
 function M.apply_options(bufnr)

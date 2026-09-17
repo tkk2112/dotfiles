@@ -1,9 +1,7 @@
 local M = {}
 
-local paths = require("config.lib.path")
+local project_context = require("config.project_context")
 local project_settings = require("config.project_settings")
-
-local project_marker = ".nvim"
 
 local function is_object(value)
   return type(value) == "table" and (next(value) == nil or not vim.islist(value))
@@ -14,9 +12,9 @@ local function find_project_root(root_dir)
     return nil
   end
 
-  local root = vim.fs.root(root_dir, project_marker)
+  local context = project_context.resolve_path(root_dir)
 
-  return root and paths.real(root) or nil
+  return context and context.project_root or nil
 end
 
 local function expand_value(value, project_root)
