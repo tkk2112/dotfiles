@@ -6,12 +6,14 @@ local M = {}
 local file_mru = require("config.file_mru")
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
+local project_context = require("config.project_context")
+local project_definition = require("config.project_definition")
+local project_index = require("config.project_index")
 local project_scope = require("config.project_scope")
 local project_sessions = require("config.project_sessions")
 
 local project_marker = ".nvim"
 local project_config = "project.json"
-local projects_file = vim.fn.stdpath("data") .. "/projects.json"
 
 local active_project = nil
 
@@ -30,11 +32,19 @@ local function path_exists(path)
 end
 
 local function project_config_path(root)
-  return root .. "/" .. project_marker .. "/" .. project_config
-end
+  root = paths.real(root)
 
-local function is_registered_project(root)
-  return root and directory_exists(root) and file_exists(project_config_path(root))
+  if not root then
+    return nil
+  end
+
+  local record = project_index.get(root)
+
+  if record and record.root == record.project_root and record.config_path then
+    return record.config_path
+  end
+
+  return project_definition.default_path(root)
 end
 
 local function default_project_settings()
@@ -60,6 +70,7 @@ local function encode_project_json(data)
 
   return {
     "{",
+    '  "root": "..",',
     '  "global": {',
     '    "vim": {',
     '      "opt": {',
@@ -106,6 +117,11 @@ end
 
 local function read_project_config(root)
   local config_path = project_config_path(root)
+
+  if not config_path then
+    return nil
+  end
+
   local config, err = json.read(config_path)
 
   if err then
@@ -127,6 +143,11 @@ end
 
 local function write_project_config(root, config)
   local config_path = project_config_path(root)
+
+  if not config_path then
+    return false
+  end
+
   local ok, err = json.write(config_path, config)
 
   if not ok then
@@ -139,148 +160,29 @@ end
 
 -- Project registry ---------------------------------------------------------------
 
-local function sort_projects(projects)
-  table.sort(projects, function(left, right)
-    if left.last_opened == right.last_opened then
-      return left.path < right.path
-    end
-
-    return left.last_opened > right.last_opened
-  end)
-
-  return projects
-end
-
-local function write_projects(projects)
-  sort_projects(projects)
-
-  local ok, err = json.write(projects_file, {
-    version = 1,
-    projects = projects,
-  }, {
-    mkdir = true,
-  })
-
-  if not ok then
-    vim.notify("Failed writing project list: " .. projects_file .. "\n" .. err, vim.log.levels.ERROR)
-    return false
-  end
-
-  return true
-end
-
-local function read_projects()
-  local payload, err = json.read(projects_file)
-
-  if err then
-    vim.notify("Failed reading project list: " .. projects_file .. "\n" .. err, vim.log.levels.WARN)
-    return {}
-  end
-
-  if type(payload) ~= "table" or type(payload.projects) ~= "table" then
-    return {}
-  end
-
-  local by_path = {}
-  local changed = false
-
-  for _, entry in ipairs(payload.projects) do
-    if type(entry) ~= "table" then
-      changed = true
-    else
-      local project_path = entry.path
-      local last_opened = 0
-
-      if type(entry.last_opened) == "number" then
-        last_opened = math.max(0, math.floor(entry.last_opened))
-      end
-
-      if type(project_path) ~= "string" or project_path == "" then
-        changed = true
-      else
-        local original_path = project_path
-        project_path = paths.real(project_path)
-
-        if not project_path or not is_registered_project(project_path) then
-          changed = true
-        else
-          if project_path ~= original_path then
-            changed = true
-          end
-
-          local existing = by_path[project_path]
-
-          if existing then
-            changed = true
-            existing.last_opened = math.max(existing.last_opened, last_opened)
-          else
-            by_path[project_path] = {
-              path = project_path,
-              last_opened = last_opened,
-            }
-          end
-        end
-      end
-    end
-  end
-
-  local projects = {}
-
-  for _, project in pairs(by_path) do
-    table.insert(projects, project)
-  end
-
-  sort_projects(projects)
-
-  if changed then
-    write_projects(projects)
-  end
-
-  return projects
-end
-
 local function touch_project(value)
   if type(value) ~= "string" or value == "" then
     return nil
   end
 
-  local project = paths.real(value)
+  local context = project_context.resolve_path(value)
 
-  if not project or not is_registered_project(project) then
+  if not context then
     return nil
   end
 
-  local projects = read_projects()
-  local now = os.time()
-  local found = false
+  local root = context.project_root
+  local record = project_index.touch(root, os.time())
 
-  for _, existing in ipairs(projects) do
-    if existing.path == project then
-      existing.last_opened = now
-      found = true
-      break
-    end
-  end
-
-  if not found then
-    table.insert(projects, {
-      path = project,
-      last_opened = now,
-    })
-  end
-
-  write_projects(projects)
-
-  return project
+  return record and root or nil
 end
 
 -- Project discovery and tracking -------------------------------------------------
 
 local function cwd_project_root()
-  local root = vim.fs.root(vim.fn.getcwd(), project_marker)
-  root = root and paths.real(root) or nil
+  local context = project_context.resolve_cwd()
 
-  return root and is_registered_project(root) and root or nil
+  return context and context.project_root or nil
 end
 
 local function project_root_for_buffer(bufnr)
@@ -288,16 +190,9 @@ local function project_root_for_buffer(bufnr)
     return nil
   end
 
-  local filename = vim.api.nvim_buf_get_name(bufnr)
+  local context = project_context.resolve_buffer(bufnr)
 
-  if filename == "" then
-    return nil
-  end
-
-  local root = vim.fs.root(filename, project_marker)
-  root = root and paths.real(root) or nil
-
-  return root and is_registered_project(root) and root or nil
+  return context and context.project_root or nil
 end
 
 local function record_project(root)
@@ -305,18 +200,20 @@ local function record_project(root)
     return
   end
 
-  root = paths.real(root)
+  local context = project_context.resolve_path(root)
 
-  if not root or not is_registered_project(root) then
+  if not context then
     return
   end
+
+  root = context.project_root
 
   if root == active_project then
     return
   end
 
   active_project = root
-  touch_project(root)
+  project_index.touch(root, os.time())
 end
 
 local function ensure_project(value)
@@ -327,7 +224,11 @@ local function ensure_project(value)
   end
 
   local marker_path = root .. "/" .. project_marker
-  local config_path = project_config_path(root)
+  local config_path = project_definition.default_path(root)
+
+  if not config_path then
+    return nil, false
+  end
 
   if not directory_exists(marker_path) then
     vim.fn.mkdir(marker_path, "p")
@@ -335,8 +236,20 @@ local function ensure_project(value)
 
   local created_config = write_default_project_config(config_path)
 
+  local record, index_error = project_index.upsert({
+    root = root,
+    project_root = root,
+    config_path = config_path,
+    kind = "project",
+    last_opened = os.time(),
+  })
+
+  if not record then
+    vim.notify("Could not register project: " .. tostring(index_error), vim.log.levels.ERROR)
+    return nil, false
+  end
+
   active_project = root
-  touch_project(root)
 
   vim.api.nvim_cmd({
     cmd = "cd",
@@ -663,14 +576,9 @@ end
 -- Public project and scope state --------------------------------------------------
 
 function M.root(path)
-  local root = vim.fs.root(path or 0, project_marker)
-  root = root and paths.real(root) or nil
+  local context = project_context.resolve(path or 0)
 
-  if root and is_registered_project(root) then
-    return root
-  end
-
-  return vim.fn.getcwd()
+  return context and context.project_root or vim.fn.getcwd()
 end
 
 function M.root_for_buffer(bufnr)
@@ -684,8 +592,16 @@ function M.current_root()
 end
 
 function M.current_project_root()
-  if active_project and is_registered_project(active_project) then
-    return active_project
+  if active_project then
+    local context = project_context.resolve_path(active_project, {
+      discover = false,
+    })
+
+    if context and context.project_root == active_project then
+      return active_project
+    end
+
+    active_project = nil
   end
 
   return cwd_project_root() or project_root_for_buffer(vim.api.nvim_get_current_buf())
@@ -767,8 +683,14 @@ function M.add_current()
 
   local project_root = cwd_project_root()
 
-  if project_root and cwd ~= project_root then
-    add_subproject(project_root, cwd)
+  if project_root then
+    if cwd ~= project_root then
+      add_subproject(project_root, cwd)
+    else
+      touch_project(project_root)
+      vim.notify("Project already registered: " .. project_root, vim.log.levels.INFO)
+    end
+
     return
   end
 
@@ -822,22 +744,23 @@ function M.add_path()
       return
     end
 
-    -- When invoked outside a project, pD may create/register a real project,
-    -- but it must not accidentally create a nested .nvim inside another one.
-    local containing_project = vim.fs.root(selected_path, project_marker)
+    -- Do not create a nested project inside an already known/discoverable project.
+    local containing = project_context.resolve_path(selected_path)
 
-    if containing_project then
-      containing_project = paths.real(containing_project)
-
-      if containing_project ~= selected_path then
+    if containing then
+      if containing.project_root == selected_path then
+        touch_project(containing.project_root)
+        vim.notify("Project already registered: " .. containing.project_root, vim.log.levels.INFO)
+      else
         vim.notify(
           "Selected path already belongs to project:\n"
-            .. containing_project
+            .. containing.project_root
             .. "\n\nChange into that project and add it as a subproject instead.",
           vim.log.levels.ERROR
         )
-        return
       end
+
+      return
     end
 
     local root, created_config = ensure_project(selected_path)
@@ -856,7 +779,7 @@ end
 -- Project and scope pickers -------------------------------------------------------
 
 function M.pick()
-  local projects = read_projects()
+  local projects = project_index.projects()
 
   if vim.tbl_isempty(projects) then
     vim.notify("No projects yet. Use <leader>pA to add the current directory.", vim.log.levels.WARN)
@@ -866,16 +789,16 @@ function M.pick()
   local contexts = {}
 
   for _, project in ipairs(projects) do
-    local name = vim.fn.fnamemodify(project.path, ":t")
+    local name = vim.fn.fnamemodify(project.root, ":t")
 
     table.insert(contexts, {
-      project_root = project.path,
-      display = string.format("%s  %s", name, project.path),
+      project_root = project.root,
+      display = string.format("%s  %s", name, project.root),
     })
 
-    for _, subproject in ipairs(project_scope.list(project.path)) do
+    for _, subproject in ipairs(project_scope.list(project.root)) do
       table.insert(contexts, {
-        project_root = project.path,
+        project_root = project.root,
         subproject = subproject.name,
         display = string.format("  └─ %s  %s", subproject.name, subproject.relative_root),
       })
@@ -953,14 +876,23 @@ function M.edit_config()
     return
   end
 
-  local marker_path = root .. "/" .. project_marker
   local config_path = project_config_path(root)
 
-  if not directory_exists(marker_path) then
-    vim.fn.mkdir(marker_path, "p")
+  if not config_path then
+    vim.notify("Could not resolve project config", vim.log.levels.ERROR)
+    return
   end
 
-  write_default_project_config(config_path)
+  local default_path = project_definition.default_path(root)
+
+  if config_path == default_path then
+    vim.fn.mkdir(vim.fs.dirname(config_path), "p")
+    write_default_project_config(config_path)
+  elseif not file_exists(config_path) then
+    vim.notify("External project config does not exist: " .. config_path, vim.log.levels.ERROR)
+    return
+  end
+
   vim.cmd("edit " .. vim.fn.fnameescape(config_path))
 end
 
