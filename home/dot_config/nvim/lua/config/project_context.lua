@@ -1,3 +1,15 @@
+-- A project context separates where configuration comes from from where the
+-- project actually runs.
+--
+-- In particular, inherited worktree configuration must never replace the
+-- effective runtime root:
+--
+--   config_path  = /src/project/.nvim/project.json
+--   project_root = /src/worktrees/feature
+--
+-- Commands, sessions, relative file settings and subproject roots use the
+-- effective project_root.
+
 local M = {}
 
 local paths = require("config.lib.path")
