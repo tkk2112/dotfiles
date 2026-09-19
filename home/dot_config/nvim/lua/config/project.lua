@@ -1,5 +1,12 @@
--- Explicit project system: a project is a directory containing .nvim/.
--- Subprojects are scopes declared by the root project's .nvim/project.json.
+-- Project instances are resolved through config.project_context.
+--
+-- A project definition may be:
+--   - checked into the project under .nvim/project.json
+--   - registered from an external machine-local config
+--   - inherited by a Git worktree from its main checkout
+--
+-- The effective runtime root is kept separate from the definition source.
+-- Subprojects are scopes beneath that effective root.
 
 local M = {}
 

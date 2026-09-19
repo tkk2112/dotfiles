@@ -1,6 +1,9 @@
--- Subprojects are scopes owned by a real project.
--- They are declared by the root project config and are never discovered
--- as projects themselves.
+-- Subprojects are scopes owned by a project instance.
+--
+-- Their roots are resolved relative to the effective runtime project root,
+-- while their configuration may come from another definition source. This is
+-- what lets a Git worktree inherit the main checkout's project.json without
+-- accidentally making the main checkout its runtime root.
 
 local M = {}
 
