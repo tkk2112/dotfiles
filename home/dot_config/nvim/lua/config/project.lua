@@ -11,6 +11,7 @@ local project_definition = require("config.project_definition")
 local project_index = require("config.project_index")
 local project_scope = require("config.project_scope")
 local project_sessions = require("config.project_sessions")
+local project_manager = require("config.project_manager")
 
 local project_marker = ".nvim"
 local project_config = "project.json"
@@ -779,33 +780,7 @@ end
 -- Project and scope pickers -------------------------------------------------------
 
 function M.pick()
-  local projects = project_index.projects()
-
-  if vim.tbl_isempty(projects) then
-    vim.notify("No projects yet. Use <leader>pA to add the current directory.", vim.log.levels.WARN)
-    return
-  end
-
-  local contexts = {}
-
-  for _, project in ipairs(projects) do
-    local name = vim.fn.fnamemodify(project.root, ":t")
-
-    table.insert(contexts, {
-      project_root = project.root,
-      display = string.format("%s  %s", name, project.root),
-    })
-
-    for _, subproject in ipairs(project_scope.list(project.root)) do
-      table.insert(contexts, {
-        project_root = project.root,
-        subproject = subproject.name,
-        display = string.format("  └─ %s  %s", subproject.name, subproject.relative_root),
-      })
-    end
-  end
-
-  run_context_picker(contexts, "Projects> ", switch_context)
+  project_manager.pick(switch_context)
 end
 
 function M.pick_scope()
