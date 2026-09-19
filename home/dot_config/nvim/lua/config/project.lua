@@ -12,6 +12,7 @@ local project_index = require("config.project_index")
 local project_scope = require("config.project_scope")
 local project_sessions = require("config.project_sessions")
 local project_manager = require("config.project_manager")
+local project_env = require("config.project_env")
 
 local project_marker = ".nvim"
 local project_config = "project.json"
@@ -896,6 +897,7 @@ end
 
 function M.setup()
   file_mru.setup()
+  project_env.setup()
 
   -- Resolve the initial scope before project_sessions handles VimEnter. This
   -- lets starting Neovim from inside a configured subproject restore that
