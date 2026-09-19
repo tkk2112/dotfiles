@@ -3,6 +3,8 @@ local M = {}
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
 
+local project_worktree = require("config.project_worktree")
+
 local index_file = vim.fs.joinpath(vim.fn.stdpath("data"), "project", "index.json")
 local legacy_file = vim.fs.joinpath(vim.fn.stdpath("data"), "projects.json")
 
@@ -440,6 +442,12 @@ function M.scan()
 
     if record.project_root ~= record.root and not indexed[record.project_root] then
       table.insert(issues, "missing-project")
+    end
+
+    if record.kind == "worktree" and vim.fn.isdirectory(record.root) == 1 then
+      if not project_worktree.is_linked(record.root) then
+        table.insert(issues, "worktree-stale")
+      end
     end
 
     table.insert(result, {

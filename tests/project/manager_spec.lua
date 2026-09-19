@@ -89,7 +89,7 @@ describe("project manager", function()
     end)
   end)
 
-  it("marks worktree project instances", function()
+  it("marks stale worktree project instances", function()
     with_tmpdir(function(tmp)
       local root = mkdir(vim.fs.joinpath(tmp, "worktree"))
 
@@ -105,7 +105,7 @@ describe("project manager", function()
       local entries = manager.entries()
 
       assert.are.equal(1, #entries)
-      assert.is_truthy(entries[1].display:find("[worktree]", 1, true))
+      assert.is_truthy(entries[1].display:find("[worktree, worktree stale]", 1, true))
     end)
   end)
 

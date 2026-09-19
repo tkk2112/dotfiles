@@ -38,6 +38,10 @@ local function status_label(result)
     return "missing"
   end
 
+  if issues["worktree-stale"] then
+    return "worktree stale"
+  end
+
   if issues["missing-config"] then
     return "config missing"
   end
@@ -83,38 +87,47 @@ end
 
 local function project_entry(record, scans)
   local name = vim.fn.fnamemodify(record.root, ":t")
+  local scan = scans[record.root]
 
   return {
     record = record,
+    scan = scan,
+
     project_root = record.project_root,
     subproject = nil,
 
-    display = string.format("%s%s  %s", name, badges(record, scans[record.root]), record.root),
+    display = string.format("%s%s  %s", name, badges(record, scan), record.root),
   }
 end
 
 local function subproject_entry(project, record, scans)
   local name = record.name or vim.fn.fnamemodify(record.root, ":t")
   local relative = paths.relative(record.root, project.root) or record.root
+  local scan = scans[record.root]
 
   return {
     record = record,
+    scan = scan,
+
     project_root = record.project_root,
     subproject = record.name,
 
-    display = string.format("  └─ %s%s  %s", name, badges(record, scans[record.root]), relative),
+    display = string.format("  └─ %s%s  %s", name, badges(record, scan), relative),
   }
 end
 
 local function orphan_entry(record, scans)
   local name = record.name or vim.fn.fnamemodify(record.root, ":t")
+  local scan = scans[record.root]
 
   return {
     record = record,
+    scan = scan,
+
     project_root = record.project_root,
     subproject = record.name,
 
-    display = string.format("? %s%s  %s", name, badges(record, scans[record.root]), record.root),
+    display = string.format("? %s%s  %s", name, badges(record, scan), record.root),
   }
 end
 
@@ -149,8 +162,6 @@ local function statistics(entries)
   local scopes = 0
   local stale = 0
 
-  local scans = scan_by_root()
-
   for _, entry in ipairs(entries) do
     local record = entry.record
 
@@ -160,9 +171,7 @@ local function statistics(entries)
       scopes = scopes + 1
     end
 
-    local scan = scans[record.root]
-
-    if scan and scan.status ~= "ok" then
+    if entry.scan and entry.scan.status ~= "ok" then
       stale = stale + 1
     end
   end
