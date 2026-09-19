@@ -1,5 +1,5 @@
 -- Subprojects are scopes owned by a real project.
--- They are declared by the root .nvim/project.json and are never discovered
+-- They are declared by the root project config and are never discovered
 -- as projects themselves.
 
 local M = {}
@@ -50,18 +50,49 @@ local function read_project_config(root)
   return type(config) == "table" and config or {}
 end
 
-local function resolve_project_relative(root, value)
+local function resolve_relative(root, value)
   if type(value) ~= "string" or value == "" or paths.is_absolute(value) then
     return nil
   end
 
-  local resolved = paths.absolute(root .. "/" .. value)
+  local resolved = paths.absolute(vim.fs.joinpath(root, value))
 
   if not resolved or not paths.is_within(resolved, root) then
     return nil
   end
 
   return resolved
+end
+
+local function config_source(project_root)
+  local config_path = project_config_path(project_root)
+
+  if not config_path then
+    return project_root, paths.absolute(vim.fs.joinpath(project_root, project_marker))
+  end
+
+  local config_dir = vim.fs.dirname(config_path)
+
+  -- A normal .nvim/project.json may live in another checkout when a worktree
+  -- inherits its project definition. Scope roots remain relative to the
+  -- effective runtime root, while scope config files remain relative to the
+  -- checkout that owns the inherited definition.
+  if
+    vim.fs.basename(config_path) == project_config
+    and config_dir
+    and vim.fs.basename(config_dir) == project_marker
+  then
+    local source_root = vim.fs.dirname(config_dir)
+
+    if source_root then
+      return paths.real(source_root), paths.absolute(config_dir)
+    end
+  end
+
+  -- Preserve the existing behavior for external project definitions. Their
+  -- subproject roots belong to the effective project, and explicit scope
+  -- configs are still constrained to that project's .nvim directory.
+  return project_root, paths.absolute(vim.fs.joinpath(project_root, project_marker))
 end
 
 local function normalize_subproject(project_root, name, spec)
@@ -74,7 +105,7 @@ local function normalize_subproject(project_root, name, spec)
   end
 
   local relative_root = spec.root
-  local root = resolve_project_relative(project_root, relative_root)
+  local root = resolve_relative(project_root, relative_root)
 
   if not root or not directory_exists(root) then
     return nil
@@ -83,12 +114,17 @@ local function normalize_subproject(project_root, name, spec)
   root = paths.real(root)
 
   local relative_config = spec.config or string.format("%s/subprojects/%s.json", project_marker, name)
+  local source_root, config_root = config_source(project_root)
 
-  local config_path = resolve_project_relative(project_root, relative_config)
-  local config_root = paths.absolute(project_root .. "/" .. project_marker)
+  if not source_root or not config_root then
+    return nil
+  end
 
-  -- Scope configuration belongs to the parent project and must remain under
-  -- its top-level .nvim directory.
+  local config_path = resolve_relative(source_root, relative_config)
+
+  -- Scope configuration belongs to the definition source and must remain under
+  -- its .nvim directory. For inherited worktrees this is deliberately the main
+  -- checkout, not the effective worktree root.
   if not config_path or not paths.is_within(config_path, config_root) then
     return nil
   end
@@ -98,7 +134,7 @@ local function normalize_subproject(project_root, name, spec)
     root = root,
     relative_root = paths.relative(root, project_root) or relative_root,
     config_path = config_path,
-    relative_config = paths.relative(config_path, project_root) or relative_config,
+    relative_config = paths.relative(config_path, source_root) or relative_config,
   }
 end
 
@@ -185,8 +221,6 @@ function M.find(project_root, value)
 
   for _, subproject in ipairs(M.list(project_root)) do
     if paths.is_within(value, subproject.root) then
-      -- This also makes flat registration work correctly if we later allow
-      -- nested subproject scopes: the most specific containing scope wins.
       if not best or #subproject.root > #best.root then
         best = subproject
       end
