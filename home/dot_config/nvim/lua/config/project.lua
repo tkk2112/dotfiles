@@ -549,29 +549,48 @@ local function switch_context(context)
 
     if not session_root then
       vim.notify("Could not resolve selected project scope", vim.log.levels.ERROR)
+
       return
     end
 
-    local result = project_sessions.switch(session_root)
+    -- Load the target environment before restoring its session. This keeps
+    -- PATH/toolchain variables available when buffers, LSPs and project
+    -- commands belonging to the target project are initialized.
+    --
+    -- project_env.update() is genuinely asynchronous: Neovim remains fully
+    -- interactive while a slow .envrc is evaluated.
+    project_env.update(session_root, function(environment_ok)
+      if not environment_ok then
+        vim.notify("Project switch stopped because direnv failed", vim.log.levels.ERROR)
 
-    if not result then
-      return
-    end
+        return
+      end
 
-    active_project = paths.real(context.project_root)
-    touch_project(active_project)
+      vim.schedule(function()
+        local result = project_sessions.switch(session_root)
 
-    -- project_sessions.switch() already restored the context cwd. Do not
-    -- overwrite a cwd saved in the session; only update the selected scope.
-    if not select_scope(context.project_root, context.subproject, {
-      change_directory = false,
-    }) then
-      return
-    end
+        if not result then
+          return
+        end
 
-    if result == "new" or result == "current" then
-      M.find_files()
-    end
+        active_project = paths.real(context.project_root)
+        touch_project(active_project)
+
+        -- project_sessions.switch() already restored the context cwd. Do not
+        -- overwrite a cwd saved in the session; only update the selected scope.
+        if
+          not select_scope(context.project_root, context.subproject, {
+            change_directory = false,
+          })
+        then
+          return
+        end
+
+        if result == "new" or result == "current" then
+          M.find_files()
+        end
+      end)
+    end)
   end)
 end
 
