@@ -4,7 +4,7 @@ version: "1.0"
 
 fileignoreconfig:
   - filename: home/.ignored-ssh.yaml.age
-    checksum: 6ed7b5276333bc4f9eaf2d23ac4b3ed63e0d0ff22f3e09a90ba7ad6557b2955a
+    checksum: 0219ccefc0ba7d4d69ab7b40c9bddd80dc54965ac0e41ba7786faf92a7ec73c7
 
   - filename: home/private_dot_ssh/conf.d/encrypted_10-specific.conf.tmpl.age
     checksum: 06e3cee6e156a840a202b148b2e2151f80632deccec853fb85d0be95407c21f1
