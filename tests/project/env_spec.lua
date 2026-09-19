@@ -41,6 +41,22 @@ local function write_executable(path, contents)
   vim.fn.setfperm(path, "rwxr-xr-x")
 end
 
+local function update_env(cwd, options)
+  local done = false
+  local result
+
+  project_env.update(cwd, options, function(ok)
+    result = ok
+    done = true
+  end)
+
+  assert.is_true(vim.wait(5000, function()
+    return done
+  end, 10))
+
+  return result
+end
+
 describe("project environment", function()
   it("applies environment variables returned by direnv", function()
     with_tmpdir(function(tmp)
@@ -61,7 +77,7 @@ describe("project environment", function()
         vim.env.PROJECT_ENV_TEST = nil
         vim.env.PROJECT_ENV_NUMBER = nil
 
-        assert.is_true(project_env.update(tmp))
+        assert.is_true(update_env(tmp))
 
         assert.are.equal("enabled", vim.env.PROJECT_ENV_TEST)
         assert.are.equal("42", vim.env.PROJECT_ENV_NUMBER)
@@ -86,7 +102,7 @@ describe("project environment", function()
         vim.env.PATH = bin .. ":" .. (vim.env.PATH or "")
         vim.env.PROJECT_ENV_REMOVE = "old"
 
-        assert.is_true(project_env.update(tmp))
+        assert.is_true(update_env(tmp))
         assert.is_nil(vim.env.PROJECT_ENV_REMOVE)
       end)
     end)
@@ -114,7 +130,7 @@ describe("project environment", function()
         vim.env.PATH = bin .. ":" .. (vim.env.PATH or "")
         vim.env.PROJECT_ENV_CWD = nil
 
-        assert.is_true(project_env.update(project))
+        assert.is_true(update_env(project))
         assert.are.equal(project, vim.env.PROJECT_ENV_CWD)
       end)
     end)
@@ -128,7 +144,7 @@ describe("project environment", function()
       vim.env.PATH = ""
       vim.env.PROJECT_ENV_UNCHANGED = "keep"
 
-      assert.is_true(project_env.update())
+      assert.is_true(update_env())
       assert.are.equal("keep", vim.env.PROJECT_ENV_UNCHANGED)
     end)
   end)
@@ -150,7 +166,7 @@ describe("project environment", function()
         vim.env.PATH = bin .. ":" .. (vim.env.PATH or "")
         vim.env.PROJECT_ENV_FAILED = "keep"
 
-        assert.is_false(project_env.update(tmp))
+        assert.is_false(update_env(tmp))
         assert.are.equal("keep", vim.env.PROJECT_ENV_FAILED)
       end)
     end)
@@ -182,6 +198,10 @@ describe("project environment", function()
 
         project_env.setup()
         vim.api.nvim_set_current_dir(project)
+
+        assert.is_true(vim.wait(5000, function()
+          return vim.env.PROJECT_ENV_DIR_CHANGED == project
+        end, 10))
 
         assert.are.equal(project, vim.env.PROJECT_ENV_DIR_CHANGED)
 
@@ -217,7 +237,7 @@ describe("project environment", function()
 
         assert.are.equal(0, vim.fn.filereadable(marker))
 
-        assert.is_true(project_env.update(project))
+        assert.is_true(update_env(project))
 
         -- Commands executed while direnv evaluates the environment have normal
         -- filesystem/process side effects even though evaluation happens in a
@@ -226,6 +246,106 @@ describe("project environment", function()
 
         -- Only exported environment state is imported back into Neovim.
         assert.are.equal("ready", vim.env.PROJECT_ENV_SETUP)
+      end)
+    end)
+  end)
+
+  it("shows progress for a slow direnv evaluation", function()
+    with_tmpdir(function(tmp)
+      local project = vim.fs.joinpath(tmp, "project")
+      local bin = vim.fs.joinpath(tmp, "bin")
+
+      vim.fn.mkdir(project, "p")
+      vim.fn.mkdir(bin, "p")
+
+      project = assert(paths.real(project))
+
+      write_executable(vim.fs.joinpath(bin, "direnv"), {
+        "#!/bin/sh",
+        [[printf '%s\n' 'Preparing project environment...' >&2]],
+        [[sleep 0.7]],
+        [[printf '%s\n' '{"PROJECT_ENV_SLOW":"ready"}']],
+      })
+
+      with_env({
+        "PATH",
+        "PROJECT_ENV_SLOW",
+      }, function()
+        vim.env.PATH = bin .. ":" .. (vim.env.PATH or "")
+        vim.env.PROJECT_ENV_SLOW = nil
+
+        local saw_progress = false
+        local saw_output = false
+
+        vim.defer_fn(function()
+          for _, win in ipairs(vim.api.nvim_list_wins()) do
+            local bufnr = vim.api.nvim_win_get_buf(win)
+
+            if vim.b[bufnr].project_direnv_progress then
+              saw_progress = true
+
+              local contents = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
+
+              saw_output = contents:find("Preparing project environment...", 1, true) ~= nil
+
+              break
+            end
+          end
+        end, 500)
+
+        assert.is_true(update_env(project))
+
+        assert.is_true(saw_progress)
+        assert.is_true(saw_output)
+        assert.are.equal("ready", vim.env.PROJECT_ENV_SLOW)
+      end)
+    end)
+  end)
+
+  it("does not display exported environment values in the progress window", function()
+    with_tmpdir(function(tmp)
+      local project = vim.fs.joinpath(tmp, "project")
+      local bin = vim.fs.joinpath(tmp, "bin")
+
+      vim.fn.mkdir(project, "p")
+      vim.fn.mkdir(bin, "p")
+
+      project = assert(paths.real(project))
+
+      write_executable(vim.fs.joinpath(bin, "direnv"), {
+        "#!/bin/sh",
+        [[printf '%s\n' 'Loading environment...' >&2]],
+        [[sleep 0.7]],
+        [[printf '%s\n' '{"PROJECT_ENV_SECRET":"super-secret-value"}']],
+      })
+
+      with_env({
+        "PATH",
+        "PROJECT_ENV_SECRET",
+      }, function()
+        vim.env.PATH = bin .. ":" .. (vim.env.PATH or "")
+        vim.env.PROJECT_ENV_SECRET = nil
+
+        local leaked = false
+
+        vim.defer_fn(function()
+          for _, win in ipairs(vim.api.nvim_list_wins()) do
+            local bufnr = vim.api.nvim_win_get_buf(win)
+
+            if vim.b[bufnr].project_direnv_progress then
+              local contents = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
+
+              leaked = contents:find("super-secret-value", 1, true) ~= nil
+
+              break
+            end
+          end
+        end, 500)
+
+        assert.is_true(update_env(project))
+
+        assert.is_false(leaked)
+        assert.are.equal("super-secret-value", vim.env.PROJECT_ENV_SECRET)
       end)
     end)
   end)
