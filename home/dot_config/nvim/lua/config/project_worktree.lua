@@ -196,4 +196,10 @@ function M.info(value)
   }
 end
 
+function M.is_linked(value)
+  local info = M.info(value)
+
+  return info ~= nil and info.linked == true
+end
+
 return M
