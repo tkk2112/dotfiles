@@ -7,7 +7,6 @@ packages:
     copr:
       - atim/gping
       - dejan/lazygit
-      - gsauthof/dracut-sshd
       - kylegospo/grub-btrfs
       - scottames/ghostty
 
@@ -256,9 +255,6 @@ packages:
     - name: dnsutils
       group: server
       managers: [apt]
-    - name: dracut-sshd
-      group: server
-      managers: [dnf]
     - name: moreutils
       group: server
       managers: [apt, dnf]
