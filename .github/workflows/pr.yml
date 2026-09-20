@@ -72,7 +72,7 @@ jobs:
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: ${{ matrix.profiles }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./scripts/ci-install.sh
+        run: ./scripts/ci-test.sh
 
   install-macos:
     needs: check
@@ -87,7 +87,7 @@ jobs:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
           DOTFILES_PROFILES: workstation,laptop,development,owned
-        run: ./scripts/ci-install.sh
+        run: ./scripts/ci-test.sh
 
   test:
     name: test

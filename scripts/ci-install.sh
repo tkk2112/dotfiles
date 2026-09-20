@@ -53,13 +53,18 @@ else
 
     if command -v apt-get >/dev/null 2>&1; then
       run apt-get update
-      run env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@" build-essential
+      run env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        "$@" \
+        build-essential \
+        python3 \
+        libreadline-dev \
+        unzip
     elif command -v dnf >/dev/null 2>&1; then
-      run dnf install -y "$@"
+      run dnf install -y "$@" python3 readline-devel
     elif command -v apk >/dev/null 2>&1; then
       run apk add --no-cache "$@"
     elif command -v pacman >/dev/null 2>&1; then
-      run pacman -Sy --noconfirm --needed "$@"
+      run pacman -Sy --noconfirm --needed "$@" python readline
     else
       printf 'Unsupported package manager\n' >&2
       exit 1
