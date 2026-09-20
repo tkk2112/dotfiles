@@ -27,6 +27,44 @@ set -g extended-keys-format csi-u
 set -g xterm-keys on
 set -s set-clipboard on
 
+# If this tmux itself runs inside another tmux, advertise the navigation
+# capabilities of the complete subtree to the parent.
+#
+# A direction is available when either:
+#
+#   1. the active child can move in that direction, or
+#   2. this tmux has another pane in that direction.
+#
+# This makes navigation recursively bubble through:
+#
+#   Neovim -> inner tmux -> outer tmux
+
+if-shell 'case "$TERM" in tmux-*) exit 0 ;; *) exit 1 ;; esac' {
+  set -g set-titles on
+
+  set -g set-titles-string \
+    'dotmux/1:L#{?pane_at_left,#{m:dotmux/1:L1*,#{pane_title}},1}D#{?pane_at_bottom,#{m:dotmux/1:*D1*,#{pane_title}},1}U#{?pane_at_top,#{m:dotmux/1:*U1*,#{pane_title}},1}R#{?pane_at_right,#{m:dotmux/1:*R1,#{pane_title}},1}'
+}
+
+# Manual passthrough escape hatch.
+#
+# F10 disables the current tmux prefix and key table so keys go straight to
+# the child. F10 remains captured by this tmux and restores normal operation.
+
+bind -n F10 \
+  set prefix None \; \
+  set key-table off \; \
+  set -w window-style "fg=$THEME_MUTED" \; \
+  refresh-client -S \; \
+  display-message "Outer tmux passthrough: ON"
+
+bind -T off F10 \
+  set -u prefix \; \
+  set -u key-table \; \
+  set -wu window-style \; \
+  refresh-client -S \; \
+  display-message "Outer tmux passthrough: OFF"
+
 # Behavior
 set -g base-index 1
 setw -g pane-base-index 1
@@ -74,17 +112,51 @@ bind [ copy-mode
 bind ] paste-buffer
 bind m set -gF mouse "#{?mouse,off,on}" \; display-message "#{?mouse,Mouse: ON,Mouse: OFF}"
 
-# Neovim-aware navigation
-is_vim="ps -o state= -o comm= -t '#{pane_tty}' | grep -iqE '^[^TXZ ]+ +(\\S+/)?g?\\.?(view|l?n?vim?x?|fzf)(diff)?(-wrapped)?$'"
+# Recursive pane navigation
+#
+# A managed child publishes:
+#
+#   dotmux/1:L1D0U0R1
+#
+# Each bit describes whether that child can consume navigation in that
+# direction. tmux forwards inward while the child can move, otherwise tmux
+# handles the movement itself.
 
-bind Left  if-shell "$is_vim" "send-keys C-a Left"  "select-pane -L"
-bind Down  if-shell "$is_vim" "send-keys C-a Down"  "select-pane -D"
-bind Up    if-shell "$is_vim" "send-keys C-a Up"    "select-pane -U"
-bind Right if-shell "$is_vim" "send-keys C-a Right" "select-pane -R"
+bind Left \
+  if-shell -F '#{m:dotmux/1:L1*,#{pane_title}}' \
+  'send-keys C-a Left' \
+  'select-pane -L'
 
-bind v if-shell "$is_vim" 'send-keys C-a v' 'split-window -h -c "#{pane_current_path}"'
-bind s if-shell "$is_vim" 'send-keys C-a s' 'split-window -v -c "#{pane_current_path}"'
-bind x if-shell "$is_vim" 'send-keys C-a x' 'confirm-before -p "kill-pane #P? (y/n)" kill-pane'
+bind Down \
+  if-shell -F '#{m:dotmux/1:*D1*,#{pane_title}}' \
+  'send-keys C-a Down' \
+  'select-pane -D'
+
+bind Up \
+  if-shell -F '#{m:dotmux/1:*U1*,#{pane_title}}' \
+  'send-keys C-a Up' \
+  'select-pane -U'
+
+bind Right \
+  if-shell -F '#{m:dotmux/1:*R1,#{pane_title}}' \
+  'send-keys C-a Right' \
+  'select-pane -R'
+
+# Splitting and closing belong to the innermost managed layer.
+bind v \
+  if-shell -F '#{m:dotmux/1:*,#{pane_title}}' \
+  'send-keys C-a v' \
+  'split-window -h -c "#{pane_current_path}"'
+
+bind s \
+  if-shell -F '#{m:dotmux/1:*,#{pane_title}}' \
+  'send-keys C-a s' \
+  'split-window -v -c "#{pane_current_path}"'
+
+bind x \
+  if-shell -F '#{m:dotmux/1:*,#{pane_title}}' \
+  'send-keys C-a x' \
+  'confirm-before -p "kill-pane #P? (y/n)" kill-pane'
 
 # Theme
 %hidden TMUX_STATUS_STYLE="fg=$THEME_FG_DIM,bg=$THEME_SURFACE"
@@ -145,7 +217,7 @@ wg_date="#[fg=$THEME_MUTED]%a %d %b #[fg=$THEME_FG_DIM]%H:%M#[default]"
 wg_battery="#{battery_status_fg}#{battery_icon} #{battery_percentage}%#[default]"
 {{ end }}
 wg_is_zoomed="#[fg=$THEME_BG,bg=$THEME_PURPLE,bold]#{?window_zoomed_flag, ZOOM ,}#[default]"
-wg_is_keys_off="#[fg=$THEME_BG,bg=$THEME_RED,bold]#([ \"$(tmux show-option -qv key-table)\" = 'off' ] && printf ' REMOTE SESSION ')#[default]"
+wg_is_keys_off="#[fg=$THEME_BG,bg=$THEME_RED,bold]#([ \"$(tmux show-option -qv key-table)\" = 'off' ] && printf ' PASSTHROUGH ')#[default]"
 
 set -g status-right \
   "#{prefix_highlight} $wg_is_keys_off $wg_is_zoomed #{sysstat_cpu} $wg_separator #{sysstat_mem} $wg_separator #{sysstat_loadavg} $wg_separator $wg_date{{ if $laptop }} $wg_separator $wg_battery{{ end }} #{online_status}"

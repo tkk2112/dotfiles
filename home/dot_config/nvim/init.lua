@@ -26,4 +26,5 @@ require("config.theme_dev").setup()
 require("config.quickfix_watch").setup()
 require("config.zsh_diagnostics").setup()
 
+require("config.tmux_nav").setup()
 require("config.keymaps").setup()
