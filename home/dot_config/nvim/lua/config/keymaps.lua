@@ -169,6 +169,9 @@ function M.setup()
   -- Files and buffers
   map("n", "<leader>ww", "<cmd>write<cr>", { desc = "Write current file" })
   map("n", "<leader>wa", autosave.save_all, { desc = "Write all modified files" })
+  map("n", "<leader>wW", "<cmd>SaveWithoutFormat<cr>", {
+    desc = "Save without formatting",
+  })
   map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
   map("n", "<leader>bn", cycle_buffer("BufferLineCycleNext"), { desc = "Next buffer" })
   map("n", "<leader>bp", cycle_buffer("BufferLineCyclePrev"), { desc = "Previous buffer" })

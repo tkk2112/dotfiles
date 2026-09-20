@@ -5,6 +5,32 @@ local M = {}
 
 local buffer = require("config.lib.buffer")
 
+local function trim_trailing_whitespace(bufnr)
+  vim.api.nvim_buf_call(bufnr, function()
+    local view = vim.fn.winsaveview()
+
+    vim.cmd([[silent! keeppatterns %s/\s\+$//e]])
+
+    vim.fn.winrestview(view)
+  end)
+end
+
+local function save_without_format()
+  vim.b.skip_save_actions = true
+
+  local ok, err = pcall(vim.cmd.write)
+
+  vim.b.skip_save_actions = nil
+
+  if not ok then
+    error(err)
+  end
+end
+
+vim.api.nvim_create_user_command("SaveWithoutFormat", save_without_format, {
+  desc = "Save without format or other pre-save modifications",
+})
+
 local function buffer_dir(bufnr)
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
@@ -277,7 +303,12 @@ function M.setup()
   vim.api.nvim_create_autocmd("BufWritePre", {
     group = group,
     callback = function(event)
+      if vim.b[event.buf].skip_save_actions then
+        return
+      end
+
       M.format_on_save(event.buf)
+      trim_trailing_whitespace(event.buf)
     end,
   })
 end
