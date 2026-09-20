@@ -14,7 +14,6 @@ local paths = require("config.lib.path")
 local session_directory = vim.fs.normalize(vim.fn.stdpath("state") .. "/project-sessions")
 
 local project_sessionoptions = table.concat({
-  "blank",
   "buffers",
   "curdir",
   "folds",

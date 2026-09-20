@@ -3,6 +3,7 @@ local M = {}
 local map = vim.keymap.set
 
 local autosave = require("config.autosave")
+local buffers = require("config.lib.buffer")
 local format = require("config.format")
 local project = require("config.project")
 local project_settings = require("config.project_settings")
@@ -80,23 +81,6 @@ local function cycle_buffer(command)
   end
 end
 
-local function is_jump_noise_buffer(bufnr)
-  if vim.bo[bufnr].buftype ~= "" then
-    return true
-  end
-
-  return vim.tbl_contains({
-    "NvimTree",
-    "grug-far",
-    "help",
-    "lazy",
-    "mason",
-    "oil",
-    "qf",
-    "trouble",
-  }, vim.bo[bufnr].filetype)
-end
-
 local function jump_filtered(direction)
   local keys = direction == "back" and "<C-o>" or "<C-i>"
 
@@ -104,7 +88,7 @@ local function jump_filtered(direction)
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), "n", false)
     vim.cmd("redraw")
 
-    if not is_jump_noise_buffer(vim.api.nvim_get_current_buf()) then
+    if not buffers.is_transient(vim.api.nvim_get_current_buf()) then
       return
     end
   end
@@ -126,7 +110,7 @@ local function save_modified_file_buffers()
     local bufnr = buffer.bufnr
 
     -- Ignore terminal, quickfix, prompt, help, and plugin scratch buffers.
-    if vim.bo[bufnr].buftype == "" then
+    if not buffers.is_transient(bufnr) then
       if buffer.name == "" then
         table.insert(unsaved, {
           bufnr = bufnr,
