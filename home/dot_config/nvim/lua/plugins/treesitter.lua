@@ -53,37 +53,20 @@ local languages = {
   "markdown_inline",
 }
 
--- These provide shared query files rather than standalone parsers.
---
--- JavaScript inherits from ecma and jsx. HTML-related queries may inherit
--- from html_tags. Installing them explicitly prevents incomplete query sets
--- on a new machine or after registry changes.
-local query_dependencies = {
-  "ecma",
-  "html_tags",
-  "jsx",
-}
-
-local install_targets = vim.list_extend(vim.deepcopy(languages), query_dependencies)
-
 return {
   {
-    "neovim-treesitter/nvim-treesitter",
+    "nvim-treesitter/nvim-treesitter",
+    branch = "main",
 
-    dependencies = {
-      "neovim-treesitter/treesitter-parser-registry",
-    },
-
-    -- The current nvim-treesitter rewrite does not support lazy-loading.
     lazy = false,
 
     build = function()
       local treesitter = require("nvim-treesitter")
 
-      -- Install anything missing, then update already-installed parsers and
-      -- query packages. The longer timeout accommodates clean CI installs.
-      treesitter.install(install_targets):wait(600000)
-      treesitter.update(install_targets):wait(600000)
+      -- Install anything missing, then update already-installed parsers.
+      -- The longer timeout accommodates clean CI installs.
+      treesitter.install(languages):wait(600000)
+      treesitter.update(languages):wait(600000)
     end,
 
     config = function()
@@ -92,8 +75,6 @@ return {
       -- XSLT uses the XML parser.
       vim.treesitter.language.register("xml", "xslt")
 
-      -- Start Tree-sitter for any filetype with an installed parser. Missing
-      -- parsers are ignored so uncommon filetypes still open normally.
       vim.api.nvim_create_autocmd("FileType", {
         group = group,
         pattern = "*",

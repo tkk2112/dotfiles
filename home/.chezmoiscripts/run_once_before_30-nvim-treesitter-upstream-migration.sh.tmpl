@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+treesitter_dir="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/site"
+
+if [ -d "$treesitter_dir/parser" ] || [ -d "$treesitter_dir/queries" ]; then
+  echo "Migrating nvim-treesitter state to upstream layout"
+
+  rm -rf \
+    "$treesitter_dir/parser" \
+    "$treesitter_dir/parser-info" \
+    "$treesitter_dir/queries"
+fi
