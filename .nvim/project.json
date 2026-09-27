@@ -10,6 +10,10 @@
     "save_on_focus": true,
     "format_on_save": true
   },
+  "llm": {
+    "enabled": true,
+    "backend": "codex"
+  },
   "languages": {
     "lua": {
       "format_on_save": true

@@ -15,6 +15,8 @@ end)
 project_settings.setup()
 project.setup()
 
+require("config.llm").setup()
+
 require("config.autosave").setup()
 require("config.format").setup()
 require("config.lsp_ui").setup()

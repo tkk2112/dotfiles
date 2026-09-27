@@ -5,6 +5,7 @@ local map = vim.keymap.set
 local autosave = require("config.autosave")
 local buffers = require("config.lib.buffer")
 local format = require("config.format")
+local llm = require("config.llm")
 local project = require("config.project")
 local project_settings = require("config.project_settings")
 local search = require("config.search")
@@ -268,6 +269,31 @@ function M.setup()
   map("i", "<C-Right>", "<C-o>w", { desc = "Word right" })
   map("n", "<PageUp>", "<C-u>", { desc = "Scroll half page up" })
   map("n", "<PageDown>", "<C-d>", { desc = "Scroll half page down" })
+
+  -- LLM
+  map("n", "<leader>mm", llm.toggle, {
+    desc = "Toggle LLM",
+  })
+
+  map({ "n", "x" }, "<leader>ma", llm.ask, {
+    desc = "Ask LLM",
+  })
+
+  map({ "n", "x" }, "<leader>mc", llm.add_context, {
+    desc = "Add LLM context",
+  })
+
+  map("n", "<leader>md", llm.diagnostics, {
+    desc = "LLM diagnostics",
+  })
+
+  map("n", "<leader>mb", llm.pick_backend, {
+    desc = "Pick LLM backend",
+  })
+
+  map("n", "<leader>ms", llm.status, {
+    desc = "LLM status",
+  })
 
   -- tmux integration
   map_tmux_nav("n", "<C-a><Left>", "left")
