@@ -15,6 +15,7 @@ return {
         { "<leader>f", group = "file/find" },
         { "<leader>g", group = "git" },
         { "<leader>l", group = "lsp" },
+        { "<leader>m", group = "llm", mode = { "n", "x" } },
         { "<leader>p", group = "project" },
         { "<leader>r", group = "reload" },
         { "<leader>s", group = "search" },

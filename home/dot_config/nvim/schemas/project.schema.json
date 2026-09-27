@@ -41,6 +41,9 @@
     "lsp": {
       "$ref": "#/$defs/lsp"
     },
+    "llm": {
+      "$ref": "#/$defs/llm"
+    },
     "subprojects": {
       "$ref": "#/$defs/subprojects"
     }
@@ -279,6 +282,33 @@
       },
       "additionalProperties": {
         "$ref": "#/$defs/subproject"
+      }
+    },
+    "llm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Allow explicit LLM interaction for this project or scope."
+        },
+        "backend": {
+          "type": "string",
+          "enum": [
+            "codex",
+            "claude"
+          ],
+          "description": "Default LLM CLI backend."
+        },
+        "instructions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Instruction files relative to the project or subproject root."
+        }
       }
     }
   }
