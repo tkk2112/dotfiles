@@ -10,35 +10,84 @@ local backends = {
   codex = {
     agent = "codex",
     command = "codex",
+    description = "OpenAI Codex CLI",
+
+    -- Interactive CodeCompanion session.
     args = {
       "--sandbox",
       "read-only",
       "--ask-for-approval",
       "never",
     },
-    description = "OpenAI Codex CLI",
+
+    -- Sterile one-shot execution used for future buffer/scratch operations.
+    structured_args = {
+      "--sandbox",
+      "read-only",
+      "--ask-for-approval",
+      "never",
+
+      -- Explicitly disable hosted web search for the one-shot path.
+      "-c",
+      'web_search="disabled"',
+
+      "exec",
+      "--ephemeral",
+      "--ignore-user-config",
+      "--ignore-rules",
+      "--skip-git-repo-check",
+      "--json",
+      "-",
+    },
+
+    structured_output = "codex-jsonl",
   },
 
   claude = {
     agent = "claude_code",
     command = "claude",
+    description = "Claude Code CLI",
+
+    -- Interactive CodeCompanion session.
     args = {
       "--permission-mode",
       "dontAsk",
     },
-    description = "Claude Code CLI",
+
+    -- Sterile one-shot execution.
+    --
+    -- --restricted prevents user/project settings from being used and is
+    -- intended for harness-driven execution. All tools are then removed
+    -- explicitly as a second boundary.
+    structured_args = {
+      "-p",
+      "--restricted",
+      "--tools",
+      "",
+      "--disallowed-tools",
+      "*",
+      "--permission-mode",
+      "dontAsk",
+      "--no-session-persistence",
+      "--output-format",
+      "text",
+
+      -- The actual request is supplied on stdin by vim.system().
+      "Follow the request provided on stdin. Return only the requested result.",
+    },
+
+    structured_output = "text",
   },
 }
 
 -- Session-local backend override, keyed by project/subproject scope.
 local backend_overrides = {}
 
--- Keep a separate CLI conversation per scope and backend:
+-- Interactive CodeCompanion conversations:
 --
 --   cli_sessions[scope_root][agent] = CodeCompanion CLI instance
 --
--- This prevents a Codex/Claude conversation from one project or subproject
--- from being reused in another.
+-- This keeps each backend and project/subproject isolated.
 local cli_sessions = {}
 
 local function table_or_empty(value)
@@ -54,7 +103,6 @@ local function read_config(path)
 
   if err then
     vim.notify("Failed reading LLM project config: " .. path .. "\n" .. err, vim.log.levels.ERROR)
-
     return {}
   end
 
@@ -129,7 +177,7 @@ function M.config()
   local selected = project_scope.selected(project_root)
   local scope_root = selected and selected.root or project_root
 
-  local project_config = project_settings.get_for_root(project_root)
+  local project_config = table_or_empty(project_settings.get_for_root(project_root))
   local scope_config = selected and read_config(selected.config_path) or {}
 
   local project_llm = table_or_empty(project_config.llm)
@@ -205,8 +253,8 @@ local function create_cli_session(config, backend)
   local cwd = paths.real(vim.fn.getcwd())
 
   -- CodeCompanion's terminal provider starts the agent using Neovim's
-  -- current working directory. Refuse to start an agent if that cwd does
-  -- not belong to the scope we think is active.
+  -- current working directory. Refuse to start it if that directory does
+  -- not belong to our selected scope.
   if not cwd or not paths.is_within(cwd, config.scope_root) then
     vim.notify(
       "Current directory is outside the active LLM scope:\n"
@@ -215,11 +263,15 @@ local function create_cli_session(config, backend)
         .. tostring(cwd),
       vim.log.levels.ERROR
     )
-
     return nil
   end
 
-  local cli = require("codecompanion.interactions.cli")
+  local ok, cli = pcall(require, "codecompanion.interactions.cli")
+
+  if not ok then
+    vim.notify("Could not load CodeCompanion CLI integration: " .. tostring(cli), vim.log.levels.ERROR)
+    return nil
+  end
 
   local instance = cli.create({
     agent = backend.agent,
@@ -230,7 +282,6 @@ local function create_cli_session(config, backend)
   end
 
   cli_sessions[config.scope_root] = cli_sessions[config.scope_root] or {}
-
   cli_sessions[config.scope_root][backend.agent] = instance
 
   return instance
@@ -241,7 +292,13 @@ local function get_or_create_cli_session(config, backend)
 end
 
 local function show_backend_cli(config, backend)
-  local cli = require("codecompanion.interactions.cli")
+  local ok, cli = pcall(require, "codecompanion.interactions.cli")
+
+  if not ok then
+    vim.notify("Could not load CodeCompanion CLI integration: " .. tostring(cli), vim.log.levels.ERROR)
+    return nil
+  end
+
   local instance = get_or_create_cli_session(config, backend)
 
   if not instance then
@@ -271,24 +328,33 @@ function M.set_backend(name)
 
   if not backends[name] then
     vim.notify("Unknown LLM backend: " .. tostring(name), vim.log.levels.ERROR)
-
     return
   end
 
   backend_overrides[config.scope_root] = name
 
-  -- Switching backend while an LLM window is visible should immediately
-  -- switch the visible window. Changing backend while everything is hidden
-  -- should not start an agent.
-  if package.loaded.codecompanion then
-    local cli = require("codecompanion.interactions.cli")
+  local available = vim.fn.executable(backends[name].command) == 1
 
-    if cli.get_visible() then
-      show_backend_cli(config, backends[name])
+  -- If another backend is currently visible, hide it. Only start the newly
+  -- selected backend if its executable actually exists.
+  if package.loaded.codecompanion then
+    local ok, cli = pcall(require, "codecompanion.interactions.cli")
+
+    if ok then
+      local visible = cli.get_visible()
+
+      if visible then
+        visible.ui:hide()
+
+        if available then
+          show_backend_cli(config, backends[name])
+        end
+      end
     end
   end
 
-  vim.notify("LLM backend: " .. name, vim.log.levels.INFO)
+  local suffix = available and "" or " (not available)"
+  vim.notify("LLM backend: " .. name .. suffix, vim.log.levels.INFO)
 end
 
 function M.pick_backend()
@@ -301,7 +367,10 @@ function M.pick_backend()
     prompt = "LLM backend",
 
     format_item = function(name)
-      return string.format("%s — %s", name, backends[name].description)
+      local backend = backends[name]
+      local suffix = vim.fn.executable(backend.command) == 1 and "" or " (not available)"
+
+      return string.format("%s — %s%s", name, backend.description, suffix)
     end,
   }, function(choice)
     if choice then
@@ -336,41 +405,259 @@ local function compose_prompt(config, prompt)
   return prefix .. "\n\n" .. prompt
 end
 
-local function ensure_loaded()
+-- The one-shot providers deliberately cannot read our instruction files.
+-- Neovim reads only the explicitly configured files and puts their contents
+-- into the request instead.
+local function compose_structured_prompt(config, prompt)
+  if #config.instructions == 0 then
+    return prompt
+  end
+
+  local parts = {
+    "Follow these project instructions before answering:",
+  }
+
+  for _, path in ipairs(config.instructions) do
+    local ok, lines = pcall(vim.fn.readfile, path)
+
+    if not ok then
+      return nil, "Could not read LLM instruction file: " .. path
+    end
+
+    table.insert(parts, string.format("## %s\n%s", vim.fs.basename(path), table.concat(lines, "\n")))
+  end
+
+  table.insert(parts, prompt)
+
+  return table.concat(parts, "\n\n")
+end
+
+local function parse_text_output(stdout)
+  local output = vim.trim(stdout or "")
+
+  if output == "" then
+    return nil, "LLM returned no output"
+  end
+
+  return output
+end
+
+local function parse_codex_jsonl(stdout)
+  local response
+
+  for line in (stdout or ""):gmatch("[^\r\n]+") do
+    local ok, event = pcall(vim.json.decode, line)
+
+    if
+      ok
+      and type(event) == "table"
+      and event.type == "item.completed"
+      and type(event.item) == "table"
+      and event.item.type == "agent_message"
+      and type(event.item.text) == "string"
+    then
+      response = event.item.text
+    end
+  end
+
+  if not response or vim.trim(response) == "" then
+    return nil, "Codex returned no final agent message"
+  end
+
+  return vim.trim(response)
+end
+
+local function parse_structured_output(backend, stdout)
+  if backend.structured_output == "codex-jsonl" then
+    return parse_codex_jsonl(stdout)
+  end
+
+  if backend.structured_output == "text" then
+    return parse_text_output(stdout)
+  end
+
+  return nil, "Unknown LLM structured output format"
+end
+
+local function process_error(backend, result)
+  local stderr = vim.trim(result.stderr or "")
+
+  if stderr == "" then
+    stderr = string.format("%s exited with code %s", backend.command, tostring(result.code))
+  end
+
+  -- Don't fill the screen with a provider stack trace. This is still enough
+  -- to diagnose an explicit failed invocation.
+  if #stderr > 2000 then
+    stderr = stderr:sub(1, 2000) .. "\n..."
+  end
+
+  return stderr
+end
+
+local function finish_structured(callback, output, err, backend_name)
+  if not callback then
+    return
+  end
+
+  vim.schedule(function()
+    callback(output, err, backend_name)
+  end)
+end
+
+---@param prompt string
+---@param callback fun(output: string|nil, err: string|nil, backend: string|nil)
+---@return table|nil process vim.system process handle when successfully started
+function M.run_structured(prompt, callback)
+  if type(prompt) ~= "string" or vim.trim(prompt) == "" then
+    finish_structured(callback, nil, "LLM request is empty", nil)
+    return nil
+  end
+
   local config = M.config()
 
   if not config.project_root then
-    vim.notify("LLM is only available inside a configured project", vim.log.levels.WARN)
-
+    finish_structured(callback, nil, "LLM is only available inside a configured project", nil)
     return nil
   end
 
   if not config.enabled then
-    vim.notify("LLM is disabled for this project scope", vim.log.levels.WARN)
-
+    finish_structured(callback, nil, "LLM is disabled for this project scope", nil)
     return nil
   end
 
   local backend_name = M.backend(config)
   local backend = backends[backend_name]
 
-  if vim.fn.executable(backend.command) ~= 1 then
-    vim.notify("LLM backend is not available in PATH: " .. backend.command, vim.log.levels.ERROR)
-
+  if not backend or not backend.structured_args then
+    finish_structured(
+      callback,
+      nil,
+      "No one-shot runner is configured for backend: " .. tostring(backend_name),
+      backend_name
+    )
     return nil
   end
 
-  require("lazy").load({
+  if vim.fn.executable(backend.command) ~= 1 then
+    finish_structured(callback, nil, "LLM backend is not available in PATH: " .. backend.command, backend_name)
+    return nil
+  end
+
+  if not vim.system then
+    finish_structured(callback, nil, "This Neovim version does not provide vim.system()", backend_name)
+    return nil
+  end
+
+  if not config.scope_root or vim.fn.isdirectory(config.scope_root) ~= 1 then
+    finish_structured(
+      callback,
+      nil,
+      "LLM scope directory is unavailable: " .. tostring(config.scope_root),
+      backend_name
+    )
+    return nil
+  end
+
+  local full_prompt, prompt_err = compose_structured_prompt(config, prompt)
+
+  if not full_prompt then
+    finish_structured(callback, nil, prompt_err, backend_name)
+    return nil
+  end
+
+  local command = {
+    backend.command,
+  }
+
+  vim.list_extend(command, vim.deepcopy(backend.structured_args))
+
+  -- This is intentionally asynchronous. No LLM process is ever waited on from
+  -- Neovim's main loop.
+  local ok, process = pcall(vim.system, command, {
+    cwd = config.scope_root,
+    stdin = full_prompt,
+    text = true,
+    timeout = 120000,
+  }, function(result)
+    if result.code ~= 0 then
+      finish_structured(callback, nil, process_error(backend, result), backend_name)
+      return
+    end
+
+    local parse_ok, output, parse_err = pcall(parse_structured_output, backend, result.stdout)
+
+    if not parse_ok then
+      finish_structured(callback, nil, "Could not parse LLM output: " .. tostring(output), backend_name)
+      return
+    end
+
+    if not output then
+      finish_structured(callback, nil, parse_err, backend_name)
+      return
+    end
+
+    finish_structured(callback, output, nil, backend_name)
+  end)
+
+  if not ok then
+    finish_structured(callback, nil, "Could not start LLM backend: " .. tostring(process), backend_name)
+    return nil
+  end
+
+  return process
+end
+
+local function ensure_loaded()
+  local config = M.config()
+
+  if not config.project_root then
+    vim.notify("LLM is only available inside a configured project", vim.log.levels.WARN)
+    return nil
+  end
+
+  if not config.enabled then
+    vim.notify("LLM is disabled for this project scope", vim.log.levels.WARN)
+    return nil
+  end
+
+  local backend_name = M.backend(config)
+  local backend = backends[backend_name]
+
+  if not backend then
+    vim.notify("Unknown LLM backend: " .. tostring(backend_name), vim.log.levels.ERROR)
+    return nil
+  end
+
+  if vim.fn.executable(backend.command) ~= 1 then
+    vim.notify("LLM backend is not available in PATH: " .. backend.command, vim.log.levels.ERROR)
+    return nil
+  end
+
+  -- CodeCompanion is optional. It is only touched when an interactive LLM
+  -- command is explicitly invoked.
+  local ok_lazy, lazy = pcall(require, "lazy")
+
+  if not ok_lazy then
+    vim.notify("LLM integration is unavailable: lazy.nvim could not be loaded", vim.log.levels.ERROR)
+    return nil
+  end
+
+  local ok_load, load_err = pcall(lazy.load, {
     plugins = {
       "codecompanion.nvim",
     },
   })
 
+  if not ok_load then
+    vim.notify("Could not load CodeCompanion: " .. tostring(load_err), vim.log.levels.ERROR)
+    return nil
+  end
+
   local ok, codecompanion = pcall(require, "codecompanion")
 
   if not ok then
     vim.notify("Could not load CodeCompanion: " .. tostring(codecompanion), vim.log.levels.ERROR)
-
     return nil
   end
 
@@ -379,7 +666,6 @@ end
 
 local function send_prompt(backend, config, prompt, command)
   local cli = require("codecompanion.interactions.cli")
-
   local context_utils = require("codecompanion.utils.context")
 
   local buffer_context = context_utils.get(vim.api.nvim_get_current_buf(), command)
@@ -407,9 +693,7 @@ function M.toggle()
   end
 
   local cli = require("codecompanion.interactions.cli")
-
   local instance = cli_session(config, backend)
-
   local visible = cli.get_visible()
 
   if instance and visible and visible.bufnr == instance.bufnr then
@@ -430,14 +714,10 @@ function M.prompt(command)
   command = command or {}
 
   local cli = require("codecompanion.interactions.cli")
-
   local context_utils = require("codecompanion.utils.context")
-
   local input = require("codecompanion.interactions.shared.input")
 
-  -- Capture the originating buffer/visual selection before opening the
-  -- prompt window. #{this} must refer to where the user invoked the LLM,
-  -- not to the CodeCompanion input buffer.
+  -- Capture the originating context before opening the prompt window.
   local buffer_context = context_utils.get(vim.api.nvim_get_current_buf(), command)
 
   input.open({
@@ -452,7 +732,6 @@ function M.prompt(command)
 
       if not instance then
         vim.notify("Could not start LLM backend: " .. M.backend(config), vim.log.levels.ERROR)
-
         return
       end
 
@@ -506,10 +785,31 @@ function M.diagnostics()
   send_prompt(backend, config, "#{diagnostics}\n\n" .. "Explain these diagnostics and suggest what should be changed.")
 end
 
+function M.probe()
+  M.run_structured("Respond exactly with: LLM OK", function(output, err, backend_name)
+    if err then
+      vim.notify(
+        string.format("LLM one-shot probe [%s] failed:\n%s", backend_name or "unknown", err),
+        vim.log.levels.ERROR
+      )
+      return
+    end
+
+    if vim.trim(output) ~= "LLM OK" then
+      vim.notify(string.format("LLM one-shot probe [%s] returned:\n%s", backend_name, output), vim.log.levels.WARN)
+      return
+    end
+
+    vim.notify(string.format("LLM one-shot probe [%s]: LLM OK", backend_name), vim.log.levels.INFO)
+  end)
+end
+
 function M.status()
   local config = M.config()
   local backend_name = M.backend(config)
   local backend = backends[backend_name]
+
+  local available = backend and vim.fn.executable(backend.command) == 1 or false
 
   local session_running = false
 
@@ -524,11 +824,10 @@ function M.status()
     scope_name = config.scope_name,
 
     backend = backend_name,
-
-    backend_available = backend and vim.fn.executable(backend.command) == 1 or false,
+    backend_available = available,
+    structured_available = available and backend.structured_args ~= nil or false,
 
     command = backend and backend.command or nil,
-
     session_running = session_running,
 
     instructions = config.instructions,
@@ -736,6 +1035,10 @@ function M.setup()
     desc = "Select the LLM backend for this session",
   })
 
+  vim.api.nvim_create_user_command("LLMProbe", M.probe, {
+    desc = "Test the current LLM one-shot backend",
+  })
+
   vim.api.nvim_create_user_command("LLMStatus", M.status, {
     desc = "Show LLM status",
   })
@@ -749,23 +1052,25 @@ function M.setup()
     pattern = "ProjectScopeChanged",
 
     callback = function()
+      -- There is nothing to do unless an interactive CodeCompanion session
+      -- has actually been loaded.
       if not package.loaded.codecompanion then
         return
       end
 
-      -- Do not destroy the old project's sessions. Just hide whichever
-      -- interaction belonged to the scope we are leaving.
-      local cli = require("codecompanion.interactions.cli")
+      local ok_cli, cli = pcall(require, "codecompanion.interactions.cli")
 
-      local visible = cli.get_visible()
+      if ok_cli then
+        local visible = cli.get_visible()
 
-      if visible then
-        visible.ui:hide()
+        if visible then
+          visible.ui:hide()
+        end
       end
 
-      local input = require("codecompanion.interactions.shared.input")
+      local ok_input, input = pcall(require, "codecompanion.interactions.shared.input")
 
-      if input.is_visible() then
+      if ok_input and input.is_visible() then
         input.hide()
       end
     end,

@@ -193,3 +193,433 @@ describe("llm configuration", function()
     end)
   end)
 end)
+
+describe("llm structured execution", function()
+  local original_config
+  local original_backend
+  local original_system
+  local original_path
+  local original_codecompanion
+
+  local function make_executable(path)
+    vim.fn.mkdir(vim.fs.dirname(path), "p")
+    vim.fn.writefile({
+      "#!/bin/sh",
+      "exit 0",
+    }, path)
+    vim.fn.setfperm(path, "rwxr-xr-x")
+
+    return absolute(path)
+  end
+
+  local function stub_config(root, backend, instructions)
+    llm.config = function()
+      return {
+        project_root = root,
+        scope_root = root,
+        enabled = true,
+        backend = backend,
+        instructions = instructions or {},
+        missing_instructions = {},
+        invalid_instructions = {},
+      }
+    end
+
+    llm.backend = function(config)
+      return config.backend
+    end
+  end
+
+  local function run_and_wait(prompt)
+    local done = false
+    local result = {}
+
+    local handle = llm.run_structured(prompt, function(output, err, backend)
+      result.output = output
+      result.err = err
+      result.backend = backend
+      done = true
+    end)
+
+    assert.is_true(vim.wait(1000, function()
+      return done
+    end, 10))
+
+    return handle, result
+  end
+
+  before_each(function()
+    original_config = llm.config
+    original_backend = llm.backend
+    original_system = vim.system
+    original_path = vim.env.PATH
+    original_codecompanion = package.loaded.codecompanion
+  end)
+
+  after_each(function()
+    llm.config = original_config
+    llm.backend = original_backend
+    vim.system = original_system
+    vim.env.PATH = original_path
+    package.loaded.codecompanion = original_codecompanion
+  end)
+
+  it("does nothing when the selected backend is unavailable", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      stub_config(root, "codex")
+
+      -- Deliberately exclude the real machine PATH. This test must behave
+      -- identically whether Codex happens to be installed or not.
+      vim.env.PATH = bin
+
+      local system_called = false
+
+      vim.system = function()
+        system_called = true
+        error("vim.system must not be called")
+      end
+
+      local handle, result = run_and_wait("test")
+
+      assert.is_nil(handle)
+      assert.is_false(system_called)
+      assert.is_nil(result.output)
+      assert.are.equal("codex", result.backend)
+      assert.matches("not available in PATH: codex", result.err)
+    end)
+  end)
+
+  it("runs Codex with the readonly one-shot policy", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "codex"))
+
+      stub_config(root, "codex")
+      vim.env.PATH = bin
+
+      local invocation
+
+      vim.system = function(command, opts, callback)
+        invocation = {
+          command = vim.deepcopy(command),
+          opts = vim.deepcopy(opts),
+        }
+
+        callback({
+          code = 0,
+          stdout = table.concat({
+            vim.json.encode({
+              type = "thread.started",
+              thread_id = "test",
+            }),
+            vim.json.encode({
+              type = "item.completed",
+              item = {
+                type = "agent_message",
+                text = "LLM OK",
+              },
+            }),
+          }, "\n"),
+          stderr = "",
+        })
+
+        return {
+          kill = function() end,
+        }
+      end
+
+      local handle, result = run_and_wait("Respond exactly with: LLM OK")
+
+      assert.is_not_nil(handle)
+
+      assert.are.same({
+        "codex",
+        "--sandbox",
+        "read-only",
+        "--ask-for-approval",
+        "never",
+        "-c",
+        'web_search="disabled"',
+        "exec",
+        "--ephemeral",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--skip-git-repo-check",
+        "--json",
+        "-",
+      }, invocation.command)
+
+      assert.are.equal(root, invocation.opts.cwd)
+      assert.are.equal("Respond exactly with: LLM OK", invocation.opts.stdin)
+      assert.is_true(invocation.opts.text)
+
+      assert.are.equal("LLM OK", result.output)
+      assert.is_nil(result.err)
+      assert.are.equal("codex", result.backend)
+    end)
+  end)
+
+  it("uses the final Codex agent message", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "codex"))
+
+      stub_config(root, "codex")
+      vim.env.PATH = bin
+
+      vim.system = function(_, _, callback)
+        callback({
+          code = 0,
+          stdout = table.concat({
+            vim.json.encode({
+              type = "item.completed",
+              item = {
+                type = "agent_message",
+                text = "intermediate",
+              },
+            }),
+            vim.json.encode({
+              type = "item.completed",
+              item = {
+                type = "agent_message",
+                text = "final response",
+              },
+            }),
+          }, "\n"),
+          stderr = "",
+        })
+
+        return {}
+      end
+
+      local _, result = run_and_wait("test")
+
+      assert.are.equal("final response", result.output)
+      assert.is_nil(result.err)
+    end)
+  end)
+
+  it("runs Claude with tools disabled", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "claude"))
+
+      stub_config(root, "claude")
+      vim.env.PATH = bin
+
+      local invocation
+
+      vim.system = function(command, opts, callback)
+        invocation = {
+          command = vim.deepcopy(command),
+          opts = vim.deepcopy(opts),
+        }
+
+        callback({
+          code = 0,
+          stdout = "  LLM OK\n",
+          stderr = "",
+        })
+
+        return {
+          kill = function() end,
+        }
+      end
+
+      local handle, result = run_and_wait("Respond exactly with: LLM OK")
+
+      assert.is_not_nil(handle)
+
+      assert.are.same({
+        "claude",
+        "-p",
+        "--restricted",
+        "--tools",
+        "",
+        "--disallowed-tools",
+        "*",
+        "--permission-mode",
+        "dontAsk",
+        "--no-session-persistence",
+        "--output-format",
+        "text",
+        "Follow the request provided on stdin. Return only the requested result.",
+      }, invocation.command)
+
+      assert.are.equal(root, invocation.opts.cwd)
+      assert.are.equal("Respond exactly with: LLM OK", invocation.opts.stdin)
+
+      assert.are.equal("LLM OK", result.output)
+      assert.is_nil(result.err)
+      assert.are.equal("claude", result.backend)
+    end)
+  end)
+
+  it("injects configured instructions into one-shot requests", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "codex"))
+
+      local instructions = write_file(vim.fs.joinpath(root, "AGENTS.md"), "Always use modern C++.")
+
+      stub_config(root, "codex", {
+        instructions,
+      })
+
+      vim.env.PATH = bin
+
+      local stdin
+
+      vim.system = function(_, opts, callback)
+        stdin = opts.stdin
+
+        callback({
+          code = 0,
+          stdout = vim.json.encode({
+            type = "item.completed",
+            item = {
+              type = "agent_message",
+              text = "done",
+            },
+          }),
+          stderr = "",
+        })
+
+        return {}
+      end
+
+      local _, result = run_and_wait("Review this code")
+
+      assert.is_nil(result.err)
+
+      assert.matches("Follow these project instructions before answering:", stdin, 1, true)
+
+      assert.matches("Always use modern C++.", stdin, 1, true)
+
+      assert.matches("Review this code", stdin, 1, true)
+    end)
+  end)
+
+  it("reports provider failures without throwing", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "codex"))
+
+      stub_config(root, "codex")
+      vim.env.PATH = bin
+
+      vim.system = function(_, _, callback)
+        callback({
+          code = 1,
+          stdout = "",
+          stderr = "authentication failed",
+        })
+
+        return {}
+      end
+
+      local _, result = run_and_wait("test")
+
+      assert.is_nil(result.output)
+      assert.are.equal("authentication failed", result.err)
+      assert.are.equal("codex", result.backend)
+    end)
+  end)
+
+  it("does not load CodeCompanion for one-shot requests", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "codex"))
+
+      stub_config(root, "codex")
+      vim.env.PATH = bin
+
+      package.loaded.codecompanion = nil
+
+      vim.system = function(_, _, callback)
+        callback({
+          code = 0,
+          stdout = vim.json.encode({
+            type = "item.completed",
+            item = {
+              type = "agent_message",
+              text = "LLM OK",
+            },
+          }),
+          stderr = "",
+        })
+
+        return {}
+      end
+
+      local _, result = run_and_wait("test")
+
+      assert.are.equal("LLM OK", result.output)
+      assert.is_nil(package.loaded.codecompanion)
+    end)
+  end)
+
+  it("does not wait synchronously for the provider", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "codex"))
+
+      stub_config(root, "codex")
+      vim.env.PATH = bin
+
+      local provider_callback
+      local callback_called = false
+
+      local expected_handle = {
+        kill = function() end,
+      }
+
+      vim.system = function(_, _, callback)
+        provider_callback = callback
+        return expected_handle
+      end
+
+      local handle = llm.run_structured("test", function()
+        callback_called = true
+      end)
+
+      -- run_structured() must return while the provider is still running.
+      assert.are.equal(expected_handle, handle)
+      assert.is_false(callback_called)
+      assert.is_function(provider_callback)
+
+      provider_callback({
+        code = 0,
+        stdout = vim.json.encode({
+          type = "item.completed",
+          item = {
+            type = "agent_message",
+            text = "done",
+          },
+        }),
+        stderr = "",
+      })
+
+      assert.is_true(vim.wait(1000, function()
+        return callback_called
+      end, 10))
+    end)
+  end)
+end)
