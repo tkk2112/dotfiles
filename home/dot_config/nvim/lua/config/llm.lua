@@ -10,12 +10,22 @@ local backends = {
   codex = {
     agent = "codex",
     command = "codex",
+    args = {
+      "--sandbox",
+      "read-only",
+      "--ask-for-approval",
+      "never",
+    },
     description = "OpenAI Codex CLI",
   },
 
   claude = {
     agent = "claude_code",
     command = "claude",
+    args = {
+      "--permission-mode",
+      "dontAsk",
+    },
     description = "Claude Code CLI",
   },
 }
@@ -533,8 +543,6 @@ function M.codecompanion_opts()
   return {
     interactions = {
       opts = {
-        -- The CLI agents are read-only in our intended setup, so there
-        -- should be nothing for CodeCompanion to reload behind our back.
         watcher = {
           enabled = false,
         },
@@ -559,16 +567,16 @@ function M.codecompanion_opts()
 
         agents = {
           codex = {
-            cmd = "codex",
-            args = {},
-            description = "OpenAI Codex CLI",
+            cmd = backends.codex.command,
+            args = vim.deepcopy(backends.codex.args),
+            description = backends.codex.description,
             provider = "terminal",
           },
 
           claude_code = {
-            cmd = "claude",
-            args = {},
-            description = "Claude Code CLI",
+            cmd = backends.claude.command,
+            args = vim.deepcopy(backends.claude.args),
+            description = backends.claude.description,
             provider = "terminal",
           },
         },
