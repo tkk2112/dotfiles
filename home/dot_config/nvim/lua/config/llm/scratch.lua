@@ -24,7 +24,7 @@ local function split_output(output)
 end
 
 local function open_scratch(output, backend_name, request)
-  local bufnr = vim.api.nvim_create_buf(false, false)
+  local bufnr = vim.api.nvim_create_buf(true, false)
 
   vim.bo[bufnr].bufhidden = "hide"
   vim.bo[bufnr].swapfile = false
