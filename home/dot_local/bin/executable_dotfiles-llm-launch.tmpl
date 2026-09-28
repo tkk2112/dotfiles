@@ -1,0 +1,109 @@
+{{- $profiles := .profiles | default (list) -}}
+{{- if and (eq .chezmoi.os "darwin") (has "llm" $profiles) -}}
+{{- $ports := dict -}}
+{{- range $serviceName, $service := .llm.services -}}
+{{-   if $service.enabled -}}
+{{-     $port := printf "%v" $service.port -}}
+{{-     if hasKey $ports $port -}}
+{{-       fail (printf "LLM services %s and %s use duplicate port %s" (get $ports $port) $serviceName $port) -}}
+{{-     end -}}
+{{-     $_ := set $ports $port $serviceName -}}
+{{-   end -}}
+{{- end -}}
+#!/bin/sh
+set -eu
+
+SERVICE_NAME="${1:-}"
+
+die() {
+  printf 'dotfiles-llm-launch: %s\n' "$*" >&2
+  exit 1
+}
+
+[ -n "$SERVICE_NAME" ] || die "missing service name"
+
+case "$SERVICE_NAME" in
+{{- range $serviceName, $service := .llm.services }}
+  {{ $serviceName }})
+    {{- $modelID := $service.model }}
+    {{- $model := dict }}
+    {{- range $.llm.models }}
+    {{-   if eq .id $modelID }}
+    {{-     $model = . }}
+    {{-   end }}
+    {{- end }}
+
+    {{- if not (hasKey $model "id") }}
+    {{-   fail (printf "unknown LLM model %s for service %s" $modelID $serviceName) }}
+    {{- end }}
+
+    {{- if ne $model.type $service.type }}
+    {{-   fail (printf "LLM service %s has type %s but model %s has type %s" $serviceName $service.type $modelID $model.type) }}
+    {{- end }}
+
+    {{- if not (hasKey $model.backends $service.backend) }}
+    {{-   fail (printf "LLM model %s does not support backend %s" $modelID $service.backend) }}
+    {{- end }}
+
+    {{- $artifact := index $model.backends $service.backend }}
+    BACKEND="{{ $service.backend }}"
+    MODEL="{{ $artifact.model }}"
+    CTX_SIZE="{{ $model.ctx_size }}"
+    PORT="{{ $service.port }}"
+    ;;
+{{- end }}
+
+  *)
+    die "unknown service: $SERVICE_NAME"
+    ;;
+esac
+
+case "$PORT" in
+  ''|*[!0-9]*)
+    die "invalid port for $SERVICE_NAME: $PORT"
+    ;;
+esac
+
+PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH
+
+case "$BACKEND" in
+  llama_cpp)
+    SERVER="$(command -v llama-server || true)"
+    [ -n "$SERVER" ] || die "llama-server not found"
+
+    exec /usr/bin/env -i \
+      HOME="$HOME" \
+      PATH="$PATH" \
+      TMPDIR=/tmp \
+      "$SERVER" \
+      --hf-repo "$MODEL" \
+      --host 127.0.0.1 \
+      --port "$PORT" \
+      --ctx-size "$CTX_SIZE" \
+      --parallel 1 \
+      --cors-origins localhost \
+      --no-cors-credentials \
+      --no-agent \
+      --no-webui
+    ;;
+
+  mlx)
+    SERVER="$(command -v mlx_lm.server || true)"
+    [ -n "$SERVER" ] || die "mlx_lm.server not found"
+
+    exec /usr/bin/env -i \
+      HOME="$HOME" \
+      PATH="$PATH" \
+      TMPDIR=/tmp \
+      "$SERVER" \
+      --model "$MODEL" \
+      --host 127.0.0.1 \
+      --port "$PORT"
+    ;;
+
+  *)
+    die "unsupported backend for $SERVICE_NAME: $BACKEND"
+    ;;
+esac
+{{- end }}

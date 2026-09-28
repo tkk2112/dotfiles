@@ -11,3 +11,9 @@ export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 
 printf '\n==> Running Neovim test suite\n'
 "$repo_root/scripts/test-nvim.sh"
+
+case "$(uname -s):,${DOTFILES_PROFILES:-}," in
+  Darwin:*",llm,"*)
+    "$repo_root/scripts/test-llm-config.sh"
+    ;;
+esac

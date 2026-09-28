@@ -1,0 +1,162 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+set -eu
+
+# Re-run when either the LLM configuration or launcher implementation changes.
+# llm config hash: {{ .llm | toJson | sha256sum }}
+# launcher source hash: {{ include "dot_local/bin/executable_dotfiles-llm-launch.tmpl" | sha256sum }}
+
+{{- $profiles := .profiles | default (list) }}
+PROFILE_LLM="{{ if has "llm" $profiles }}true{{ else }}false{{ end }}"
+
+DOMAIN="gui/$(id -u)"
+LAUNCHER="$HOME/.local/bin/dotfiles-llm-launch"
+LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
+LOG_DIR="$HOME/Library/Logs/dotfiles"
+
+unload_service() {
+  name="$1"
+  label="com.dotfiles.llm-$name"
+  service="$DOMAIN/$label"
+
+  if launchctl print "$service" >/dev/null 2>&1; then
+    launchctl bootout "$service" >/dev/null 2>&1 || true
+
+    attempts=0
+    while launchctl print "$service" >/dev/null 2>&1; do
+      attempts=$((attempts + 1))
+
+      if [ "$attempts" -ge 20 ]; then
+        printf 'Timed out waiting for %s to unload\n' "$label" >&2
+        return 1
+      fi
+
+      sleep 0.1
+    done
+  fi
+}
+
+remove_existing_services() {
+  for plist in "$LAUNCH_AGENTS"/com.dotfiles.llm-*.plist; do
+    [ -e "$plist" ] || continue
+
+    filename="${plist##*/}"
+    name="${filename#com.dotfiles.llm-}"
+    name="${name%.plist}"
+
+    unload_service "$name"
+    rm -f "$plist"
+  done
+}
+
+validate_ports() {
+  used_ports=""
+
+{{- range $name, $service := .llm.services }}
+{{- if $service.enabled }}
+  port="{{ $service.port }}"
+
+  case "$port" in
+    ''|*[!0-9]*)
+      printf 'Invalid port for LLM service %s: %s\n' "{{ $name }}" "$port" >&2
+      exit 1
+      ;;
+  esac
+
+  case " $used_ports " in
+    *" $port "*)
+      printf 'Duplicate LLM service port: %s\n' "$port" >&2
+      exit 1
+      ;;
+  esac
+
+  used_ports="$used_ports $port"
+{{- end }}
+{{- end }}
+}
+
+install_service() {
+  name="$1"
+  autostart="$2"
+
+  label="com.dotfiles.llm-$name"
+  service="$DOMAIN/$label"
+  plist="$LAUNCH_AGENTS/$label.plist"
+
+  if [ "$autostart" = "true" ]; then
+    run_at_load="<true/>"
+    keep_alive="<true/>"
+  else
+    run_at_load="<false/>"
+    keep_alive="<false/>"
+  fi
+
+  cat >"$plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$label</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>$LAUNCHER</string>
+    <string>$name</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  $run_at_load
+
+  <key>KeepAlive</key>
+  $keep_alive
+
+  <key>StandardOutPath</key>
+  <string>$LOG_DIR/llm-$name.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>$LOG_DIR/llm-$name.err.log</string>
+</dict>
+</plist>
+EOF
+
+  plutil -lint "$plist" >/dev/null
+
+  if [ "$autostart" = "true" ]; then
+    launchctl bootstrap "$DOMAIN" "$plist"
+    printf 'LLM service %s installed and started\n' "$name"
+  else
+    printf 'LLM service %s installed for on-demand use\n' "$name"
+  fi
+}
+
+if [ "${DOTFILES_CI:-}" = "true" ]; then
+  printf 'Skipping LLM services in CI\n'
+  exit 0
+fi
+
+mkdir -p "$LAUNCH_AGENTS" "$LOG_DIR"
+
+# This namespace belongs entirely to dotfiles-llm. Remove the old
+# definitions before regenerating them from the current service catalog.
+remove_existing_services
+
+if [ "$PROFILE_LLM" != "true" ]; then
+  printf 'Removed LLM services because llm profile is disabled\n'
+  exit 0
+fi
+
+[ -x "$LAUNCHER" ] || {
+  printf 'LLM launcher is missing or not executable: %s\n' "$LAUNCHER" >&2
+  exit 1
+}
+
+validate_ports
+
+{{- range $name, $service := .llm.services }}
+{{- if $service.enabled }}
+install_service "{{ $name }}" "{{ if $service.autostart }}true{{ else }}false{{ end }}"
+{{- end }}
+{{- end }}
+{{- end }}
