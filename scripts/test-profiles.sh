@@ -10,8 +10,17 @@ headless,server,owned
 workstation,development,gaming,server,owned
 "
 
+DARWIN_VALID_PROFILE_SETS="
+workstation,development,llm
+"
+
+NON_DARWIN_INVALID_PROFILE_SETS="
+workstation,development,llm
+"
+
 INVALID_PROFILE_SETS="
 development
+llm
 workstation,headless
 workstation,unknown
 workstation,workstation
@@ -136,6 +145,18 @@ command -v jq >/dev/null 2>&1 || fail "missing command: jq"
 printf '%s\n' "$VALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
   test_profile_set "$profiles"
 done
+
+if [ "$(uname -s)" = "Darwin" ]; then
+  printf '%s\n' "$DARWIN_VALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
+    test_profile_set "$profiles"
+  done
+fi
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  printf '%s\n' "$NON_DARWIN_INVALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
+    test_invalid_profile_set "$profiles"
+  done
+fi
 
 printf '%s\n' "$INVALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
   test_invalid_profile_set "$profiles"

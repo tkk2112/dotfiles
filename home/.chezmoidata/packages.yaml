@@ -23,6 +23,13 @@ packages:
       group: development
       tap: darrylmorley/whatcable
       cask: whatcable
+    # LLM: Coding agent applications.
+    - name: claude-code
+      group: llm
+      cask: claude-code@latest
+    - name: codex
+      group: llm
+      cask: codex
 
   catalog:
     # Core: Always-installed CLI foundation.
@@ -170,6 +177,11 @@ packages:
     - name: zls
       group: development
       managers: [brew, pacman]
+
+    # LLM: Local model tooling and coding agents.
+    - name: llmfit
+      group: llm
+      managers: [brew]
 
     # Workstation: Interactive local-machine tools.
     - name: duf

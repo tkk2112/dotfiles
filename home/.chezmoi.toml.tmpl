@@ -9,7 +9,7 @@
 -}}
 
 {{- $roleProfiles := list "workstation" "headless" -}}
-{{- $capabilityProfiles := list "development" "gaming" "server" "laptop" "owned" -}}
+{{- $capabilityProfiles := list "development" "gaming" "server" "laptop" "owned" "llm" -}}
 {{- $profileChoices := concat $roleProfiles $capabilityProfiles -}}
 {{- $defaultProfiles := get $hostProfiles .chezmoi.hostname | default (list "workstation" "development") -}}
 {{- $profiles := $defaultProfiles -}}
@@ -26,6 +26,10 @@
 {{-   if not (has $profile $profileChoices) -}}
 {{-     fail (printf "unknown dotfiles profile %q; valid profiles: %s" $profile (join ", " $profileChoices)) -}}
 {{-   end -}}
+{{- end -}}
+
+{{- if and (has "llm" $profiles) (ne .chezmoi.os "darwin") -}}
+{{-   fail "the llm profile is currently supported only on darwin" -}}
 {{- end -}}
 
 {{- if ne (len $profiles) (len (uniq $profiles)) -}}
