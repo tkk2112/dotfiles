@@ -3,6 +3,7 @@ local M = {}
 local backends = require("config.llm.backends")
 local codecompanion = require("config.llm.codecompanion")
 local replacement = require("config.llm.replacement")
+local scratch = require("config.llm.scratch")
 local settings = require("config.llm.settings")
 local structured = require("config.llm.structured")
 
@@ -72,6 +73,10 @@ end
 
 function M.replace_selection()
   return replacement.run(M.run_structured)
+end
+
+function M.scratch(request)
+  return scratch.run(M.run_structured, request)
 end
 
 function M.toggle()
@@ -197,6 +202,13 @@ function M.setup()
 
   vim.api.nvim_create_user_command("LLMProbe", M.probe, {
     desc = "Test the current LLM one-shot backend",
+  })
+
+  vim.api.nvim_create_user_command("LLMScratch", function(command)
+    M.scratch(command.args ~= "" and command.args or nil)
+  end, {
+    nargs = "*",
+    desc = "Generate an LLM scratch buffer",
   })
 
   vim.api.nvim_create_user_command("LLMStatus", M.status, {

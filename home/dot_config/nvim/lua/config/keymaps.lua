@@ -278,6 +278,7 @@ function M.setup()
   map("n", "<leader>mb", llm.pick_backend, { desc = "Pick LLM backend" })
   map("n", "<leader>ms", llm.status, { desc = "LLM status" })
   map("x", "<leader>mr", llm.replace_selection, { desc = "Replace selection with LLM" })
+  map("n", "<leader>mw", llm.scratch, { desc = "Generate LLM scratch buffer" })
 
   -- tmux integration
   map_tmux_nav("n", "<C-a><Left>", "left")
