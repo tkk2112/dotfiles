@@ -23,26 +23,62 @@ local function split_output(output)
   })
 end
 
-local function open_scratch(output, backend_name, request)
+local function open_scratch(request)
   local bufnr = vim.api.nvim_create_buf(true, false)
 
   vim.bo[bufnr].bufhidden = "hide"
   vim.bo[bufnr].swapfile = false
 
   vim.b[bufnr].llm_scratch = true
-  vim.b[bufnr].llm_backend = backend_name
   vim.b[bufnr].llm_request = request
+  vim.b[bufnr].llm_scratch_state = "running"
 
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, split_output(output))
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+    "Generating LLM scratch…",
+  })
 
-  -- Treat generated content as unsaved user-visible work. Closing it should
-  -- require the normal Neovim confirmation rather than silently discarding it.
-  vim.bo[bufnr].modified = true
+  vim.bo[bufnr].modifiable = false
+  vim.bo[bufnr].modified = false
 
   vim.cmd("botright split")
   vim.api.nvim_win_set_buf(0, bufnr)
 
   return bufnr
+end
+
+local function set_error(bufnr, err, backend_name)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  vim.bo[bufnr].modifiable = true
+
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+    string.format("LLM scratch [%s] failed:", backend_name or "unknown"),
+    "",
+    err,
+  })
+
+  vim.b[bufnr].llm_backend = backend_name
+  vim.b[bufnr].llm_scratch_state = "failed"
+
+  -- This is status/error output, not unsaved generated work.
+  vim.bo[bufnr].modified = false
+end
+
+local function set_result(bufnr, output, backend_name)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  vim.bo[bufnr].modifiable = true
+
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, split_output(output))
+
+  vim.b[bufnr].llm_backend = backend_name
+  vim.b[bufnr].llm_scratch_state = "ready"
+
+  vim.bo[bufnr].modified = true
 end
 
 local function submit(run_structured, request)
@@ -52,13 +88,15 @@ local function submit(run_structured, request)
     return nil
   end
 
+  local bufnr = open_scratch(request)
+
   return run_structured(scratch_prompt(request), function(output, err, backend_name)
     if err then
-      vim.notify(string.format("LLM scratch [%s] failed:\n%s", backend_name or "unknown", err), vim.log.levels.ERROR)
+      set_error(bufnr, err, backend_name)
       return
     end
 
-    open_scratch(output, backend_name, request)
+    set_result(bufnr, output, backend_name)
   end)
 end
 
