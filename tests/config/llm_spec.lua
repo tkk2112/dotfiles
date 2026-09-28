@@ -1113,7 +1113,7 @@ describe("llm scratch buffers", function()
 
     assert.is_true(vim.bo[bufnr].modified)
 
-    assert.are.equal(0, vim.fn.buflisted(bufnr))
+    assert.are.equal(1, vim.fn.buflisted(bufnr))
 
     assert.is_true(vim.b[bufnr].llm_scratch)
 
@@ -1122,6 +1122,36 @@ describe("llm scratch buffers", function()
     assert.are.equal("generate something", vim.b[bufnr].llm_request)
 
     assert.are.equal("ready", vim.b[bufnr].llm_scratch_state)
+  end)
+
+  it("scratch remains listed after its window is closed", function()
+    vim.ui.input = function(_, callback)
+      callback("generate something")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback("generated content", nil, "codex")
+      return {}
+    end
+
+    llm.scratch()
+
+    local buffers = scratch_buffers()
+    assert.are.equal(1, #buffers)
+
+    local bufnr = buffers[1]
+    local winid = vim.fn.bufwinid(bufnr)
+
+    assert.is_true(winid ~= -1)
+
+    vim.api.nvim_win_close(winid, false)
+
+    assert.is_true(vim.api.nvim_buf_is_valid(bufnr))
+    assert.are.equal(1, vim.fn.buflisted(bufnr))
+    assert.is_true(vim.bo[bufnr].modified)
+    assert.are.same({
+      "generated content",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
   end)
 
   it("does not modify the source buffer", function()
