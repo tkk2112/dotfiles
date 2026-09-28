@@ -1,15 +1,20 @@
 llm:
-  backends:
-    llama_cpp:
-      endpoint: http://127.0.0.1:18080
-      models:
-        completion: bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M
+  models:
+    - id: qwen2.5-coder-3b
+      name: Qwen 2.5 Coder 3B
+      type: completion
+      ctx_size: 32768
+      backends:
+        llama_cpp:
+          model: bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M
+        mlx:
+          model: mlx-community/Qwen2.5-Coder-3B-4bit
 
-    mlx:
-      endpoint: http://127.0.0.1:18081
-      models:
-        completion: mlx-community/Qwen2.5-Coder-3B-4bit
-
-  workloads:
-    completion:
+  services:
+    inline:
+      type: completion
+      enabled: true
+      autostart: true
       backend: llama_cpp
+      model: qwen2.5-coder-3b
+      port: 18080

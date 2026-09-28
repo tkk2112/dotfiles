@@ -1,0 +1,269 @@
+#!/bin/sh
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage:
+  dotfiles-llm services
+  dotfiles-llm models [type]
+  dotfiles-llm status [service]
+  dotfiles-llm start <service>
+  dotfiles-llm stop <service>
+EOF
+}
+
+die() {
+  printf 'dotfiles-llm: %s\n' "$*" >&2
+  exit 1
+}
+
+require_darwin() {
+  [ "$(uname -s)" = "Darwin" ] \
+    || die "LLM services are currently supported only on macOS"
+}
+
+llm_data() {
+  chezmoi data
+}
+
+service_exists() {
+  name="$1"
+
+  llm_data \
+    | jq -e --arg name "$name" \
+      '.llm.services[$name] != null' >/dev/null
+}
+
+service_enabled() {
+  name="$1"
+
+  llm_data \
+    | jq -e --arg name "$name" \
+      '.llm.services[$name].enabled == true' >/dev/null
+}
+
+service_label() {
+  printf 'com.dotfiles.llm-%s\n' "$1"
+}
+
+service_plist() {
+  printf '%s/Library/LaunchAgents/%s.plist\n' \
+    "$HOME" "$(service_label "$1")"
+}
+
+service_domain() {
+  printf 'gui/%s\n' "$(id -u)"
+}
+
+service_target() {
+  printf '%s/%s\n' "$(service_domain)" "$(service_label "$1")"
+}
+
+list_services() {
+  printf '%-18s %-12s %-10s %-10s %-12s %-24s %s\n' \
+    "NAME" "TYPE" "STATE" "START" "BACKEND" "MODEL" "PORT"
+
+  llm_data \
+    | jq -r '
+      .llm.services
+      | to_entries[]
+      | [
+          .key,
+          .value.type,
+          (if .value.enabled then "enabled" else "disabled" end),
+          (if .value.autostart then "autostart" else "manual" end),
+          .value.backend,
+          .value.model,
+          (.value.port | tostring)
+        ]
+      | @tsv
+    ' \
+    | while IFS="$(printf '\t')" read -r name type state start backend model port; do
+      printf '%-18s %-12s %-10s %-10s %-12s %-24s %s\n' \
+        "$name" "$type" "$state" "$start" "$backend" "$model" "$port"
+    done
+}
+
+list_models() {
+  type="${1:-}"
+
+  if [ -n "$type" ]; then
+    llm_data \
+      | jq -r --arg type "$type" '
+        .llm.models[]
+        | select(.type == $type)
+        | [
+            .id,
+            .name,
+            .type,
+            (.ctx_size | tostring),
+            (.backends | keys | join(","))
+          ]
+        | @tsv
+      '
+  else
+    llm_data \
+      | jq -r '
+        .llm.models[]
+        | [
+            .id,
+            .name,
+            .type,
+            (.ctx_size | tostring),
+            (.backends | keys | join(","))
+          ]
+        | @tsv
+      '
+  fi
+}
+
+status_service() {
+  name="$1"
+
+  service_exists "$name" \
+    || die "unknown service: $name"
+
+  data="$(llm_data)"
+
+  type="$(
+    printf '%s\n' "$data" \
+      | jq -r --arg name "$name" '.llm.services[$name].type'
+  )"
+
+  backend="$(
+    printf '%s\n' "$data" \
+      | jq -r --arg name "$name" '.llm.services[$name].backend'
+  )"
+
+  model="$(
+    printf '%s\n' "$data" \
+      | jq -r --arg name "$name" '.llm.services[$name].model'
+  )"
+
+  port="$(
+    printf '%s\n' "$data" \
+      | jq -r --arg name "$name" '.llm.services[$name].port'
+  )"
+
+  autostart="$(
+    printf '%s\n' "$data" \
+      | jq -r --arg name "$name" '
+        if .llm.services[$name].autostart then "yes" else "no" end
+      '
+  )"
+
+  enabled="$(
+    printf '%s\n' "$data" \
+      | jq -r --arg name "$name" '
+        if .llm.services[$name].enabled then "yes" else "no" end
+      '
+  )"
+
+  target="$(service_target "$name")"
+  log="$HOME/Library/Logs/dotfiles/llm-$name.err.log"
+
+  if [ "$enabled" != "yes" ]; then
+    state="disabled"
+  elif launchctl print "$target" 2>/dev/null \
+    | grep -q 'state = running'; then
+    state="running"
+  elif launchctl print "$target" >/dev/null 2>&1; then
+    state="loaded"
+  else
+    state="stopped"
+  fi
+
+  printf '%s\n' "$name"
+  printf '  state:     %s\n' "$state"
+  printf '  type:      %s\n' "$type"
+  printf '  backend:   %s\n' "$backend"
+  printf '  model:     %s\n' "$model"
+  printf '  endpoint:  http://127.0.0.1:%s\n' "$port"
+  printf '  enabled:   %s\n' "$enabled"
+  printf '  autostart: %s\n' "$autostart"
+
+  if [ -f "$log" ]; then
+    printf '\n'
+    printf '  recent log:\n'
+    tail -n 5 "$log" \
+      | sed 's/^/    /'
+  fi
+}
+
+status_all() {
+  llm_data \
+    | jq -r '.llm.services | keys[]' \
+    | while IFS= read -r name; do
+      status_service "$name"
+    done
+}
+
+start_service() {
+  name="$1"
+
+  require_darwin
+
+  service_exists "$name" \
+    || die "unknown service: $name"
+
+  service_enabled "$name" \
+    || die "service is disabled: $name"
+
+  plist="$(service_plist "$name")"
+  target="$(service_target "$name")"
+
+  [ -f "$plist" ] \
+    || die "service is not installed: $plist"
+
+  if ! launchctl print "$target" >/dev/null 2>&1; then
+    launchctl bootstrap "$(service_domain)" "$plist"
+  fi
+
+  launchctl kickstart -k "$target"
+}
+
+stop_service() {
+  name="$1"
+
+  require_darwin
+
+  service_exists "$name" \
+    || die "unknown service: $name"
+
+  launchctl bootout "$(service_target "$name")" >/dev/null 2>&1 || true
+}
+
+command="${1:-}"
+
+case "$command" in
+  services | list)
+    list_services
+    ;;
+
+  models)
+    list_models "${2:-}"
+    ;;
+
+  status)
+    if [ -n "${2:-}" ]; then
+      status_service "$2"
+    else
+      status_all
+    fi
+    ;;
+
+  start)
+    [ -n "${2:-}" ] || die "missing service"
+    start_service "$2"
+    ;;
+
+  stop)
+    [ -n "${2:-}" ] || die "missing service"
+    stop_service "$2"
+    ;;
+
+  *)
+    usage
+    exit 1
+    ;;
+esac

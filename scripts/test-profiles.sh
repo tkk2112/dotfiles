@@ -80,6 +80,68 @@ test_tmux_profile() {
   fi
 }
 
+test_llm_profile() {
+  profiles="$1"
+  config_file="$2"
+  data_file="$3"
+  slug="$(profile_slug "$profiles")"
+  output="$test_root/llm-launch-$slug"
+
+  if ! contains_profile "$profiles" llm; then
+    return 0
+  fi
+
+  jq -e '
+        .llm.services.inline.type == "completion" and
+        .llm.services.inline.enabled == true and
+        .llm.services.inline.autostart == true and
+        .llm.services.inline.backend == "llama_cpp" and
+        .llm.services.inline.model == "qwen2.5-coder-3b" and
+        .llm.services.inline.port == 18080
+    ' "$data_file" >/dev/null \
+    || fail "llm inline service did not resolve correctly"
+
+  jq -e '
+        .llm.models[]
+        | select(.id == "qwen2.5-coder-3b")
+        | .name == "Qwen 2.5 Coder 3B" and
+          .type == "completion" and
+          .ctx_size == 32768 and
+          .backends.llama_cpp.model == "bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M" and
+          .backends.mlx.model == "mlx-community/Qwen2.5-Coder-3B-4bit"
+    ' "$data_file" >/dev/null \
+    || fail "llm model catalog did not resolve correctly"
+
+  DOTFILES_CI=true DOTFILES_PROFILES="$profiles" \
+    run chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_local/bin/executable_dotfiles-llm-launch.tmpl" \
+    >"$output"
+
+  [ -s "$output" ] \
+    || fail "llm launcher rendered empty"
+
+  grep -Fq 'inline)' "$output" \
+    || fail "llm launcher is missing inline service"
+
+  grep -Fq 'BACKEND="llama_cpp"' "$output" \
+    || fail "llm launcher did not resolve llama_cpp"
+
+  grep -Fq 'PORT="18080"' "$output" \
+    || fail "llm launcher did not resolve service port"
+
+  grep -Fq 'CTX_SIZE="32768"' "$output" \
+    || fail "llm launcher did not resolve context size"
+
+  grep -Fq -- '--host 127.0.0.1' "$output" \
+    || fail "llm launcher is not loopback-only"
+
+  grep -Fq -- '--no-agent' "$output" \
+    || fail "llm launcher does not disable agent mode"
+
+  grep -Fq -- '--no-webui' "$output" \
+    || fail "llm launcher does not disable the web UI"
+}
+
 test_profile_set() {
   profiles="$1"
   slug="$(profile_slug "$profiles")"
@@ -121,6 +183,7 @@ test_profile_set() {
   done
 
   test_tmux_profile "$profiles" "$config_file"
+  test_llm_profile "$profiles" "$config_file" "$data_file"
 }
 
 test_invalid_profile_set() {

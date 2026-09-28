@@ -308,6 +308,37 @@ check_development_tools() {
   pass "cmake-language-server version check ok"
 }
 
+check_llm_tools() {
+  section "Checking LLM tools"
+
+  if ! command -v chezmoi >/dev/null 2>&1 \
+    || ! command -v jq >/dev/null 2>&1; then
+    skip "LLM tool checks; chezmoi or jq not installed"
+    return 0
+  fi
+
+  if ! chezmoi data | jq -e '.profiles | index("llm") != null' >/dev/null; then
+    skip "LLM tool checks; llm profile not enabled"
+    return 0
+  fi
+
+  command -v llama-server >/dev/null 2>&1 \
+    || fail "llm profile did not install llama-server"
+  pass "command found: llama-server"
+
+  command -v mlx_lm.server >/dev/null 2>&1 \
+    || fail "llm profile did not install mlx_lm.server"
+  pass "command found: mlx_lm.server"
+
+  command -v dotfiles-llm >/dev/null 2>&1 \
+    || fail "llm profile did not install dotfiles-llm"
+  pass "command found: dotfiles-llm"
+
+  command -v dotfiles-llm-launch >/dev/null 2>&1 \
+    || fail "llm profile did not install dotfiles-llm-launch"
+  pass "command found: dotfiles-llm-launch"
+}
+
 check_ssh_config() {
   section "Checking SSH config"
 
@@ -388,6 +419,7 @@ main() {
   check_tmux_config
   check_nvim_config
   check_development_tools
+  check_llm_tools
   check_ssh_config
   check_chezmoi_state
 

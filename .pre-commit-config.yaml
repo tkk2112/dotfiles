@@ -72,7 +72,7 @@ repos:
     rev: v3.13.1-1
     hooks:
       - id: shfmt
-        args: [-d]
+        args: [-w]
         exclude: ^home/dot_p10k\.zsh$|\.tmpl$
 
   - repo: https://github.com/hukkin/mdformat

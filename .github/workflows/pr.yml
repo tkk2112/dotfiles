@@ -76,7 +76,7 @@ jobs:
 
   install-macos:
     needs: check
-    name: install on macos:latest / workstation,laptop,development,owned
+    name: install on macos:latest / workstation,laptop,development,owned,llm
     runs-on: macos-latest
 
     steps:
@@ -86,7 +86,7 @@ jobs:
         env:
           DOTFILES_CI: 'true'
           DOTFILES_LOCATION: ${{ github.workspace }}
-          DOTFILES_PROFILES: workstation,laptop,development,owned
+          DOTFILES_PROFILES: workstation,laptop,development,owned,llm
         run: ./scripts/ci-test.sh
 
   test:
