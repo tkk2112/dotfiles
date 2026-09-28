@@ -12,6 +12,7 @@ local backends = {
     command = "codex",
     description = "OpenAI Codex CLI",
   },
+
   claude = {
     agent = "claude_code",
     command = "claude",
@@ -19,7 +20,16 @@ local backends = {
   },
 }
 
+-- Session-local backend override, keyed by project/subproject scope.
 local backend_overrides = {}
+
+-- Keep a separate CLI conversation per scope and backend:
+--
+--   cli_sessions[scope_root][agent] = CodeCompanion CLI instance
+--
+-- This prevents a Codex/Claude conversation from one project or subproject
+-- from being reused in another.
+local cli_sessions = {}
 
 local function table_or_empty(value)
   return type(value) == "table" and value or {}
@@ -34,6 +44,7 @@ local function read_config(path)
 
   if err then
     vim.notify("Failed reading LLM project config: " .. path .. "\n" .. err, vim.log.levels.ERROR)
+
     return {}
   end
 
@@ -90,28 +101,6 @@ local function configured_backend(project_llm, scope_llm)
   end
 
   return backend
-end
-
-local function show_backend_cli(backend)
-  local cli = require("codecompanion.interactions.cli")
-  local instance = cli.find_by_agent(backend.agent)
-  local visible = cli.get_visible()
-
-  if visible and (not instance or visible.bufnr ~= instance.bufnr) then
-    visible.ui:hide()
-  end
-
-  if not instance then
-    instance = cli.create({
-      agent = backend.agent,
-    })
-  end
-
-  if instance and not instance.ui:is_visible() then
-    instance.ui:open()
-  end
-
-  return instance
 end
 
 function M.config()
@@ -176,6 +165,92 @@ function M.backend(config)
   return config.backend
 end
 
+local function cli_session(config, backend)
+  if not config.scope_root then
+    return nil
+  end
+
+  local scope_sessions = cli_sessions[config.scope_root]
+
+  if not scope_sessions then
+    return nil
+  end
+
+  local instance = scope_sessions[backend.agent]
+
+  if instance and vim.api.nvim_buf_is_valid(instance.bufnr) then
+    return instance
+  end
+
+  scope_sessions[backend.agent] = nil
+
+  return nil
+end
+
+local function create_cli_session(config, backend)
+  if not config.scope_root then
+    return nil
+  end
+
+  local cwd = paths.real(vim.fn.getcwd())
+
+  -- CodeCompanion's terminal provider starts the agent using Neovim's
+  -- current working directory. Refuse to start an agent if that cwd does
+  -- not belong to the scope we think is active.
+  if not cwd or not paths.is_within(cwd, config.scope_root) then
+    vim.notify(
+      "Current directory is outside the active LLM scope:\n"
+        .. tostring(config.scope_root)
+        .. "\n\nCurrent directory:\n"
+        .. tostring(cwd),
+      vim.log.levels.ERROR
+    )
+
+    return nil
+  end
+
+  local cli = require("codecompanion.interactions.cli")
+
+  local instance = cli.create({
+    agent = backend.agent,
+  })
+
+  if not instance then
+    return nil
+  end
+
+  cli_sessions[config.scope_root] = cli_sessions[config.scope_root] or {}
+
+  cli_sessions[config.scope_root][backend.agent] = instance
+
+  return instance
+end
+
+local function get_or_create_cli_session(config, backend)
+  return cli_session(config, backend) or create_cli_session(config, backend)
+end
+
+local function show_backend_cli(config, backend)
+  local cli = require("codecompanion.interactions.cli")
+  local instance = get_or_create_cli_session(config, backend)
+
+  if not instance then
+    return nil
+  end
+
+  local visible = cli.get_visible()
+
+  if visible and visible.bufnr ~= instance.bufnr then
+    visible.ui:hide()
+  end
+
+  if not instance.ui:is_visible() then
+    instance.ui:open()
+  end
+
+  return instance
+end
+
 function M.set_backend(name)
   local config = M.config()
 
@@ -186,16 +261,20 @@ function M.set_backend(name)
 
   if not backends[name] then
     vim.notify("Unknown LLM backend: " .. tostring(name), vim.log.levels.ERROR)
+
     return
   end
 
   backend_overrides[config.scope_root] = name
 
+  -- Switching backend while an LLM window is visible should immediately
+  -- switch the visible window. Changing backend while everything is hidden
+  -- should not start an agent.
   if package.loaded.codecompanion then
     local cli = require("codecompanion.interactions.cli")
 
     if cli.get_visible() then
-      show_backend_cli(backends[name])
+      show_backend_cli(config, backends[name])
     end
   end
 
@@ -210,6 +289,7 @@ function M.pick_backend()
 
   vim.ui.select(names, {
     prompt = "LLM backend",
+
     format_item = function(name)
       return string.format("%s — %s", name, backends[name].description)
     end,
@@ -251,19 +331,22 @@ local function ensure_loaded()
 
   if not config.project_root then
     vim.notify("LLM is only available inside a configured project", vim.log.levels.WARN)
+
     return nil
   end
 
   if not config.enabled then
     vim.notify("LLM is disabled for this project scope", vim.log.levels.WARN)
+
     return nil
   end
 
-  local backend = M.backend(config)
-  local spec = backends[backend]
+  local backend_name = M.backend(config)
+  local backend = backends[backend_name]
 
-  if vim.fn.executable(spec.command) ~= 1 then
-    vim.notify("LLM backend is not available in PATH: " .. spec.command, vim.log.levels.ERROR)
+  if vim.fn.executable(backend.command) ~= 1 then
+    vim.notify("LLM backend is not available in PATH: " .. backend.command, vim.log.levels.ERROR)
+
     return nil
   end
 
@@ -277,21 +360,46 @@ local function ensure_loaded()
 
   if not ok then
     vim.notify("Could not load CodeCompanion: " .. tostring(codecompanion), vim.log.levels.ERROR)
+
     return nil
   end
 
-  return codecompanion, spec, config
+  return codecompanion, backend, config
+end
+
+local function send_prompt(backend, config, prompt, command)
+  local cli = require("codecompanion.interactions.cli")
+
+  local context_utils = require("codecompanion.utils.context")
+
+  local buffer_context = context_utils.get(vim.api.nvim_get_current_buf(), command)
+
+  local formatted = cli.resolve_editor_context(compose_prompt(config, prompt), buffer_context)
+
+  local instance = show_backend_cli(config, backend)
+
+  if not instance then
+    return
+  end
+
+  instance:send(formatted, {
+    submit = false,
+  })
+
+  instance:focus()
 end
 
 function M.toggle()
-  local codecompanion, backend = ensure_loaded()
+  local codecompanion, backend, config = ensure_loaded()
 
   if not codecompanion then
     return
   end
 
   local cli = require("codecompanion.interactions.cli")
-  local instance = cli.find_by_agent(backend.agent)
+
+  local instance = cli_session(config, backend)
+
   local visible = cli.get_visible()
 
   if instance and visible and visible.bufnr == instance.bufnr then
@@ -299,7 +407,7 @@ function M.toggle()
     return
   end
 
-  show_backend_cli(backend)
+  show_backend_cli(config, backend)
 end
 
 function M.prompt(command)
@@ -312,11 +420,14 @@ function M.prompt(command)
   command = command or {}
 
   local cli = require("codecompanion.interactions.cli")
+
   local context_utils = require("codecompanion.utils.context")
+
   local input = require("codecompanion.interactions.shared.input")
 
-  -- Capture this before opening the prompt window so #{this} still refers
-  -- to the file/visual selection the user invoked the LLM from.
+  -- Capture the originating buffer/visual selection before opening the
+  -- prompt window. #{this} must refer to where the user invoked the LLM,
+  -- not to the CodeCompanion input buffer.
   local buffer_context = context_utils.get(vim.api.nvim_get_current_buf(), command)
 
   input.open({
@@ -327,27 +438,12 @@ function M.prompt(command)
     on_submit = function(text, submit_opts)
       local formatted = cli.resolve_editor_context(text, buffer_context)
 
-      local instance = cli.find_by_agent(backend.agent)
-
-      if not instance then
-        instance = cli.create({
-          agent = backend.agent,
-        })
-      end
+      local instance = show_backend_cli(config, backend)
 
       if not instance then
         vim.notify("Could not start LLM backend: " .. M.backend(config), vim.log.levels.ERROR)
+
         return
-      end
-
-      local visible = cli.get_visible()
-
-      if visible and visible.bufnr ~= instance.bufnr then
-        visible.ui:hide()
-      end
-
-      if not instance.ui:is_visible() then
-        instance.ui:open()
       end
 
       instance:send(formatted, {
@@ -362,29 +458,22 @@ function M.prompt(command)
 end
 
 function M.ask(command)
+  command = command or {}
+
+  local question = vim.trim(command.args or "")
+
+  if question == "" then
+    M.prompt(command)
+    return
+  end
+
   local codecompanion, backend, config = ensure_loaded()
 
   if not codecompanion then
     return
   end
 
-  local question = command and vim.trim(command.args or "") or ""
-
-  if question ~= "" then
-    codecompanion.cli(compose_prompt(config, "#{this}\n\n" .. question), {
-      agent = backend.agent,
-      args = command,
-      submit = false,
-    })
-
-    return
-  end
-
-  codecompanion.cli(compose_prompt(config, "#{this}\n\n"), {
-    agent = backend.agent,
-    args = command,
-    prompt = true,
-  })
+  send_prompt(backend, config, "#{this}\n\n" .. question, command)
 end
 
 function M.add_context(command)
@@ -394,11 +483,7 @@ function M.add_context(command)
     return
   end
 
-  codecompanion.cli(compose_prompt(config, "#{this}"), {
-    agent = backend.agent,
-    args = command,
-    submit = false,
-  })
+  send_prompt(backend, config, "#{this}", command)
 end
 
 function M.diagnostics()
@@ -408,31 +493,38 @@ function M.diagnostics()
     return
   end
 
-  codecompanion.cli(
-    compose_prompt(config, "#{diagnostics}\n\nExplain these diagnostics and suggest what should be changed."),
-    {
-      agent = backend.agent,
-      submit = false,
-    }
-  )
+  send_prompt(backend, config, "#{diagnostics}\n\n" .. "Explain these diagnostics and suggest what should be changed.")
 end
 
 function M.status()
   local config = M.config()
-  local backend = M.backend(config)
-  local spec = backends[backend]
+  local backend_name = M.backend(config)
+  local backend = backends[backend_name]
+
+  local session_running = false
+
+  if package.loaded.codecompanion and config.scope_root and backend then
+    session_running = cli_session(config, backend) ~= nil
+  end
 
   vim.print({
     enabled = config.enabled,
     project_root = config.project_root,
     scope_root = config.scope_root,
     scope_name = config.scope_name,
-    backend = backend,
-    backend_available = spec and vim.fn.executable(spec.command) == 1 or false,
-    command = spec and spec.command or nil,
+
+    backend = backend_name,
+
+    backend_available = backend and vim.fn.executable(backend.command) == 1 or false,
+
+    command = backend and backend.command or nil,
+
+    session_running = session_running,
+
     instructions = config.instructions,
     missing_instructions = config.missing_instructions,
     invalid_instructions = config.invalid_instructions,
+
     codecompanion_loaded = package.loaded.codecompanion ~= nil,
   })
 end
@@ -440,12 +532,21 @@ end
 function M.codecompanion_opts()
   return {
     interactions = {
+      opts = {
+        -- The CLI agents are read-only in our intended setup, so there
+        -- should be nothing for CodeCompanion to reload behind our back.
+        watcher = {
+          enabled = false,
+        },
+      },
+
       background = {
         chat = {
           opts = {
             enabled = false,
           },
         },
+
         gates = {
           judge = {
             enabled = false,
@@ -474,7 +575,6 @@ function M.codecompanion_opts()
 
         opts = {
           auto_insert = false,
-          reload = false,
         },
       },
 
@@ -517,11 +617,13 @@ function M.codecompanion_opts()
 
     mcp = {
       servers = {},
+
       opts = {
         default_servers = {},
         acp_enabled = false,
       },
     },
+
     display = {
       input = {
         title = " LLM Prompt  [<C-s> send · <C-c> abort] ",
@@ -529,17 +631,27 @@ function M.codecompanion_opts()
         keymaps = {
           send = {
             modes = {
-              n = { "<CR>", "<C-s>" },
+              n = {
+                "<CR>",
+                "<C-s>",
+              },
+
               i = "<C-s>",
             },
+
             description = "Send",
           },
 
           close = {
             modes = {
-              n = { "q", "<Esc>" },
+              n = {
+                "q",
+                "<Esc>",
+              },
+
               i = "<C-c>",
             },
+
             description = "Abort",
           },
         },
@@ -557,9 +669,10 @@ function M.codecompanion_opts()
     opts = {
       log_level = "ERROR",
 
-      -- Our project.json owns project-specific LLM configuration.
-      -- Do not execute CodeCompanion-specific project Lua files.
+      -- .nvim/project.json is our authority for project-specific LLM
+      -- configuration. Do not execute CodeCompanion project Lua configs.
       per_project_config = {
+        enabled = false,
         files = {},
         paths = {},
       },
@@ -599,19 +712,55 @@ function M.setup()
     end
   end, {
     nargs = "?",
+
     complete = function(arg_lead)
       return vim
-        .iter({ "codex", "claude" })
+        .iter({
+          "codex",
+          "claude",
+        })
         :filter(function(name)
           return vim.startswith(name, arg_lead)
         end)
         :totable()
     end,
+
     desc = "Select the LLM backend for this session",
   })
 
   vim.api.nvim_create_user_command("LLMStatus", M.status, {
     desc = "Show LLM status",
+  })
+
+  local group = vim.api.nvim_create_augroup("dotfiles_llm", {
+    clear = true,
+  })
+
+  vim.api.nvim_create_autocmd("User", {
+    group = group,
+    pattern = "ProjectScopeChanged",
+
+    callback = function()
+      if not package.loaded.codecompanion then
+        return
+      end
+
+      -- Do not destroy the old project's sessions. Just hide whichever
+      -- interaction belonged to the scope we are leaving.
+      local cli = require("codecompanion.interactions.cli")
+
+      local visible = cli.get_visible()
+
+      if visible then
+        visible.ui:hide()
+      end
+
+      local input = require("codecompanion.interactions.shared.input")
+
+      if input.is_visible() then
+        input.hide()
+      end
+    end,
   })
 end
 
