@@ -965,3 +965,319 @@ describe("llm selection replacement", function()
     }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
   end)
 end)
+
+describe("llm scratch buffers", function()
+  local original_run_structured
+  local original_input
+  local source_bufnr
+  local source_winid
+
+  local function scratch_buffers()
+    return vim
+      .iter(vim.api.nvim_list_bufs())
+      :filter(function(bufnr)
+        return vim.api.nvim_buf_is_valid(bufnr) and vim.b[bufnr].llm_scratch == true
+      end)
+      :totable()
+  end
+
+  local function close_scratch_windows()
+    for _, winid in ipairs(vim.api.nvim_list_wins()) do
+      local bufnr = vim.api.nvim_win_get_buf(winid)
+
+      if vim.api.nvim_buf_is_valid(bufnr) and vim.b[bufnr].llm_scratch == true and #vim.api.nvim_list_wins() > 1 then
+        vim.api.nvim_win_close(winid, true)
+      end
+    end
+  end
+
+  local function delete_scratch_buffers()
+    for _, bufnr in ipairs(scratch_buffers()) do
+      if vim.api.nvim_buf_is_valid(bufnr) then
+        vim.api.nvim_buf_delete(bufnr, {
+          force = true,
+        })
+      end
+    end
+  end
+
+  before_each(function()
+    original_run_structured = llm.run_structured
+    original_input = vim.ui.input
+
+    source_bufnr = vim.api.nvim_create_buf(true, false)
+
+    vim.api.nvim_buf_set_lines(source_bufnr, 0, -1, false, {
+      "source buffer",
+    })
+
+    vim.api.nvim_set_current_buf(source_bufnr)
+    source_winid = vim.api.nvim_get_current_win()
+  end)
+
+  after_each(function()
+    llm.run_structured = original_run_structured
+    vim.ui.input = original_input
+
+    close_scratch_windows()
+    delete_scratch_buffers()
+
+    if
+      source_winid
+      and vim.api.nvim_win_is_valid(source_winid)
+      and source_bufnr
+      and vim.api.nvim_buf_is_valid(source_bufnr)
+    then
+      vim.api.nvim_set_current_win(source_winid)
+      vim.api.nvim_win_set_buf(source_winid, source_bufnr)
+    end
+
+    if source_bufnr and vim.api.nvim_buf_is_valid(source_bufnr) then
+      vim.api.nvim_buf_delete(source_bufnr, {
+        force = true,
+      })
+    end
+  end)
+
+  it("shows a running scratch buffer until the provider responds", function()
+    local provider_callback
+
+    vim.ui.input = function(_, callback)
+      callback("generate something")
+    end
+
+    llm.run_structured = function(_, callback)
+      provider_callback = callback
+
+      return {
+        kill = function() end,
+      }
+    end
+
+    llm.scratch()
+
+    local buffers = scratch_buffers()
+
+    assert.are.equal(1, #buffers)
+
+    local bufnr = buffers[1]
+
+    assert.are.equal(bufnr, vim.api.nvim_get_current_buf())
+    assert.are.equal("running", vim.b[bufnr].llm_scratch_state)
+    assert.is_false(vim.bo[bufnr].modifiable)
+    assert.is_false(vim.bo[bufnr].modified)
+
+    assert.are.same({
+      "Generating LLM scratch…",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+
+    assert.is_function(provider_callback)
+
+    provider_callback("generated content", nil, "codex")
+
+    assert.are.equal("ready", vim.b[bufnr].llm_scratch_state)
+    assert.is_true(vim.bo[bufnr].modifiable)
+    assert.is_true(vim.bo[bufnr].modified)
+
+    assert.are.same({
+      "generated content",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("creates an unnamed writable scratch buffer", function()
+    vim.ui.input = function(_, callback)
+      callback("generate something")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback("generated content", nil, "claude")
+
+      return {}
+    end
+
+    llm.scratch()
+
+    local buffers = scratch_buffers()
+
+    assert.are.equal(1, #buffers)
+
+    local bufnr = buffers[1]
+
+    assert.are.equal("", vim.api.nvim_buf_get_name(bufnr))
+
+    assert.are.equal("", vim.bo[bufnr].buftype)
+
+    assert.is_true(vim.bo[bufnr].modifiable)
+
+    assert.is_false(vim.bo[bufnr].swapfile)
+
+    assert.is_true(vim.bo[bufnr].modified)
+
+    assert.are.equal(0, vim.fn.buflisted(bufnr))
+
+    assert.is_true(vim.b[bufnr].llm_scratch)
+
+    assert.are.equal("claude", vim.b[bufnr].llm_backend)
+
+    assert.are.equal("generate something", vim.b[bufnr].llm_request)
+
+    assert.are.equal("ready", vim.b[bufnr].llm_scratch_state)
+  end)
+
+  it("does not modify the source buffer", function()
+    vim.ui.input = function(_, callback)
+      callback("generate something")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback("completely different content", nil, "codex")
+
+      return {}
+    end
+
+    llm.scratch()
+
+    assert.are.same({
+      "source buffer",
+    }, vim.api.nvim_buf_get_lines(source_bufnr, 0, -1, false))
+  end)
+
+  it("preserves provider output exactly", function()
+    vim.ui.input = function(_, callback)
+      callback("generate indented text")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback("  first line  \n    second line", nil, "codex")
+
+      return {}
+    end
+
+    llm.scratch()
+
+    local buffers = scratch_buffers()
+
+    assert.are.equal(1, #buffers)
+
+    assert.are.same({
+      "  first line  ",
+      "    second line",
+    }, vim.api.nvim_buf_get_lines(buffers[1], 0, -1, false))
+  end)
+
+  it("shows provider failures in the scratch buffer", function()
+    vim.ui.input = function(_, callback)
+      callback("generate something")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback(nil, "provider failed", "codex")
+
+      return {}
+    end
+
+    llm.scratch()
+
+    local buffers = scratch_buffers()
+
+    assert.are.equal(1, #buffers)
+
+    local bufnr = buffers[1]
+
+    assert.are.equal("failed", vim.b[bufnr].llm_scratch_state)
+    assert.are.equal("codex", vim.b[bufnr].llm_backend)
+    assert.is_true(vim.bo[bufnr].modifiable)
+    assert.is_false(vim.bo[bufnr].modified)
+
+    assert.are.same({
+      "LLM scratch [codex] failed:",
+      "",
+      "provider failed",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("does not invoke the provider when the prompt is cancelled", function()
+    local called = false
+
+    vim.ui.input = function(_, callback)
+      callback(nil)
+    end
+
+    llm.run_structured = function()
+      called = true
+    end
+
+    llm.scratch()
+
+    assert.is_false(called)
+
+    assert.are.same({}, scratch_buffers())
+  end)
+
+  it("does not invoke the provider for an empty prompt", function()
+    local called = false
+
+    vim.ui.input = function(_, callback)
+      callback("   ")
+    end
+
+    llm.run_structured = function()
+      called = true
+    end
+
+    llm.scratch()
+
+    assert.is_false(called)
+
+    assert.are.same({}, scratch_buffers())
+  end)
+
+  it("supports a request passed directly without opening the prompt", function()
+    local input_opened = false
+    local captured_prompt
+
+    vim.ui.input = function()
+      input_opened = true
+    end
+
+    llm.run_structured = function(prompt, callback)
+      captured_prompt = prompt
+
+      callback("generated content", nil, "codex")
+
+      return {}
+    end
+
+    llm.scratch("write a helper")
+
+    assert.is_false(input_opened)
+
+    assert.matches("write a helper", captured_prompt, 1, true)
+
+    assert.are.equal(1, #scratch_buffers())
+  end)
+
+  it("does not send source-buffer contents implicitly", function()
+    vim.api.nvim_buf_set_lines(source_bufnr, 0, -1, false, {
+      "SECRET_SOURCE_CONTENT",
+    })
+
+    local captured_prompt
+
+    vim.ui.input = function(_, callback)
+      callback("generate something")
+    end
+
+    llm.run_structured = function(prompt, callback)
+      captured_prompt = prompt
+
+      callback("generated content", nil, "codex")
+
+      return {}
+    end
+
+    llm.scratch()
+
+    assert.is_false(captured_prompt:find("SECRET_SOURCE_CONTENT", 1, true) ~= nil)
+  end)
+end)
