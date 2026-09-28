@@ -7,6 +7,9 @@ Usage:
   dotfiles-llm services
   dotfiles-llm models [type]
   dotfiles-llm status [service]
+  dotfiles-llm is-running <service>
+  dotfiles-llm acquire <service> <pid>
+  dotfiles-llm release <service> <pid>
   dotfiles-llm start <service>
   dotfiles-llm stop <service>
 EOF
@@ -57,6 +60,125 @@ service_domain() {
 
 service_target() {
   printf '%s/%s\n' "$(service_domain)" "$(service_label "$1")"
+}
+
+service_autostart() {
+  name="$1"
+
+  llm_data \
+    | jq -e --arg name "$name" \
+      '.llm.services[$name].autostart == true' >/dev/null
+}
+
+llm_state_root() {
+  printf '%s/dotfiles/llm\n' "${XDG_STATE_HOME:-$HOME/.local/state}"
+}
+
+service_lease_dir() {
+  printf '%s/leases/%s\n' "$(llm_state_root)" "$1"
+}
+
+service_owned_file() {
+  printf '%s/owned/%s\n' "$(llm_state_root)" "$1"
+}
+
+service_lock_dir() {
+  printf '%s/locks/%s.lock\n' "$(llm_state_root)" "$1"
+}
+
+validate_pid() {
+  case "$1" in
+    '' | *[!0-9]*)
+      die "invalid pid: $1"
+      ;;
+  esac
+}
+
+SERVICE_LOCK=""
+
+acquire_service_lock() {
+  name="$1"
+  root="$(llm_state_root)"
+
+  mkdir -p "$root/locks"
+
+  SERVICE_LOCK="$(service_lock_dir "$name")"
+
+  attempts=0
+
+  while ! mkdir "$SERVICE_LOCK" 2>/dev/null; do
+    holder=""
+
+    if [ -f "$SERVICE_LOCK/pid" ]; then
+      holder="$(cat "$SERVICE_LOCK/pid" 2>/dev/null || true)"
+    fi
+
+    case "$holder" in
+      '' | *[!0-9]*)
+        ;;
+      *)
+        if ! kill -0 "$holder" 2>/dev/null; then
+          rm -f "$SERVICE_LOCK/pid"
+          rmdir "$SERVICE_LOCK" 2>/dev/null || true
+          continue
+        fi
+        ;;
+    esac
+
+    attempts=$((attempts + 1))
+
+    [ "$attempts" -lt 100 ] \
+      || die "timed out waiting for service lock: $name"
+
+    sleep 0.05
+  done
+
+  printf '%s\n' "$$" >"$SERVICE_LOCK/pid"
+}
+
+release_service_lock() {
+  [ -n "$SERVICE_LOCK" ] || return 0
+
+  rm -f "$SERVICE_LOCK/pid"
+  rmdir "$SERVICE_LOCK" 2>/dev/null || true
+
+  SERVICE_LOCK=""
+}
+
+cleanup_stale_leases() {
+  name="$1"
+  dir="$(service_lease_dir "$name")"
+
+  [ -d "$dir" ] || return 0
+
+  for lease in "$dir"/*; do
+    [ -f "$lease" ] || continue
+
+    pid="${lease##*/}"
+
+    case "$pid" in
+      '' | *[!0-9]*)
+        rm -f "$lease"
+        continue
+        ;;
+    esac
+
+    if ! kill -0 "$pid" 2>/dev/null; then
+      rm -f "$lease"
+    fi
+  done
+}
+
+has_service_leases() {
+  dir="$(service_lease_dir "$1")"
+
+  [ -d "$dir" ] || return 1
+
+  for lease in "$dir"/*; do
+    [ -f "$lease" ] && return 0
+  done
+
+  return 1
 }
 
 list_services() {
@@ -198,6 +320,31 @@ status_all() {
     done
 }
 
+is_service_running() {
+  name="$1"
+
+  require_darwin
+
+  if ! service_exists "$name"; then
+    printf 'dotfiles-llm: unknown service: %s\n' "$name" >&2
+    return 2
+  fi
+
+  if ! service_enabled "$name"; then
+    printf 'dotfiles-llm: service is disabled: %s\n' "$name" >&2
+    return 2
+  fi
+
+  target="$(service_target "$name")"
+
+  if launchctl print "$target" 2>/dev/null \
+    | grep -q 'state = running'; then
+    return 0
+  fi
+
+  return 1
+}
+
 start_service() {
   name="$1"
 
@@ -233,6 +380,97 @@ stop_service() {
   launchctl bootout "$(service_target "$name")" >/dev/null 2>&1 || true
 }
 
+acquire_service() {
+  name="$1"
+  pid="$2"
+
+  require_darwin
+  validate_pid "$pid"
+
+  service_exists "$name" \
+    || die "unknown service: $name"
+
+  service_enabled "$name" \
+    || die "service is disabled: $name"
+
+  # launchd owns autostart services. They never need client leases.
+  if service_autostart "$name"; then
+    return 0
+  fi
+
+  root="$(llm_state_root)"
+  leases="$(service_lease_dir "$name")"
+  owned="$(service_owned_file "$name")"
+
+  mkdir -p "$leases" "$root/owned"
+
+  acquire_service_lock "$name"
+  trap 'release_service_lock' 0 1 2 15
+
+  cleanup_stale_leases "$name"
+
+  lease="$leases/$pid"
+  : >"$lease"
+
+  if is_service_running "$name"; then
+    release_service_lock
+    trap - 0 1 2 15
+    return 0
+  fi
+
+  if ! start_service "$name"; then
+    rm -f "$lease"
+
+    release_service_lock
+    trap - 0 1 2 15
+
+    return 1
+  fi
+
+  # The service was stopped when we acquired it, so the lease system owns
+  # this start and may stop it when the final lease disappears.
+  : >"$owned"
+
+  release_service_lock
+  trap - 0 1 2 15
+}
+
+release_service() {
+  name="$1"
+  pid="$2"
+
+  require_darwin
+  validate_pid "$pid"
+
+  service_exists "$name" \
+    || die "unknown service: $name"
+
+  # launchd owns autostart services.
+  if service_autostart "$name"; then
+    return 0
+  fi
+
+  leases="$(service_lease_dir "$name")"
+  owned="$(service_owned_file "$name")"
+
+  acquire_service_lock "$name"
+  trap 'release_service_lock' 0 1 2 15
+
+  cleanup_stale_leases "$name"
+
+  rm -f "$leases/$pid"
+
+  cleanup_stale_leases "$name"
+
+  if ! has_service_leases "$name" && [ -f "$owned" ]; then
+    stop_service "$name"
+    rm -f "$owned"
+  fi
+
+  release_service_lock
+  trap - 0 1 2 15
+}
+
 command="${1:-}"
 
 case "$command" in
@@ -250,6 +488,23 @@ case "$command" in
     else
       status_all
     fi
+    ;;
+
+  is-running)
+    [ -n "${2:-}" ] || die "missing service"
+    is_service_running "$2"
+    ;;
+
+  acquire)
+    [ -n "${2:-}" ] || die "missing service"
+    [ -n "${3:-}" ] || die "missing pid"
+    acquire_service "$2" "$3"
+    ;;
+
+  release)
+    [ -n "${2:-}" ] || die "missing service"
+    [ -n "${3:-}" ] || die "missing pid"
+    release_service "$2" "$3"
     ;;
 
   start)
