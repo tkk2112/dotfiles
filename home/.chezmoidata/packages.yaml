@@ -179,7 +179,13 @@ packages:
       managers: [brew, pacman]
 
     # LLM: Local model tooling and coding agents.
+    - name: llama.cpp
+      group: llm
+      managers: [brew]
     - name: llmfit
+      group: llm
+      managers: [brew]
+    - name: mlx-lm
       group: llm
       managers: [brew]
 
