@@ -1,11 +1,15 @@
 llm:
-  backend: llama_cpp
+  backends:
+    llama_cpp:
+      endpoint: http://127.0.0.1:18080
+      models:
+        completion: bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M
 
-  endpoints:
-    llama_cpp: http://127.0.0.1:18080
-    mlx: http://127.0.0.1:18081
+    mlx:
+      endpoint: http://127.0.0.1:18081
+      models:
+        completion: mlx-community/Qwen2.5-Coder-3B-4bit
 
-  models:
+  workloads:
     completion:
-      llama_cpp: Qwen/Qwen2.5-Coder-3B-GGUF
-      mlx: mlx-community/Qwen2.5-Coder-3B-4bit
+      backend: llama_cpp
