@@ -1,25 +1,105 @@
 {{- $owned := has "owned" .profiles -}}
+{{- $llm := has "llm" .profiles -}}
+
+{{- $completionServiceName := "" -}}
+{{- $completionService := dict -}}
+{{- $completionModel := dict -}}
+{{- $completionArtifact := dict -}}
+
+{{- if $llm -}}
+{{-   $completionServiceName = .llm.defaults.completion -}}
+{{-   $completionService = index .llm.services $completionServiceName -}}
+
+{{-   range .llm.models -}}
+{{-     if eq .id $completionService.model -}}
+{{-       $completionModel = . -}}
+{{-     end -}}
+{{-   end -}}
+
+{{-   $completionArtifact = index $completionModel.backends $completionService.backend -}}
+{{- end -}}
 
 return {
   {
     "saghen/blink.cmp",
 
-{{ if $owned }}
     dependencies = {
+{{ if $owned }}
       "saghen/blink.lib",
+{{ end }}
       "rafamadriz/friendly-snippets",
+{{ if $llm }}
+      {
+        "milanglacier/minuet-ai.nvim",
+
+        opts = function()
+          local completion = require("config.llm.completion")
+          local endpoint = "http://127.0.0.1:{{ $completionService.port }}"
+
+          completion.setup({
+            service = "{{ $completionServiceName }}",
+            endpoint = endpoint,
+            autostart = {{ if $completionService.autostart }}true{{ else }}false{{ end }},
+          })
+
+          return {
+            provider = "openai_fim_compatible",
+
+            n_completions = 1,
+            context_window = 4096,
+
+            debounce = 300,
+            throttle = 500,
+            request_timeout = 2,
+
+            notify = "error",
+
+            enable_predicates = {
+              completion.available,
+            },
+
+            provider_options = {
+              openai_fim_compatible = {
+                api_key = function()
+                  return "local"
+                end,
+
+                name = "Local {{ $completionService.backend }}",
+                end_point = endpoint .. "/v1/completions",
+                model = "{{ $completionArtifact.model }}",
+
+                optional = {
+                  max_tokens = 64,
+                  top_p = 0.9,
+                },
+
+                template = {
+                  prompt = function(context_before_cursor, context_after_cursor, _)
+                    return "<|fim_prefix|>"
+                      .. context_before_cursor
+                      .. "<|fim_suffix|>"
+                      .. context_after_cursor
+                      .. "<|fim_middle|>"
+                  end,
+
+                  suffix = false,
+                },
+              },
+            },
+          }
+        end,
+      },
+{{ end }}
     },
 
+{{ if $owned }}
     build = function()
       require("blink.cmp").build():pwait()
     end,
 {{ else }}
     version = "1.*",
-
-    dependencies = {
-      "rafamadriz/friendly-snippets",
-    },
 {{ end }}
+
     opts = {
       keymap = {
         preset = "none",
@@ -58,14 +138,75 @@ return {
       },
 
       completion = {
-        documentation = {
-          auto_show = false,
+        menu = {
+          draw = {
+            columns = {
+              { "label", "label_description", gap = 1 },
+              { "kind_icon", "kind", gap = 1 },
+              { "source_name" },
+            },
+            components = {
+              kind = {
+                text = function(ctx)
+                  return "[" .. ctx.kind .. "]"
+                end,
+                highlight = function(ctx)
+                  return ctx.kind_hl
+                end,
+              },
+
+              source_name = {
+                text = function(ctx)
+                  return "[" .. ctx.source_name .. "]"
+                end,
+                highlight = "BlinkCmpSource",
+              },
+            },
+          },
         },
-        ghost_text = { enabled = true },
+        documentation = {
+          auto_show = true,
+          auto_show_delay_ms = 250,
+        },
+
+        ghost_text = {
+          enabled = true,
+        },
+
+{{ if $llm }}
+        -- Do not eagerly issue an LLM request just because insert mode starts.
+        trigger = {
+          prefetch_on_insert = false,
+        },
+{{ end }}
+      },
+
+      signature = {
+        enabled = true,
       },
 
       sources = {
-        default = { "lsp", "path", "snippets", "buffer" },
+        default = {
+          "lsp",
+          "path",
+          "snippets",
+          "buffer",
+{{ if $llm }}
+          "minuet",
+{{ end }}
+        },
+
+{{ if $llm }}
+        providers = {
+          minuet = {
+            name = "LLM",
+            module = "minuet.blink",
+            async = true,
+            timeout_ms = 2000,
+            score_offset = 50,
+          },
+        },
+{{ end }}
       },
 
       fuzzy = {

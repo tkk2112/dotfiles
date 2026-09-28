@@ -18,3 +18,6 @@ llm:
       backend: llama_cpp
       model: qwen2.5-coder-3b
       port: 18080
+
+  defaults:
+    completion: inline

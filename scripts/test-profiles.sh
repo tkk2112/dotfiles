@@ -91,15 +91,27 @@ test_llm_profile() {
     return 0
   fi
 
-  jq -e '
-        .llm.services.inline.type == "completion" and
-        .llm.services.inline.enabled == true and
-        .llm.services.inline.autostart == true and
-        .llm.services.inline.backend == "llama_cpp" and
-        .llm.services.inline.model == "qwen2.5-coder-3b" and
-        .llm.services.inline.port == 18080
-    ' "$data_file" >/dev/null \
-    || fail "llm inline service did not resolve correctly"
+  completion_service="$(
+    jq -r '.llm.defaults.completion // empty' "$data_file"
+  )"
+
+  [ -n "$completion_service" ] \
+    || fail "llm completion default is missing"
+
+  jq -e --arg service "$completion_service" '
+  .llm.services[$service] as $service_config
+  |
+    $service_config != null
+    and $service_config.enabled == true
+    and $service_config.type == "completion"
+    and any(
+      .llm.models[];
+      .id == $service_config.model
+      and .type == "completion"
+      and .backends[$service_config.backend] != null
+    )
+' "$data_file" >/dev/null \
+    || fail "llm completion default does not resolve to a valid completion service"
 
   jq -e '
         .llm.models[]
