@@ -426,7 +426,7 @@ describe("llm structured execution", function()
 
         callback({
           code = 0,
-          stdout = "  LLM OK\n",
+          stdout = "LLM OK\n",
           stderr = "",
         })
 
@@ -621,5 +621,291 @@ describe("llm structured execution", function()
         return callback_called
       end, 10))
     end)
+  end)
+
+  it("preserves meaningful whitespace in Claude output", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local bin = mkdir(vim.fs.joinpath(tmp, "bin"))
+
+      make_executable(vim.fs.joinpath(bin, "claude"))
+
+      stub_config(root, "claude")
+      vim.env.PATH = bin
+
+      vim.system = function(_, _, callback)
+        callback({
+          code = 0,
+          stdout = "  replacement text  \n",
+          stderr = "",
+        })
+
+        return {}
+      end
+
+      local _, result = run_and_wait("test")
+
+      assert.are.equal("  replacement text  ", result.output)
+      assert.is_nil(result.err)
+    end)
+  end)
+end)
+
+describe("llm selection replacement", function()
+  local original_run_structured
+  local original_input
+  local original_select
+  local buffers
+
+  local function make_buffer(lines)
+    local bufnr = vim.api.nvim_create_buf(true, false)
+
+    table.insert(buffers, bufnr)
+
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+    vim.api.nvim_set_current_buf(bufnr)
+
+    return bufnr
+  end
+
+  local function select_chars(bufnr, row, col, count)
+    vim.api.nvim_set_current_buf(bufnr)
+    vim.api.nvim_win_set_cursor(0, {
+      row,
+      col,
+    })
+
+    vim.cmd(string.format("normal! v%dl", count - 1))
+  end
+
+  before_each(function()
+    original_run_structured = llm.run_structured
+    original_input = vim.ui.input
+    original_select = vim.ui.select
+    buffers = {}
+  end)
+
+  after_each(function()
+    llm.run_structured = original_run_structured
+    vim.ui.input = original_input
+    vim.ui.select = original_select
+
+    for _, bufnr in ipairs(buffers) do
+      if vim.api.nvim_buf_is_valid(bufnr) then
+        vim.api.nvim_buf_delete(bufnr, {
+          force = true,
+        })
+      end
+    end
+  end)
+
+  it("does not modify the buffer before explicit acceptance", function()
+    local bufnr = make_buffer({
+      "abc def ghi",
+    })
+
+    select_chars(bufnr, 1, 4, 3)
+
+    local decision
+    local captured_prompt
+
+    vim.ui.input = function(_, callback)
+      callback("uppercase it")
+    end
+
+    llm.run_structured = function(prompt, callback)
+      captured_prompt = prompt
+      callback("DEF", nil, "codex")
+      return {}
+    end
+
+    vim.ui.select = function(_, _, callback)
+      decision = callback
+    end
+
+    llm.replace_selection()
+
+    assert.are.same({
+      "abc def ghi",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+
+    assert.matches("uppercase it", captured_prompt, 1, true)
+    assert.matches("def", captured_prompt, 1, true)
+    assert.is_function(decision)
+
+    decision("Apply", 1)
+
+    assert.are.same({
+      "abc DEF ghi",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("leaves the buffer untouched when replacement is rejected", function()
+    local bufnr = make_buffer({
+      "abc def ghi",
+    })
+
+    select_chars(bufnr, 1, 4, 3)
+
+    vim.ui.input = function(_, callback)
+      callback("uppercase it")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback("DEF", nil, "codex")
+      return {}
+    end
+
+    vim.ui.select = function(_, _, callback)
+      callback("Reject", 2)
+    end
+
+    llm.replace_selection()
+
+    assert.are.same({
+      "abc def ghi",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("does not overwrite a buffer changed while the request is running", function()
+    local bufnr = make_buffer({
+      "abc def ghi",
+    })
+
+    select_chars(bufnr, 1, 4, 3)
+
+    local provider_callback
+    local previewed = false
+
+    vim.ui.input = function(_, callback)
+      callback("uppercase it")
+    end
+
+    llm.run_structured = function(_, callback)
+      provider_callback = callback
+      return {}
+    end
+
+    vim.ui.select = function()
+      previewed = true
+    end
+
+    llm.replace_selection()
+
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+      "changed by user",
+    })
+
+    provider_callback("DEF", nil, "codex")
+
+    assert.is_false(previewed)
+    assert.are.same({
+      "changed by user",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("never edits the current buffer instead of the captured source buffer", function()
+    local source = make_buffer({
+      "abc def ghi",
+    })
+
+    select_chars(source, 1, 4, 3)
+
+    local provider_callback
+
+    vim.ui.input = function(_, callback)
+      callback("uppercase it")
+    end
+
+    llm.run_structured = function(_, callback)
+      provider_callback = callback
+      return {}
+    end
+
+    llm.replace_selection()
+
+    local other = make_buffer({
+      "do not touch",
+    })
+
+    vim.ui.select = function(_, _, callback)
+      callback("Apply", 1)
+    end
+
+    provider_callback("DEF", nil, "codex")
+
+    assert.are.same({
+      "abc DEF ghi",
+    }, vim.api.nvim_buf_get_lines(source, 0, -1, false))
+
+    assert.are.same({
+      "do not touch",
+    }, vim.api.nvim_buf_get_lines(other, 0, -1, false))
+  end)
+
+  it("leaves the selection untouched when the provider fails", function()
+    local bufnr = make_buffer({
+      "abc def ghi",
+    })
+
+    select_chars(bufnr, 1, 4, 3)
+
+    local previewed = false
+
+    vim.ui.input = function(_, callback)
+      callback("uppercase it")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback(nil, "provider failed", "codex")
+      return {}
+    end
+
+    vim.ui.select = function()
+      previewed = true
+    end
+
+    llm.replace_selection()
+
+    assert.is_false(previewed)
+    assert.are.same({
+      "abc def ghi",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("replaces complete linewise selections", function()
+    local bufnr = make_buffer({
+      "one",
+      "two",
+      "three",
+    })
+
+    vim.api.nvim_win_set_cursor(0, {
+      2,
+      0,
+    })
+    vim.cmd("normal! V")
+
+    vim.ui.input = function(_, callback)
+      callback("expand it")
+    end
+
+    llm.run_structured = function(_, callback)
+      callback("TWO\nextra", nil, "codex")
+      return {}
+    end
+
+    vim.ui.select = function(_, _, callback)
+      callback("Apply", 1)
+    end
+
+    llm.replace_selection()
+
+    assert.are.same({
+      "one",
+      "TWO",
+      "extra",
+      "three",
+    }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
   end)
 end)

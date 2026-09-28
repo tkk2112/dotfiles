@@ -271,29 +271,13 @@ function M.setup()
   map("n", "<PageDown>", "<C-d>", { desc = "Scroll half page down" })
 
   -- LLM
-  map("n", "<leader>mm", llm.toggle, {
-    desc = "Toggle LLM",
-  })
-
-  map({ "n", "x" }, "<leader>ma", llm.ask, {
-    desc = "Ask LLM",
-  })
-
-  map({ "n", "x" }, "<leader>mc", llm.add_context, {
-    desc = "Add LLM context",
-  })
-
-  map("n", "<leader>md", llm.diagnostics, {
-    desc = "LLM diagnostics",
-  })
-
-  map("n", "<leader>mb", llm.pick_backend, {
-    desc = "Pick LLM backend",
-  })
-
-  map("n", "<leader>ms", llm.status, {
-    desc = "LLM status",
-  })
+  map("n", "<leader>mm", llm.toggle, { desc = "Toggle LLM" })
+  map({ "n", "x" }, "<leader>ma", llm.ask, { desc = "Ask LLM" })
+  map({ "n", "x" }, "<leader>mc", llm.add_context, { desc = "Add LLM context" })
+  map("n", "<leader>md", llm.diagnostics, { desc = "LLM diagnostics" })
+  map("n", "<leader>mb", llm.pick_backend, { desc = "Pick LLM backend" })
+  map("n", "<leader>ms", llm.status, { desc = "LLM status" })
+  map("x", "<leader>mr", llm.replace_selection, { desc = "Replace selection with LLM" })
 
   -- tmux integration
   map_tmux_nav("n", "<C-a><Left>", "left")
