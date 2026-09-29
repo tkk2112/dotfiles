@@ -42,6 +42,82 @@
 {{-   fail "select exactly one machine role: workstation or headless" -}}
 {{- end -}}
 
+{{- $llmProviderChoices := list "codex" "claude" -}}
+{{- $llmRuntimeChoices := list "mlx" "llama_cpp" -}}
+{{- $llmFeatureChoices := list "completion" "laya" -}}
+
+{{- $llmProviders := list -}}
+{{- $llmRuntimes := list -}}
+{{- $llmFeatures := list -}}
+
+{{- if has "llm" $profiles -}}
+{{-   if env "DOTFILES_LLM_PROVIDERS" -}}
+{{-     $llmProviders = splitList "," (env "DOTFILES_LLM_PROVIDERS") -}}
+{{-   else -}}
+{{-     $llmProviders = promptMultichoiceOnce
+        .
+        "llmConfig.providers"
+        "LLM subscriptions"
+        $llmProviderChoices
+        (list "codex" "claude")
+-}}
+{{-   end -}}
+
+{{-   if env "DOTFILES_LLM_RUNTIMES" -}}
+{{-     $llmRuntimes = splitList "," (env "DOTFILES_LLM_RUNTIMES") -}}
+{{-   else -}}
+{{-     $llmRuntimes = promptMultichoiceOnce
+        .
+        "llmConfig.runtimes"
+        "Local LLM runtimes"
+        $llmRuntimeChoices
+        (list "mlx" "llama_cpp")
+-}}
+{{-   end -}}
+
+{{-   if env "DOTFILES_LLM_FEATURES" -}}
+{{-     $llmFeatures = splitList "," (env "DOTFILES_LLM_FEATURES") -}}
+{{-   else -}}
+{{-     $llmFeatures = promptMultichoiceOnce
+        .
+        "llmConfig.features"
+        "LLM features"
+        $llmFeatureChoices
+        (list "completion")
+-}}
+{{-   end -}}
+{{- end -}}
+
+{{- range $provider := $llmProviders -}}
+{{-   if not (has $provider $llmProviderChoices) -}}
+{{-     fail (printf "unknown LLM provider %q; valid providers: %s" $provider (join ", " $llmProviderChoices)) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- range $runtime := $llmRuntimes -}}
+{{-   if not (has $runtime $llmRuntimeChoices) -}}
+{{-     fail (printf "unknown LLM runtime %q; valid runtimes: %s" $runtime (join ", " $llmRuntimeChoices)) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- range $feature := $llmFeatures -}}
+{{-   if not (has $feature $llmFeatureChoices) -}}
+{{-     fail (printf "unknown LLM feature %q; valid features: %s" $feature (join ", " $llmFeatureChoices)) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- if ne (len $llmProviders) (len (uniq $llmProviders)) -}}
+{{-   fail "LLM providers must not contain duplicates" -}}
+{{- end -}}
+
+{{- if ne (len $llmRuntimes) (len (uniq $llmRuntimes)) -}}
+{{-   fail "LLM runtimes must not contain duplicates" -}}
+{{- end -}}
+
+{{- if ne (len $llmFeatures) (len (uniq $llmFeatures)) -}}
+{{-   fail "LLM features must not contain duplicates" -}}
+{{- end -}}
+
 {{- $sshAgentChoices := list "proton-pass" "omz" "external" "none" -}}
 {{- $defaultSshAgent := "none" -}}
 
@@ -83,3 +159,8 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
 [data.git]
     name = {{ $gitName | quote }}
     email = {{ $gitEmail | quote }}
+
+[data.llmConfig]
+    providers = {{ $llmProviders | toToml }}
+    runtimes = {{ $llmRuntimes | toToml }}
+    features = {{ $llmFeatures | toToml }}
