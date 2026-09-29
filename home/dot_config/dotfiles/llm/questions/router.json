@@ -1,0 +1,10 @@
+{
+  "route": {
+    "type": "choice",
+    "instructions": "Choose how this request should be handled. Classify based on what output the request requires, not whether the request itself contains a question.",
+    "criteria": {
+      "typed_decision": "The answer can be represented as a constrained choice, boolean, category, score, or probability without generating an explanation or code.",
+      "generative": "The request requires prose, code, explanation, debugging, transformation, planning, or other generated content."
+    }
+  }
+}
