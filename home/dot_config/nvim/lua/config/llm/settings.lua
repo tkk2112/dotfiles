@@ -1,6 +1,7 @@
 local M = {}
 
 local backends = require("config.llm.backends")
+local capabilities = require("config.llm.capabilities")
 local json = require("config.lib.json")
 local paths = require("config.lib.path")
 local project = require("config.project")
@@ -11,6 +12,19 @@ local backend_overrides = {}
 
 local function table_or_empty(value)
   return type(value) == "table" and value or {}
+end
+
+local function has_provider(providers, name)
+  return vim.list_contains(providers or {}, name)
+end
+
+local function configured_providers()
+  return vim
+    .iter(capabilities.providers or {})
+    :filter(function(name)
+      return backends[name] ~= nil
+    end)
+    :totable()
 end
 
 local function read_config(path)
@@ -70,23 +84,37 @@ local function append_instructions(result, seen, root, values)
   end
 end
 
-local function configured_backend(project_llm, scope_llm)
-  local backend = scope_llm.backend or project_llm.backend or "codex"
-
-  if not backends[backend] then
-    return "codex"
+local function configured_backend(project_llm, scope_llm, providers)
+  if #providers == 0 then
+    return nil
   end
 
-  return backend
+  if #providers == 1 then
+    return providers[1]
+  end
+
+  local requested = scope_llm.backend or project_llm.backend
+
+  if requested and has_provider(providers, requested) then
+    return requested
+  end
+
+  return providers[1]
+end
+
+function M.providers()
+  return vim.deepcopy(configured_providers())
 end
 
 function M.get()
+  local providers = configured_providers()
   local project_root = project.current_project_root()
 
   if not project_root then
     return {
       enabled = false,
-      backend = "codex",
+      backend = providers[1],
+      providers = providers,
       instructions = {},
       missing_instructions = {},
       invalid_instructions = {},
@@ -113,7 +141,8 @@ function M.get()
     scope_root = scope_root,
     scope_name = selected and selected.name or nil,
     enabled = enabled,
-    backend = configured_backend(project_llm, scope_llm),
+    backend = configured_backend(project_llm, scope_llm, providers),
+    providers = providers,
     instructions = {},
     missing_instructions = {},
     invalid_instructions = {},
@@ -134,9 +163,10 @@ function M.backend(config)
   config = config or M.get()
 
   local key = config.scope_root
+  local override = key and backend_overrides[key] or nil
 
-  if key and backend_overrides[key] then
-    return backend_overrides[key]
+  if override and has_provider(config.providers, override) then
+    return override
   end
 
   return config.backend
@@ -149,6 +179,10 @@ function M.set_backend(config, name)
 
   if not backends[name] then
     return false, "Unknown LLM backend: " .. tostring(name)
+  end
+
+  if not has_provider(config.providers, name) then
+    return false, "LLM backend is not configured on this machine: " .. name
   end
 
   backend_overrides[config.scope_root] = name

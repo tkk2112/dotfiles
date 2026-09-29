@@ -183,6 +183,7 @@ test_llm_capability_selection() {
   uv_output="$test_root/llm-capabilities-uv"
   launcher_output="$test_root/llm-capabilities-launcher"
   completion_output="$test_root/llm-capabilities-completion.lua"
+  capabilities_output="$test_root/llm-capabilities.lua"
 
   printf '\n==> Testing custom LLM capabilities\n'
 
@@ -204,6 +205,26 @@ test_llm_capability_selection() {
     and .llmConfig.features == ["completion", "laya"]
   ' "$data_file" >/dev/null \
     || fail "custom LLM capabilities did not resolve correctly"
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_config/nvim/lua/config/llm/capabilities.lua.tmpl" \
+    >"$capabilities_output"
+
+  grep -Fq '"codex"' "$capabilities_output" \
+    || fail "Neovim capabilities did not include Codex"
+
+  if grep -Fq '"claude"' "$capabilities_output"; then
+    fail "Neovim capabilities included unselected Claude provider"
+  fi
+
+  grep -Fq '"mlx"' "$capabilities_output" \
+    || fail "Neovim capabilities did not include MLX runtime"
+
+  grep -Fq '"completion"' "$capabilities_output" \
+    || fail "Neovim capabilities did not include completion feature"
+
+  grep -Fq '"laya"' "$capabilities_output" \
+    || fail "Neovim capabilities did not include Laya feature"
 
   chezmoi --config "$config_file" execute-template \
     <"$repo_root/home/.chezmoiscripts/run_onchange_after_05-packages.sh.tmpl" \

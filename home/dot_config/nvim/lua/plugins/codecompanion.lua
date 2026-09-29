@@ -6,7 +6,7 @@ return {
     lazy = true,
 
     cond = function()
-      return vim.fn.executable("codex") == 1 or vim.fn.executable("claude") == 1
+      return require("config.llm").has_available_provider()
     end,
 
     dependencies = {

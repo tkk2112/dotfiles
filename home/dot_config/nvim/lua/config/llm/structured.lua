@@ -101,6 +101,11 @@ function M.run(config, backend_name, request, callback)
     return nil
   end
 
+  if not backend_name then
+    finish(callback, nil, "No LLM provider is configured on this machine", nil)
+    return nil
+  end
+
   local backend = backends[backend_name]
 
   if not backend or not backend.structured_args then

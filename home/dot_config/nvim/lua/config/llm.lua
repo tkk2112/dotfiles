@@ -1,7 +1,9 @@
 local M = {}
 
 local backends = require("config.llm.backends")
+local capabilities = require("config.llm.capabilities")
 local codecompanion = require("config.llm.codecompanion")
+local completion = require("config.llm.completion")
 local replacement = require("config.llm.replacement")
 local scratch = require("config.llm.scratch")
 local settings = require("config.llm.settings")
@@ -20,6 +22,22 @@ end
 
 function M.backend(config)
   return settings.backend(config)
+end
+
+function M.providers()
+  return settings.providers()
+end
+
+function M.has_available_provider()
+  for _, name in ipairs(settings.providers()) do
+    local backend = backends[name]
+
+    if backend and vim.fn.executable(backend.command) == 1 then
+      return true
+    end
+  end
+
+  return false
 end
 
 function M.set_backend(name)
@@ -43,10 +61,22 @@ function M.set_backend(name)
 end
 
 function M.pick_backend()
-  local names = {
-    "codex",
-    "claude",
-  }
+  local config = M.config()
+  local names = config.providers or {}
+
+  if #names == 0 then
+    vim.notify("No LLM providers are configured on this machine", vim.log.levels.WARN)
+    return
+  end
+
+  if #names == 1 then
+    local name = names[1]
+    local backend = backends[name]
+    local suffix = vim.fn.executable(backend.command) == 1 and "" or " (not available)"
+
+    vim.notify("LLM backend: " .. name .. suffix, vim.log.levels.INFO)
+    return
+  end
 
   vim.ui.select(names, {
     prompt = "LLM backend",
@@ -125,31 +155,49 @@ end
 
 function M.status()
   local config, backend_name, backend = current()
-  local available = backend and vim.fn.executable(backend.command) == 1 or false
+  local backend_available = backend and vim.fn.executable(backend.command) == 1 or false
+
+  local completion_status = completion.status()
+  local completion_enabled = vim.list_contains(capabilities.features or {}, "completion")
 
   vim.print({
-    enabled = config.enabled,
-    project_root = config.project_root,
-    scope_root = config.scope_root,
-    scope_name = config.scope_name,
+    project = {
+      enabled = config.enabled,
+      root = config.project_root,
+      scope_root = config.scope_root,
+      scope_name = config.scope_name,
+    },
 
-    backend = backend_name,
-    backend_available = available,
-    structured_available = available and backend.structured_args ~= nil or false,
+    providers = config.providers,
 
-    command = backend and backend.command or nil,
-    session_running = codecompanion.session_running(config, backend),
+    agent = {
+      backend = backend_name,
+      available = backend_available,
+      structured_available = backend_available and backend and backend.structured_args ~= nil or false,
+      command = backend and backend.command or nil,
+      session_running = codecompanion.session_running(config, backend),
+      codecompanion_loaded = package.loaded.codecompanion ~= nil,
+    },
+
+    completion = {
+      enabled = completion_enabled,
+      configured = completion_status.configured,
+      available = completion_status.available,
+      runtime = completion_status.backend,
+      model = completion_status.model,
+      service = completion_status.service,
+      endpoint = completion_status.endpoint,
+      autostart = completion_status.autostart,
+    },
 
     instructions = config.instructions,
     missing_instructions = config.missing_instructions,
     invalid_instructions = config.invalid_instructions,
-
-    codecompanion_loaded = package.loaded.codecompanion ~= nil,
   })
 end
 
 function M.codecompanion_opts()
-  return codecompanion.opts(backends)
+  return codecompanion.opts(backends, settings.providers())
 end
 
 function M.setup()
@@ -187,10 +235,7 @@ function M.setup()
 
     complete = function(arg_lead)
       return vim
-        .iter({
-          "codex",
-          "claude",
-        })
+        .iter(settings.providers())
         :filter(function(name)
           return vim.startswith(name, arg_lead)
         end)

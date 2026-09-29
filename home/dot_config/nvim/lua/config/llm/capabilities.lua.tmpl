@@ -1,0 +1,23 @@
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $providers := get $llmConfig "providers" | default (list) -}}
+{{- $runtimes := get $llmConfig "runtimes" | default (list) -}}
+{{- $features := get $llmConfig "features" | default (list) -}}
+return {
+  providers = {
+{{ range $providers }}
+    "{{ . }}",
+{{ end }}
+  },
+
+  runtimes = {
+{{ range $runtimes }}
+    "{{ . }}",
+{{ end }}
+  },
+
+  features = {
+{{ range $features }}
+    "{{ . }}",
+{{ end }}
+  },
+}
