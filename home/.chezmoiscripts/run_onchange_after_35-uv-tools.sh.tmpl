@@ -2,8 +2,24 @@
 set -eu
 
 {{- $profiles := .profiles | default (list) -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $packageGroups := $profiles -}}
 {{- $packages := .packages | default (dict) -}}
 {{- $uvTools := get $packages "uv_tools" | default (list) -}}
+
+{{- if has "llm" $profiles -}}
+{{-   range $provider := (get $llmConfig "providers" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-provider-%s" $provider) -}}
+{{-   end -}}
+
+{{-   range $runtime := (get $llmConfig "runtimes" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-runtime-%s" $runtime) -}}
+{{-   end -}}
+
+{{-   range $feature := (get $llmConfig "features" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-feature-%s" $feature) -}}
+{{-   end -}}
+{{- end -}}
 
 {{ define "uvToolLines" }}
 {{- $profiles := index . 0 -}}
@@ -32,7 +48,7 @@ set -eu
 {{ end }}
 
 UV_TOOLS="$(cat <<'EOF'
-{{ template "uvToolLines" (list $profiles $uvTools .chezmoi.os) }}
+{{ template "uvToolLines" (list $packageGroups $uvTools .chezmoi.os) }}
 EOF
 )"
 
@@ -40,7 +56,6 @@ if [ "${DOTFILES_SKIP_UV_TOOLS:-}" = "1" ]; then
   printf 'Skipping uv tools because DOTFILES_SKIP_UV_TOOLS=1\n'
   exit 0
 fi
-
 
 if ! printf '%s\n' "$UV_TOOLS" | awk 'NF { found = 1 } END { exit !found }'; then
   printf '%s\n' 'No uv tools selected for this platform'

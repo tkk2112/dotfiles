@@ -1,8 +1,19 @@
 {{- $profiles := .profiles | default (list) -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $llmRuntimes := get $llmConfig "runtimes" | default (list) -}}
+{{- $llmFeatures := get $llmConfig "features" | default (list) -}}
+{{- $completionEnabled := and (has "llm" $profiles) (has "completion" $llmFeatures) -}}
+
 {{- if and (eq .chezmoi.os "darwin") (has "llm" $profiles) -}}
 {{- $ports := dict -}}
 {{- range $serviceName, $service := .llm.services -}}
-{{-   if $service.enabled -}}
+{{-   $enabled := $service.enabled -}}
+
+{{-   if eq $service.type "completion" -}}
+{{-     $enabled = and $enabled $completionEnabled -}}
+{{-   end -}}
+
+{{-   if $enabled -}}
 {{-     $port := printf "%v" $service.port -}}
 {{-     if hasKey $ports $port -}}
 {{-       fail (printf "LLM services %s and %s use duplicate port %s" (get $ports $port) $serviceName $port) -}}
@@ -24,9 +35,17 @@ die() {
 
 case "$SERVICE_NAME" in
 {{- range $serviceName, $service := .llm.services }}
+    {{- $enabled := $service.enabled }}
+
+    {{- if eq $service.type "completion" }}
+    {{-   $enabled = and $enabled $completionEnabled }}
+    {{- end }}
+
+    {{- if $enabled }}
   {{ $serviceName }})
     {{- $modelID := $service.model }}
     {{- $model := dict }}
+
     {{- range $.llm.models }}
     {{-   if eq .id $modelID }}
     {{-     $model = . }}
@@ -41,18 +60,30 @@ case "$SERVICE_NAME" in
     {{-   fail (printf "LLM service %s has type %s but model %s has type %s" $serviceName $service.type $modelID $model.type) }}
     {{- end }}
 
-    {{- if not (hasKey $model.backends $service.backend) }}
-    {{-   fail (printf "LLM model %s does not support backend %s" $modelID $service.backend) }}
+    {{- $backend := $service.backend }}
+
+    {{- if eq $service.type "completion" }}
+    {{-   if not (has $backend $llmRuntimes) }}
+    {{-     if eq (len $llmRuntimes) 1 }}
+    {{-       $backend = index $llmRuntimes 0 }}
+    {{-     else }}
+    {{-       fail (printf "LLM completion service %s cannot resolve a runtime from %s" $serviceName ($llmRuntimes | toJson)) }}
+    {{-     end }}
+    {{-   end }}
     {{- end }}
 
-    {{- $artifact := index $model.backends $service.backend }}
-    BACKEND="{{ $service.backend }}"
+    {{- if not (hasKey $model.backends $backend) }}
+    {{-   fail (printf "LLM model %s does not support backend %s" $modelID $backend) }}
+    {{- end }}
+
+    {{- $artifact := index $model.backends $backend }}
+    BACKEND="{{ $backend }}"
     MODEL="{{ $artifact.model }}"
     CTX_SIZE="{{ $model.ctx_size }}"
     PORT="{{ $service.port }}"
     ;;
+    {{- end }}
 {{- end }}
-
   *)
     die "unknown service: $SERVICE_NAME"
     ;;

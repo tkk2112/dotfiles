@@ -17,6 +17,12 @@ packages:
       command: pylsp
       with:
         - pylsp-mypy
+    - name: laya-mlx
+      group: llm-feature-laya
+      package: laya-mlx
+      command: laya-mlx
+      skip:
+        - linux
 
   casks:
     - name: whatcable
@@ -25,10 +31,10 @@ packages:
       cask: whatcable
     # LLM: Coding agent applications.
     - name: claude-code
-      group: llm
+      group: llm-provider-claude
       cask: claude-code@latest
     - name: codex
-      group: llm
+      group: llm-provider-codex
       cask: codex
 
   catalog:
@@ -180,12 +186,15 @@ packages:
 
     # LLM: Local model tooling and coding agents.
     - name: llama.cpp
-      group: llm
+      group: llm-runtime-llama_cpp
       managers: [brew]
     - name: llmfit
       group: llm
       managers: [brew]
     - name: mlx-lm
+      group: llm-runtime-mlx
+      managers: [brew]
+    - name: models
       group: llm
       managers: [brew]
 

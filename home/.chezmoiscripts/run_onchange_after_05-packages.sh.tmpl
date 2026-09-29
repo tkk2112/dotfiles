@@ -2,6 +2,22 @@
 set -eu
 
 {{- $profiles := .profiles | default (list) -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $packageGroups := $profiles -}}
+
+{{- if has "llm" $profiles -}}
+{{-   range $provider := (get $llmConfig "providers" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-provider-%s" $provider) -}}
+{{-   end -}}
+
+{{-   range $runtime := (get $llmConfig "runtimes" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-runtime-%s" $runtime) -}}
+{{-   end -}}
+
+{{-   range $feature := (get $llmConfig "features" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-feature-%s" $feature) -}}
+{{-   end -}}
+{{- end -}}
 
 {{- define "packageLines" -}}
 {{- $manager := index . 0 -}}
@@ -66,27 +82,27 @@ set -eu
 PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
 
 BREW_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "brew" .packages.catalog $profiles) }}
+{{ template "packageLines" (list "brew" .packages.catalog $packageGroups) }}
 EOF
 )"
 
 BREW_CASKS="$(cat <<'EOF'
-{{ template "caskLines" (list $profiles .packages.casks) }}
+{{ template "caskLines" (list $packageGroups .packages.casks) }}
 EOF
 )"
 
 LINUXBREW_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "linuxbrew" .packages.catalog $profiles) }}
+{{ template "packageLines" (list "linuxbrew" .packages.catalog $packageGroups) }}
 EOF
 )"
 
 LINUXBREW_SUPPLEMENTAL_PACKAGES="$(cat <<'EOF'
-{{ template "explicitPackageLines" (list "linuxbrew" .packages.catalog $profiles) }}
+{{ template "explicitPackageLines" (list "linuxbrew" .packages.catalog $packageGroups) }}
 EOF
 )"
 
 APT_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "apt" .packages.catalog $profiles) }}
+{{ template "packageLines" (list "apt" .packages.catalog $packageGroups) }}
 EOF
 )"
 
@@ -98,12 +114,12 @@ EOF
 )"
 
 DNF_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "dnf" .packages.catalog $profiles) }}
+{{ template "packageLines" (list "dnf" .packages.catalog $packageGroups) }}
 EOF
 )"
 
 PACMAN_PACKAGES="$(cat <<'EOF'
-{{ template "packageLines" (list "pacman" .packages.catalog $profiles) }}
+{{ template "packageLines" (list "pacman" .packages.catalog $packageGroups) }}
 EOF
 )"
 
