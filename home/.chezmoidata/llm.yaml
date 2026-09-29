@@ -10,6 +10,11 @@ llm:
         mlx:
           model: mlx-community/Qwen2.5-Coder-3B-4bit
 
+  laya:
+    model: aac6fef/laya-mlx
+    dtype: float16
+    device: gpu
+
   services:
     inline:
       type: completion

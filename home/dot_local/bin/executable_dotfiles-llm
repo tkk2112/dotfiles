@@ -12,6 +12,7 @@ Usage:
   dotfiles-llm release <service> <pid>
   dotfiles-llm start <service>
   dotfiles-llm stop <service>
+  dotfiles-llm decide <questions.json>
 EOF
 }
 
@@ -471,9 +472,80 @@ release_service() {
   trap - 0 1 2 15
 }
 
+decide() {
+  questions="$1"
+
+  [ -f "$questions" ] \
+    || die "questions file not found: $questions"
+
+  command -v jq >/dev/null 2>&1 \
+    || die "jq is required"
+
+  command -v laya-mlx >/dev/null 2>&1 \
+    || die "laya-mlx is not installed"
+
+  data="$(llm_data)"
+
+  printf '%s\n' "$data" \
+    | jq -e '.llmConfig.features | index("laya") != null' >/dev/null \
+    || die "Laya is not enabled on this machine"
+
+  printf '%s\n' "$data" \
+    | jq -e '.llm.laya != null' >/dev/null \
+    || die "Laya configuration is missing"
+
+  jq -e . "$questions" >/dev/null \
+    || die "invalid questions JSON: $questions"
+
+  model="$(
+    printf '%s\n' "$data" \
+      | jq -er '.llm.laya.model'
+  )"
+
+  dtype="$(
+    printf '%s\n' "$data" \
+      | jq -er '.llm.laya.dtype'
+  )"
+
+  device="$(
+    printf '%s\n' "$data" \
+      | jq -er '.llm.laya.device'
+  )"
+
+  state_file="$(
+    mktemp "${TMPDIR:-/tmp}/dotfiles-llm-state.XXXXXX"
+  )"
+
+  trap 'rm -f "$state_file"' 0 1 2 15
+
+  cat >"$state_file"
+
+  jq -e . "$state_file" >/dev/null \
+    || die "stdin must contain valid JSON"
+
+  laya-mlx predict \
+    --model "$model" \
+    --dtype "$dtype" \
+    --device "$device" \
+    --state-file "$state_file" \
+    --questions "$questions"
+
+  result=$?
+
+  rm -f "$state_file"
+  trap - 0 1 2 15
+
+  return "$result"
+}
+
 command="${1:-}"
 
 case "$command" in
+  decide)
+    [ -n "${2:-}" ] || die "missing questions file"
+    decide "$2"
+    ;;
+
   services | list)
     list_services
     ;;
