@@ -80,6 +80,27 @@ test_tmux_profile() {
   fi
 }
 
+test_llm_capability_defaults() {
+  profiles="$1"
+  data_file="$2"
+
+  if contains_profile "$profiles" llm; then
+    jq -e '
+      .llmConfig.providers == ["codex", "claude"]
+      and .llmConfig.runtimes == ["mlx", "llama_cpp"]
+      and .llmConfig.features == ["completion"]
+    ' "$data_file" >/dev/null \
+      || fail "default LLM capabilities did not resolve correctly"
+  else
+    jq -e '
+      .llmConfig.providers == []
+      and .llmConfig.runtimes == []
+      and .llmConfig.features == []
+    ' "$data_file" >/dev/null \
+      || fail "non-LLM profile contains LLM capabilities"
+  fi
+}
+
 test_llm_profile() {
   profiles="$1"
   config_file="$2"
@@ -99,29 +120,29 @@ test_llm_profile() {
     || fail "llm completion default is missing"
 
   jq -e --arg service "$completion_service" '
-  .llm.services[$service] as $service_config
-  |
-    $service_config != null
-    and $service_config.enabled == true
-    and $service_config.type == "completion"
-    and any(
-      .llm.models[];
-      .id == $service_config.model
-      and .type == "completion"
-      and .backends[$service_config.backend] != null
-    )
-' "$data_file" >/dev/null \
+    .llm.services[$service] as $service_config
+    |
+      $service_config != null
+      and $service_config.enabled == true
+      and $service_config.type == "completion"
+      and any(
+        .llm.models[];
+        .id == $service_config.model
+        and .type == "completion"
+        and .backends[$service_config.backend] != null
+      )
+  ' "$data_file" >/dev/null \
     || fail "llm completion default does not resolve to a valid completion service"
 
   jq -e '
-        .llm.models[]
-        | select(.id == "qwen2.5-coder-3b")
-        | .name == "Qwen 2.5 Coder 3B" and
-          .type == "completion" and
-          .ctx_size == 32768 and
-          .backends.llama_cpp.model == "bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M" and
-          .backends.mlx.model == "mlx-community/Qwen2.5-Coder-3B-4bit"
-    ' "$data_file" >/dev/null \
+    .llm.models[]
+    | select(.id == "qwen2.5-coder-3b")
+    | .name == "Qwen 2.5 Coder 3B"
+      and .type == "completion"
+      and .ctx_size == 32768
+      and .backends.llama_cpp.model == "bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M"
+      and .backends.mlx.model == "mlx-community/Qwen2.5-Coder-3B-4bit"
+  ' "$data_file" >/dev/null \
     || fail "llm model catalog did not resolve correctly"
 
   DOTFILES_CI=true DOTFILES_PROFILES="$profiles" \
@@ -154,6 +175,90 @@ test_llm_profile() {
     || fail "llm launcher does not disable the web UI"
 }
 
+test_llm_capability_selection() {
+  profiles="workstation,development,llm"
+  config_file="$test_root/llm-capabilities.toml"
+  data_file="$test_root/llm-capabilities.json"
+
+  printf '\n==> Testing custom LLM capabilities\n'
+
+  DOTFILES_CI=true \
+    DOTFILES_PROFILES="$profiles" \
+    DOTFILES_LLM_PROVIDERS="codex" \
+    DOTFILES_LLM_RUNTIMES="mlx" \
+    DOTFILES_LLM_FEATURES="completion,laya" \
+    run chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults
+
+  chezmoi --config "$config_file" data >"$data_file"
+
+  jq -e '
+    .llmConfig.providers == ["codex"]
+    and .llmConfig.runtimes == ["mlx"]
+    and .llmConfig.features == ["completion", "laya"]
+  ' "$data_file" >/dev/null \
+    || fail "custom LLM capabilities did not resolve correctly"
+}
+
+test_invalid_llm_provider() {
+  config_file="$test_root/invalid-llm-provider.toml"
+  output="$test_root/invalid-llm-provider.log"
+
+  printf '\n==> Rejecting invalid LLM provider\n'
+
+  if DOTFILES_CI=true \
+    DOTFILES_PROFILES="workstation,development,llm" \
+    DOTFILES_LLM_PROVIDERS="codex,skynet" \
+    chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults \
+    >"$output" 2>&1; then
+    cat "$output"
+    fail "invalid LLM provider was accepted"
+  fi
+}
+
+test_invalid_llm_runtime() {
+  config_file="$test_root/invalid-llm-runtime.toml"
+  output="$test_root/invalid-llm-runtime.log"
+
+  printf '\n==> Rejecting invalid LLM runtime\n'
+
+  if DOTFILES_CI=true \
+    DOTFILES_PROFILES="workstation,development,llm" \
+    DOTFILES_LLM_RUNTIMES="mlx,magic" \
+    chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults \
+    >"$output" 2>&1; then
+    cat "$output"
+    fail "invalid LLM runtime was accepted"
+  fi
+}
+
+test_invalid_llm_feature() {
+  config_file="$test_root/invalid-llm-feature.toml"
+  output="$test_root/invalid-llm-feature.log"
+
+  printf '\n==> Rejecting invalid LLM feature\n'
+
+  if DOTFILES_CI=true \
+    DOTFILES_PROFILES="workstation,development,llm" \
+    DOTFILES_LLM_FEATURES="completion,telepathy" \
+    chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults \
+    >"$output" 2>&1; then
+    cat "$output"
+    fail "invalid LLM feature was accepted"
+  fi
+}
+
 test_profile_set() {
   profiles="$1"
   slug="$(profile_slug "$profiles")"
@@ -163,7 +268,10 @@ test_profile_set() {
   printf '\n==> Testing profiles: %s\n' "$profiles"
 
   DOTFILES_CI=true DOTFILES_PROFILES="$profiles" \
-    run chezmoi init --config "$config_file" --source "$repo_root" --promptDefaults
+    run chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults
 
   data_file="$test_root/$slug-data.json"
   chezmoi --config "$config_file" data >"$data_file"
@@ -177,6 +285,8 @@ test_profile_set() {
   if [ "$actual_profiles" != "$profiles" ]; then
     fail "profile mismatch: expected '$profiles', got '$actual_profiles'"
   fi
+
+  test_llm_capability_defaults "$profiles" "$data_file"
 
   run chezmoi --config "$config_file" \
     --source "$repo_root" \
@@ -207,7 +317,10 @@ test_invalid_profile_set() {
   printf '\n==> Rejecting invalid profiles: %s\n' "$profiles"
 
   if DOTFILES_CI=true DOTFILES_PROFILES="$profiles" \
-    chezmoi init --config "$config_file" --source "$repo_root" --promptDefaults \
+    chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults \
     >"$output" 2>&1; then
     cat "$output"
     fail "invalid profile set was accepted: $profiles"
@@ -225,6 +338,11 @@ if [ "$(uname -s)" = "Darwin" ]; then
   printf '%s\n' "$DARWIN_VALID_PROFILE_SETS" | awk 'NF' | while IFS= read -r profiles; do
     test_profile_set "$profiles"
   done
+
+  test_llm_capability_selection
+  test_invalid_llm_provider
+  test_invalid_llm_runtime
+  test_invalid_llm_feature
 fi
 
 if [ "$(uname -s)" != "Darwin" ]; then
