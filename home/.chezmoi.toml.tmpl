@@ -118,6 +118,14 @@
 {{-   fail "LLM features must not contain duplicates" -}}
 {{- end -}}
 
+{{- if and (has "completion" $llmFeatures) (eq (len $llmRuntimes) 0) -}}
+{{-   fail "LLM completion requires at least one local runtime" -}}
+{{- end -}}
+
+{{- if and (has "laya" $llmFeatures) (ne .chezmoi.arch "arm64") -}}
+{{-   fail "Laya MLX requires Apple Silicon" -}}
+{{- end -}}
+
 {{- $sshAgentChoices := list "proton-pass" "omz" "external" "none" -}}
 {{- $defaultSshAgent := "none" -}}
 

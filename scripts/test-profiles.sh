@@ -179,6 +179,10 @@ test_llm_capability_selection() {
   profiles="workstation,development,llm"
   config_file="$test_root/llm-capabilities.toml"
   data_file="$test_root/llm-capabilities.json"
+  packages_output="$test_root/llm-capabilities-packages"
+  uv_output="$test_root/llm-capabilities-uv"
+  launcher_output="$test_root/llm-capabilities-launcher"
+  completion_output="$test_root/llm-capabilities-completion.lua"
 
   printf '\n==> Testing custom LLM capabilities\n'
 
@@ -200,6 +204,86 @@ test_llm_capability_selection() {
     and .llmConfig.features == ["completion", "laya"]
   ' "$data_file" >/dev/null \
     || fail "custom LLM capabilities did not resolve correctly"
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/.chezmoiscripts/run_onchange_after_05-packages.sh.tmpl" \
+    >"$packages_output"
+
+  grep -Fq 'codex' "$packages_output" \
+    || fail "Codex provider did not select Codex package"
+
+  if grep -Fq 'claude-code@latest' "$packages_output"; then
+    fail "unselected Claude provider selected Claude package"
+  fi
+
+  grep -Fq 'mlx-lm' "$packages_output" \
+    || fail "MLX runtime did not select mlx-lm package"
+
+  if grep -Fq 'llama.cpp' "$packages_output"; then
+    fail "unselected llama_cpp runtime selected llama.cpp package"
+  fi
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/.chezmoiscripts/run_onchange_after_35-uv-tools.sh.tmpl" \
+    >"$uv_output"
+
+  grep -Fq 'laya-mlx|laya-mlx' "$uv_output" \
+    || fail "Laya feature did not select laya-mlx uv tool"
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_local/bin/executable_dotfiles-llm-launch.tmpl" \
+    >"$launcher_output"
+
+  grep -Fq 'BACKEND="mlx"' "$launcher_output" \
+    || fail "single selected MLX runtime was not used by completion service"
+
+  grep -Fq 'MODEL="mlx-community/Qwen2.5-Coder-3B-4bit"' "$launcher_output" \
+    || fail "MLX completion model did not resolve correctly"
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_config/nvim/lua/plugins/completion.lua.tmpl" \
+    >"$completion_output"
+
+  grep -Fq '"milanglacier/minuet-ai.nvim"' "$completion_output" \
+    || fail "completion feature did not enable Minuet"
+
+  grep -Fq 'name = "Local mlx"' "$completion_output" \
+    || fail "Minuet did not use the selected MLX runtime"
+}
+
+test_llm_without_completion() {
+  profiles="workstation,development,llm"
+  config_file="$test_root/llm-no-completion.toml"
+  launcher_output="$test_root/llm-no-completion-launcher"
+  completion_output="$test_root/llm-no-completion.lua"
+
+  printf '\n==> Testing LLM without local completion\n'
+
+  DOTFILES_CI=true \
+    DOTFILES_PROFILES="$profiles" \
+    DOTFILES_LLM_PROVIDERS="codex" \
+    DOTFILES_LLM_RUNTIMES="mlx" \
+    DOTFILES_LLM_FEATURES="laya" \
+    run chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_local/bin/executable_dotfiles-llm-launch.tmpl" \
+    >"$launcher_output"
+
+  if grep -Fq 'inline)' "$launcher_output"; then
+    fail "disabled completion feature still generated inline service"
+  fi
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_config/nvim/lua/plugins/completion.lua.tmpl" \
+    >"$completion_output"
+
+  if grep -Fq 'minuet-ai.nvim' "$completion_output"; then
+    fail "disabled completion feature still enabled Minuet"
+  fi
 }
 
 test_invalid_llm_provider() {
@@ -340,6 +424,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
   done
 
   test_llm_capability_selection
+  test_llm_without_completion
   test_invalid_llm_provider
   test_invalid_llm_runtime
   test_invalid_llm_feature

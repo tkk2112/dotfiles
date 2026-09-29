@@ -322,13 +322,42 @@ check_llm_tools() {
     return 0
   fi
 
-  command -v llama-server >/dev/null 2>&1 \
-    || fail "llm profile did not install llama-server"
-  pass "command found: llama-server"
+  llm_data="$(chezmoi data)"
 
-  command -v mlx_lm.server >/dev/null 2>&1 \
-    || fail "llm profile did not install mlx_lm.server"
-  pass "command found: mlx_lm.server"
+  if printf '%s\n' "$llm_data" \
+    | jq -e '.llmConfig.providers | index("codex") != null' >/dev/null; then
+    command -v codex >/dev/null 2>&1 \
+      || fail "selected Codex provider was not installed"
+    pass "command found: codex"
+  fi
+
+  if printf '%s\n' "$llm_data" \
+    | jq -e '.llmConfig.providers | index("claude") != null' >/dev/null; then
+    command -v claude >/dev/null 2>&1 \
+      || fail "selected Claude provider was not installed"
+    pass "command found: claude"
+  fi
+
+  if printf '%s\n' "$llm_data" \
+    | jq -e '.llmConfig.runtimes | index("llama_cpp") != null' >/dev/null; then
+    command -v llama-server >/dev/null 2>&1 \
+      || fail "selected llama_cpp runtime was not installed"
+    pass "command found: llama-server"
+  fi
+
+  if printf '%s\n' "$llm_data" \
+    | jq -e '.llmConfig.runtimes | index("mlx") != null' >/dev/null; then
+    command -v mlx_lm.server >/dev/null 2>&1 \
+      || fail "selected MLX runtime was not installed"
+    pass "command found: mlx_lm.server"
+  fi
+
+  if printf '%s\n' "$llm_data" \
+    | jq -e '.llmConfig.features | index("laya") != null' >/dev/null; then
+    command -v laya-mlx >/dev/null 2>&1 \
+      || fail "selected Laya MLX feature was not installed"
+    pass "command found: laya-mlx"
+  fi
 
   command -v dotfiles-llm >/dev/null 2>&1 \
     || fail "llm profile did not install dotfiles-llm"
@@ -391,7 +420,7 @@ print_environment() {
   if command -v chezmoi >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
     log ""
     log "Chezmoi profile data:"
-    chezmoi data | jq '{os, osid, hostname, machine, profiles, git}'
+    chezmoi data | jq '{os, osid, hostname, machine, profiles, llmConfig, git}'
   fi
 
   log ""

@@ -79,14 +79,36 @@ expect_failure \
 config="$(new_config unsupported-backend)"
 cat >>"$config" <<'EOF'
 
+[[data.llm.models]]
+id = "mlx-only"
+name = "MLX-only test model"
+type = "completion"
+ctx_size = 32768
+
+[data.llm.models.backends.mlx]
+model = "test/mlx-only"
+
 [data.llm.services.inline]
-backend = "bogus"
+backend = "llama_cpp"
+model = "mlx-only"
 EOF
 
 expect_failure \
   unsupported-backend \
   "$config" \
-  "LLM model qwen2.5-coder-3b does not support backend bogus"
+  "LLM model mlx-only does not support backend llama_cpp"
+
+config="$(new_config unresolvable-backend)"
+cat >>"$config" <<'EOF'
+
+[data.llm.services.inline]
+backend = "bogus"
+EOF
+
+expect_failure \
+  unresolvable-backend \
+  "$config" \
+  'LLM completion service inline cannot resolve a runtime from ["mlx","llama_cpp"]'
 
 config="$(new_config duplicate-port)"
 cat >>"$config" <<'EOF'

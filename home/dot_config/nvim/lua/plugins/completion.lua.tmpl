@@ -1,12 +1,17 @@
 {{- $owned := has "owned" .profiles -}}
 {{- $llm := has "llm" .profiles -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $llmRuntimes := get $llmConfig "runtimes" | default (list) -}}
+{{- $llmFeatures := get $llmConfig "features" | default (list) -}}
+{{- $completionEnabled := and $llm (has "completion" $llmFeatures) -}}
 
 {{- $completionServiceName := "" -}}
 {{- $completionService := dict -}}
 {{- $completionModel := dict -}}
+{{- $completionBackend := "" -}}
 {{- $completionArtifact := dict -}}
 
-{{- if $llm -}}
+{{- if $completionEnabled -}}
 {{-   $completionServiceName = .llm.defaults.completion -}}
 {{-   $completionService = index .llm.services $completionServiceName -}}
 
@@ -16,7 +21,21 @@
 {{-     end -}}
 {{-   end -}}
 
-{{-   $completionArtifact = index $completionModel.backends $completionService.backend -}}
+{{-   $completionBackend = $completionService.backend -}}
+
+{{-   if not (has $completionBackend $llmRuntimes) -}}
+{{-     if eq (len $llmRuntimes) 1 -}}
+{{-       $completionBackend = index $llmRuntimes 0 -}}
+{{-     else -}}
+{{-       fail (printf "LLM completion cannot resolve a runtime from %s" ($llmRuntimes | toJson)) -}}
+{{-     end -}}
+{{-   end -}}
+
+{{-   if not (hasKey $completionModel.backends $completionBackend) -}}
+{{-     fail (printf "LLM completion model does not support backend %s" $completionBackend) -}}
+{{-   end -}}
+
+{{-   $completionArtifact = index $completionModel.backends $completionBackend -}}
 {{- end -}}
 
 return {
@@ -28,18 +47,18 @@ return {
       "saghen/blink.lib",
 {{ end }}
       "rafamadriz/friendly-snippets",
-{{ if $llm }}
+{{ if $completionEnabled }}
       {
         "milanglacier/minuet-ai.nvim",
 
         opts = function()
           local completion = require("config.llm.completion")
-          local endpoint = "http://127.0.0.1:{{ $completionService.port }}"
+          local endpoint = "http://127.0.0.1:{{ get $completionService "port" }}"
 
           completion.setup({
             service = "{{ $completionServiceName }}",
             endpoint = endpoint,
-            autostart = {{ if $completionService.autostart }}true{{ else }}false{{ end }},
+            autostart = {{ if get $completionService "autostart" }}true{{ else }}false{{ end }},
           })
 
           return {
@@ -64,9 +83,9 @@ return {
                   return "local"
                 end,
 
-                name = "Local {{ $completionService.backend }}",
+                name = "Local {{ $completionBackend }}",
                 end_point = endpoint .. "/v1/completions",
-                model = "{{ $completionArtifact.model }}",
+                model = "{{ get $completionArtifact "model" }}",
 
                 optional = {
                   max_tokens = 64,
@@ -164,6 +183,7 @@ return {
             },
           },
         },
+
         documentation = {
           auto_show = true,
           auto_show_delay_ms = 250,
@@ -173,7 +193,7 @@ return {
           enabled = true,
         },
 
-{{ if $llm }}
+{{ if $completionEnabled }}
         -- Do not eagerly issue an LLM request just because insert mode starts.
         trigger = {
           prefetch_on_insert = false,
@@ -191,12 +211,12 @@ return {
           "path",
           "snippets",
           "buffer",
-{{ if $llm }}
+{{ if $completionEnabled }}
           "minuet",
 {{ end }}
         },
 
-{{ if $llm }}
+{{ if $completionEnabled }}
         providers = {
           minuet = {
             name = "LLM",

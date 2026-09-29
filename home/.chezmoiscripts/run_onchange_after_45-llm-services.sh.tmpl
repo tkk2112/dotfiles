@@ -4,9 +4,14 @@ set -eu
 
 # Re-run when either the LLM configuration or launcher implementation changes.
 # llm config hash: {{ .llm | toJson | sha256sum }}
+# llm host config hash: {{ .llmConfig | toJson | sha256sum }}
 # launcher source hash: {{ include "dot_local/bin/executable_dotfiles-llm-launch.tmpl" | sha256sum }}
 
 {{- $profiles := .profiles | default (list) }}
+{{- $llmConfig := .llmConfig | default (dict) }}
+{{- $llmFeatures := get $llmConfig "features" | default (list) }}
+{{- $completionEnabled := and (has "llm" $profiles) (has "completion" $llmFeatures) }}
+
 PROFILE_LLM="{{ if has "llm" $profiles }}true{{ else }}false{{ end }}"
 
 DOMAIN="gui/$(id -u)"
@@ -53,7 +58,11 @@ validate_ports() {
   used_ports=""
 
 {{- range $name, $service := .llm.services }}
-{{- if $service.enabled }}
+{{- $enabled := $service.enabled }}
+{{- if eq $service.type "completion" }}
+{{-   $enabled = and $enabled $completionEnabled }}
+{{- end }}
+{{- if $enabled }}
   port="{{ $service.port }}"
 
   case "$port" in
@@ -155,7 +164,11 @@ fi
 validate_ports
 
 {{- range $name, $service := .llm.services }}
-{{- if $service.enabled }}
+{{- $enabled := $service.enabled }}
+{{- if eq $service.type "completion" }}
+{{-   $enabled = and $enabled $completionEnabled }}
+{{- end }}
+{{- if $enabled }}
 install_service "{{ $name }}" "{{ if $service.autostart }}true{{ else }}false{{ end }}"
 {{- end }}
 {{- end }}
