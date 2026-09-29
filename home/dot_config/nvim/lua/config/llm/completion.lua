@@ -3,6 +3,8 @@ local M = {}
 local state = {
   service = nil,
   endpoint = nil,
+  backend = nil,
+  model = nil,
   autostart = true,
 
   available = false,
@@ -119,6 +121,20 @@ function M.available()
   return state.available
 end
 
+function M.status()
+  return {
+    configured = state.service ~= nil,
+    service = state.service,
+    backend = state.backend,
+    model = state.model,
+    endpoint = state.endpoint,
+    autostart = state.autostart,
+    available = state.available,
+    checking = state.checking,
+    acquired = state.acquired,
+  }
+end
+
 function M.stop()
   if state.autostart or not state.acquired or not state.service then
     return
@@ -154,6 +170,8 @@ function M.setup(opts)
 
   state.service = assert(opts.service)
   state.endpoint = assert(opts.endpoint)
+  state.backend = assert(opts.backend)
+  state.model = assert(opts.model)
   state.autostart = opts.autostart == true
 
   state.available = false

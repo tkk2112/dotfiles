@@ -107,6 +107,11 @@ local function ensure_loaded(config, backend_name, backend)
     return nil
   end
 
+  if not backend_name then
+    vim.notify("No LLM provider is configured on this machine", vim.log.levels.WARN)
+    return nil
+  end
+
   if not backend then
     vim.notify("Unknown LLM backend: " .. tostring(backend_name), vim.log.levels.ERROR)
     return nil
@@ -315,7 +320,25 @@ function M.scope_changed()
   end
 end
 
-function M.opts(backends)
+function M.opts(backends, providers)
+  local agents = {}
+  local default_agent
+
+  for _, name in ipairs(providers or {}) do
+    local backend = backends[name]
+
+    if backend then
+      default_agent = default_agent or backend.agent
+
+      agents[backend.agent] = {
+        cmd = backend.command,
+        args = vim.deepcopy(backend.args),
+        description = backend.description,
+        provider = "terminal",
+      }
+    end
+  end
+
   return {
     interactions = {
       opts = {
@@ -339,23 +362,8 @@ function M.opts(backends)
       },
 
       cli = {
-        agent = "codex",
-
-        agents = {
-          codex = {
-            cmd = backends.codex.command,
-            args = vim.deepcopy(backends.codex.args),
-            description = backends.codex.description,
-            provider = "terminal",
-          },
-
-          claude_code = {
-            cmd = backends.claude.command,
-            args = vim.deepcopy(backends.claude.args),
-            description = backends.claude.description,
-            provider = "terminal",
-          },
-        },
+        agent = default_agent or "codex",
+        agents = agents,
 
         opts = {
           auto_insert = false,

@@ -58,6 +58,8 @@ return {
           completion.setup({
             service = "{{ $completionServiceName }}",
             endpoint = endpoint,
+            backend = "{{ $completionBackend }}",
+            model = "{{ get $completionArtifact "model" }}",
             autostart = {{ if get $completionService "autostart" }}true{{ else }}false{{ end }},
           })
 

@@ -29,6 +29,24 @@ end
 vim.opt.rtp:prepend(lazy_path)
 vim.opt.rtp:prepend(config_root)
 
+package.preload["config.llm.capabilities"] = function()
+  return {
+    providers = {
+      "codex",
+      "claude",
+    },
+
+    runtimes = {
+      "mlx",
+      "llama_cpp",
+    },
+
+    features = {
+      "completion",
+    },
+  }
+end
+
 require("lazy.minit").setup({
   spec = {
     { dir = config_root },

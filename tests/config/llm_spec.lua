@@ -1,3 +1,4 @@
+local capabilities = require("config.llm.capabilities")
 local context = require("config.project_context")
 local index = require("config.project_index")
 local llm = require("config.llm")
@@ -54,6 +55,20 @@ local function with_cwd(path, callback)
   local ok, err = xpcall(callback, debug.traceback)
 
   vim.api.nvim_set_current_dir(previous)
+
+  if not ok then
+    error(err)
+  end
+end
+
+local function with_providers(providers, callback)
+  local previous = capabilities.providers
+
+  capabilities.providers = providers
+
+  local ok, err = xpcall(callback, debug.traceback)
+
+  capabilities.providers = previous
 
   if not ok then
     error(err)
@@ -189,6 +204,89 @@ describe("llm configuration", function()
 
         assert.are.same({}, config.instructions)
         assert.are.same({ "../outside.md" }, config.invalid_instructions)
+      end)
+    end)
+  end)
+
+  it("uses the only configured provider", function()
+    with_providers({ "codex" }, function()
+      with_tmpdir(function(tmp)
+        local root = mkdir(vim.fs.joinpath(tmp, "project"))
+
+        write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+          root = "..",
+          global = {},
+          llm = {
+            enabled = true,
+            backend = "claude",
+          },
+        })
+
+        with_cwd(root, function()
+          local config = llm.config()
+
+          assert.are.same({ "codex" }, config.providers)
+          assert.are.equal("codex", config.backend)
+        end)
+      end)
+    end)
+  end)
+
+  it("supports an LLM profile without a remote provider", function()
+    with_providers({}, function()
+      with_tmpdir(function(tmp)
+        local root = mkdir(vim.fs.joinpath(tmp, "project"))
+
+        write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+          root = "..",
+          global = {},
+          llm = {
+            enabled = true,
+            backend = "codex",
+          },
+        })
+
+        with_cwd(root, function()
+          local config = llm.config()
+
+          assert.are.same({}, config.providers)
+          assert.is_nil(config.backend)
+        end)
+      end)
+    end)
+  end)
+
+  it("does not open the backend picker with one configured provider", function()
+    with_providers({ "codex" }, function()
+      with_tmpdir(function(tmp)
+        local root = mkdir(vim.fs.joinpath(tmp, "project"))
+
+        write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+          root = "..",
+          global = {},
+          llm = {
+            enabled = true,
+          },
+        })
+
+        with_cwd(root, function()
+          local previous_select = vim.ui.select
+          local opened = false
+
+          vim.ui.select = function()
+            opened = true
+          end
+
+          local ok, err = xpcall(llm.pick_backend, debug.traceback)
+
+          vim.ui.select = previous_select
+
+          if not ok then
+            error(err)
+          end
+
+          assert.is_false(opened)
+        end)
       end)
     end)
   end)

@@ -9,6 +9,8 @@ describe("local llm completion", function()
     completion.setup({
       service = opts.service or "inline",
       endpoint = opts.endpoint or "http://127.0.0.1:18080",
+      backend = opts.backend or "llama_cpp",
+      model = opts.model or "test-model",
       autostart = opts.autostart ~= false,
     })
   end
@@ -160,5 +162,30 @@ describe("local llm completion", function()
       "inline",
       tostring(vim.fn.getpid()),
     }, commands[3])
+  end)
+
+  it("reports completion configuration", function()
+    vim.system = function()
+      return {
+        wait = function()
+          return {
+            code = 0,
+          }
+        end,
+      }
+    end
+
+    setup({
+      backend = "llama_cpp",
+      model = "test/model",
+    })
+
+    local status = completion.status()
+
+    assert.is_true(status.configured)
+    assert.are.equal("inline", status.service)
+    assert.are.equal("llama_cpp", status.backend)
+    assert.are.equal("test/model", status.model)
+    assert.are.equal("http://127.0.0.1:18080", status.endpoint)
   end)
 end)
