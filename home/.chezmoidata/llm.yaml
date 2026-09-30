@@ -33,7 +33,6 @@ llm:
 
     laya:
       feature: laya
-      enabled: false
       model: laya
       port: 18081
       autostart: false
