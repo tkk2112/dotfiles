@@ -43,35 +43,41 @@
 {{- end -}}
 
 {{- $llmProviderChoices := list "codex" "claude" -}}
-{{- $llmRuntimeChoices := list "mlx" "llama_cpp" -}}
+{{- $llmEngineChoices := list "mlx" "llama_cpp" -}}
 {{- $llmFeatureChoices := list "completion" "laya" -}}
 
+{{- $llmDisableableRuntimeChoices := list "completion" -}}
+{{- $llmManualRuntimeChoices := list "completion" -}}
+
 {{- $llmProviders := list -}}
-{{- $llmRuntimes := list -}}
+{{- $llmEngines := list -}}
 {{- $llmFeatures := list -}}
+{{- $llmDisabledRuntimes := list -}}
+{{- $llmManualRuntimes := list -}}
 
 {{- if has "llm" $profiles -}}
+
 {{-   if env "DOTFILES_LLM_PROVIDERS" -}}
 {{-     $llmProviders = splitList "," (env "DOTFILES_LLM_PROVIDERS") -}}
 {{-   else -}}
 {{-     $llmProviders = promptMultichoiceOnce
         .
         "llmConfig.providers"
-        "LLM subscriptions"
+        "LLM providers"
         $llmProviderChoices
-        (list "codex" "claude")
+        $llmProviderChoices
 -}}
 {{-   end -}}
 
-{{-   if env "DOTFILES_LLM_RUNTIMES" -}}
-{{-     $llmRuntimes = splitList "," (env "DOTFILES_LLM_RUNTIMES") -}}
+{{-   if env "DOTFILES_LLM_ENGINES" -}}
+{{-     $llmEngines = splitList "," (env "DOTFILES_LLM_ENGINES") -}}
 {{-   else -}}
-{{-     $llmRuntimes = promptMultichoiceOnce
+{{-     $llmEngines = promptMultichoiceOnce
         .
-        "llmConfig.runtimes"
-        "Local LLM runtimes"
-        $llmRuntimeChoices
-        (list "mlx" "llama_cpp")
+        "llmConfig.engines"
+        "Local LLM engines"
+        $llmEngineChoices
+        $llmEngineChoices
 -}}
 {{-   end -}}
 
@@ -86,6 +92,50 @@
         (list "completion")
 -}}
 {{-   end -}}
+
+{{-   if env "DOTFILES_LLM_DISABLED_RUNTIMES" -}}
+{{-     $llmDisabledRuntimes = splitList "," (env "DOTFILES_LLM_DISABLED_RUNTIMES") -}}
+{{-   else -}}
+{{-     $llmDisabledRuntimes = promptMultichoiceOnce
+        .
+        "llmConfig.disabledRuntimes"
+        "Disabled LLM runtimes"
+        $llmDisableableRuntimeChoices
+        (list)
+-}}
+{{-   end -}}
+{{-   $manualRuntimeChoices := list -}}
+
+{{-   $manualRuntimeChoices := list -}}
+
+{{-   range $runtime := $llmManualRuntimeChoices -}}
+{{-     if not (has $runtime $llmDisabledRuntimes) -}}
+{{-       $manualRuntimeChoices = append $manualRuntimeChoices $runtime -}}
+{{-     end -}}
+{{-   end -}}
+
+{{-   if env "DOTFILES_LLM_MANUAL_RUNTIMES" -}}
+{{-     $llmManualRuntimes = splitList "," (env "DOTFILES_LLM_MANUAL_RUNTIMES") -}}
+{{-   else if gt (len $manualRuntimeChoices) 0 -}}
+{{-     $llmManualRuntimes = promptMultichoiceOnce
+        .
+        "llmConfig.manualRuntimes"
+        "LLM runtimes started on demand"
+        $manualRuntimeChoices
+        (list)
+-}}
+{{-   end -}}
+{{-   if env "DOTFILES_LLM_MANUAL_RUNTIMES" -}}
+{{-     $llmManualRuntimes = splitList "," (env "DOTFILES_LLM_MANUAL_RUNTIMES") -}}
+{{-   else if gt (len $manualRuntimeChoices) 0 -}}
+{{-     $llmManualRuntimes = promptMultichoiceOnce
+        .
+        "llmConfig.manualRuntimes"
+        "LLM runtimes started on demand"
+        $manualRuntimeChoices
+        (list)
+-}}
+{{-   end -}}
 {{- end -}}
 
 {{- range $provider := $llmProviders -}}
@@ -94,9 +144,9 @@
 {{-   end -}}
 {{- end -}}
 
-{{- range $runtime := $llmRuntimes -}}
-{{-   if not (has $runtime $llmRuntimeChoices) -}}
-{{-     fail (printf "unknown LLM runtime %q; valid runtimes: %s" $runtime (join ", " $llmRuntimeChoices)) -}}
+{{- range $engine := $llmEngines -}}
+{{-   if not (has $engine $llmEngineChoices) -}}
+{{-     fail (printf "unknown LLM engine %q; valid engines: %s" $engine (join ", " $llmEngineChoices)) -}}
 {{-   end -}}
 {{- end -}}
 
@@ -110,16 +160,24 @@
 {{-   fail "LLM providers must not contain duplicates" -}}
 {{- end -}}
 
-{{- if ne (len $llmRuntimes) (len (uniq $llmRuntimes)) -}}
-{{-   fail "LLM runtimes must not contain duplicates" -}}
+{{- if ne (len $llmEngines) (len (uniq $llmEngines)) -}}
+{{-   fail "LLM engines must not contain duplicates" -}}
 {{- end -}}
 
 {{- if ne (len $llmFeatures) (len (uniq $llmFeatures)) -}}
 {{-   fail "LLM features must not contain duplicates" -}}
 {{- end -}}
 
-{{- if and (has "completion" $llmFeatures) (eq (len $llmRuntimes) 0) -}}
-{{-   fail "LLM completion requires at least one local runtime" -}}
+{{- if ne (len $llmDisabledRuntimes) (len (uniq $llmDisabledRuntimes)) -}}
+{{-   fail "disabled LLM runtimes must not contain duplicates" -}}
+{{- end -}}
+
+{{- if ne (len $llmManualRuntimes) (len (uniq $llmManualRuntimes)) -}}
+{{-   fail "manual LLM runtimes must not contain duplicates" -}}
+{{- end -}}
+
+{{- if and (has "completion" $llmFeatures) (eq (len $llmEngines) 0) -}}
+{{-   fail "LLM completion requires at least one local engine" -}}
 {{- end -}}
 
 {{- if and (has "laya" $llmFeatures) (ne .chezmoi.arch "arm64") -}}
@@ -170,5 +228,7 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
 
 [data.llmConfig]
     providers = {{ $llmProviders | toToml }}
-    runtimes = {{ $llmRuntimes | toToml }}
+    engines = {{ $llmEngines | toToml }}
     features = {{ $llmFeatures | toToml }}
+    disabledRuntimes = {{ $llmDisabledRuntimes | toToml }}
+    manualRuntimes = {{ $llmManualRuntimes | toToml }}

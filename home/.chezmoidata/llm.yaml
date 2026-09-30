@@ -2,27 +2,42 @@ llm:
   models:
     - id: qwen2.5-coder-3b
       name: Qwen 2.5 Coder 3B
-      type: completion
-      ctx_size: 32768
-      backends:
+      kind: generative
+      context: 32768
+      default_engine: llama_cpp
+
+      engines:
         llama_cpp:
           model: bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M
+
         mlx:
           model: mlx-community/Qwen2.5-Coder-3B-4bit
 
-  laya:
-    model: aac6fef/laya-mlx
-    dtype: float16
-    device: gpu
+    - id: laya
+      name: Laya
+      kind: decision
+      context: 512
 
-  services:
-    inline:
-      type: completion
-      enabled: true
-      autostart: true
-      backend: llama_cpp
+      engines:
+        laya_mlx:
+          model: aac6fef/laya-mlx
+          dtype: float16
+          device: gpu
+
+  runtimes:
+    completion:
+      feature: completion
       model: qwen2.5-coder-3b
       port: 18080
+      autostart: true
+
+    laya:
+      feature: laya
+      enabled: false
+      model: laya
+      port: 18081
+      autostart: false
 
   defaults:
-    completion: inline
+    completion: completion
+    decision: laya

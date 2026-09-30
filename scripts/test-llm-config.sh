@@ -55,71 +55,56 @@ expect_failure() {
 config="$(new_config unknown-model)"
 cat >>"$config" <<'EOF'
 
-[data.llm.services.inline]
+[data.llm.runtimes.completion]
 model = "does-not-exist"
 EOF
 
 expect_failure \
   unknown-model \
   "$config" \
-  "unknown LLM model does-not-exist for service inline"
+  "unknown LLM model does-not-exist for runtime completion"
 
-config="$(new_config type-mismatch)"
+config="$(new_config kind-mismatch)"
 cat >>"$config" <<'EOF'
 
-[data.llm.services.inline]
-type = "agent"
+[data.llm.runtimes.completion]
+model = "laya"
 EOF
 
 expect_failure \
-  type-mismatch \
+  kind-mismatch \
   "$config" \
-  "LLM service inline has type agent but model qwen2.5-coder-3b has type completion"
+  "LLM runtime completion for feature completion requires model kind generative, got decision"
 
-config="$(new_config unsupported-backend)"
+config="$(new_config unsupported-engine)"
 cat >>"$config" <<'EOF'
 
 [[data.llm.models]]
-id = "mlx-only"
-name = "MLX-only test model"
-type = "completion"
-ctx_size = 32768
+id = "unsupported-engine"
+name = "Unsupported engine test model"
+kind = "generative"
+context = 32768
 
-[data.llm.models.backends.mlx]
-model = "test/mlx-only"
+[data.llm.models.engines.magic]
+model = "test/magic"
 
-[data.llm.services.inline]
-backend = "llama_cpp"
-model = "mlx-only"
+[data.llm.runtimes.completion]
+model = "unsupported-engine"
 EOF
 
 expect_failure \
-  unsupported-backend \
+  unsupported-engine \
   "$config" \
-  "LLM model mlx-only does not support backend llama_cpp"
-
-config="$(new_config unresolvable-backend)"
-cat >>"$config" <<'EOF'
-
-[data.llm.services.inline]
-backend = "bogus"
-EOF
-
-expect_failure \
-  unresolvable-backend \
-  "$config" \
-  'LLM completion service inline cannot resolve a runtime from ["mlx","llama_cpp"]'
+  "LLM runtime completion model unsupported-engine has no selected supported engine"
 
 config="$(new_config duplicate-port)"
 cat >>"$config" <<'EOF'
 
-[data.llm.services.second]
-type = "completion"
-enabled = true
-autostart = false
-backend = "mlx"
+[data.llm.runtimes.second]
+feature = "completion"
 model = "qwen2.5-coder-3b"
 port = 18080
+autostart = false
 EOF
 
 expect_failure \

@@ -339,14 +339,14 @@ check_llm_tools() {
   fi
 
   if printf '%s\n' "$llm_data" \
-    | jq -e '.llmConfig.runtimes | index("llama_cpp") != null' >/dev/null; then
+    | jq -e '.llmConfig.engines | index("llama_cpp") != null' >/dev/null; then
     command -v llama-server >/dev/null 2>&1 \
       || fail "selected llama_cpp runtime was not installed"
     pass "command found: llama-server"
   fi
 
   if printf '%s\n' "$llm_data" \
-    | jq -e '.llmConfig.runtimes | index("mlx") != null' >/dev/null; then
+    | jq -e '.llmConfig.engines | index("mlx") != null' >/dev/null; then
     command -v mlx_lm.server >/dev/null 2>&1 \
       || fail "selected MLX runtime was not installed"
     pass "command found: mlx_lm.server"

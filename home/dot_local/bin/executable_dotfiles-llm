@@ -4,14 +4,14 @@ set -eu
 usage() {
   cat <<'EOF'
 Usage:
-  dotfiles-llm services
-  dotfiles-llm models [type]
-  dotfiles-llm status [service]
-  dotfiles-llm is-running <service>
-  dotfiles-llm acquire <service> <pid>
-  dotfiles-llm release <service> <pid>
-  dotfiles-llm start <service>
-  dotfiles-llm stop <service>
+  dotfiles-llm runtimes
+  dotfiles-llm models [kind]
+  dotfiles-llm status [runtime]
+  dotfiles-llm is-running <runtime>
+  dotfiles-llm acquire <runtime> <pid>
+  dotfiles-llm release <runtime> <pid>
+  dotfiles-llm start <runtime>
+  dotfiles-llm stop <runtime>
   dotfiles-llm decide <questions.json>
 EOF
 }
@@ -23,67 +23,80 @@ die() {
 
 require_darwin() {
   [ "$(uname -s)" = "Darwin" ] \
-    || die "LLM services are currently supported only on macOS"
+    || die "LLM runtimes are currently supported only on macOS"
 }
 
 llm_data() {
   chezmoi data
 }
 
-service_exists() {
+runtime_exists() {
   name="$1"
 
   llm_data \
     | jq -e --arg name "$name" \
-      '.llm.services[$name] != null' >/dev/null
+      '.llm.runtimes[$name] != null' >/dev/null
 }
 
-service_enabled() {
+runtime_enabled() {
   name="$1"
 
   llm_data \
-    | jq -e --arg name "$name" \
-      '.llm.services[$name].enabled == true' >/dev/null
+    | jq -e --arg name "$name" '
+      .llm.runtimes[$name] as $runtime
+      | .llmConfig as $config
+      |
+        $runtime != null
+        and ($runtime | if has("enabled") then .enabled else true end)
+        and (($config.features // []) | index($runtime.feature) != null)
+        and (($config.disabledRuntimes // []) | index($name) == null)
+    ' >/dev/null
 }
 
-service_label() {
+runtime_label() {
   printf 'com.dotfiles.llm-%s\n' "$1"
 }
 
-service_plist() {
+runtime_plist() {
   printf '%s/Library/LaunchAgents/%s.plist\n' \
-    "$HOME" "$(service_label "$1")"
+    "$HOME" "$(runtime_label "$1")"
 }
 
-service_domain() {
+runtime_domain() {
   printf 'gui/%s\n' "$(id -u)"
 }
 
-service_target() {
-  printf '%s/%s\n' "$(service_domain)" "$(service_label "$1")"
+runtime_target() {
+  printf '%s/%s\n' "$(runtime_domain)" "$(runtime_label "$1")"
 }
 
-service_autostart() {
+runtime_autostart() {
   name="$1"
 
   llm_data \
-    | jq -e --arg name "$name" \
-      '.llm.services[$name].autostart == true' >/dev/null
+    | jq -e --arg name "$name" '
+      .llm.runtimes[$name] as $runtime
+      | .llmConfig as $config
+      |
+        $runtime != null
+        and ($runtime | if has("autostart") then .autostart else false end)
+        and (($config.manualRuntimes // []) | index($name) == null)
+    ' >/dev/null
 }
 
 llm_state_root() {
   printf '%s/dotfiles/llm\n' "${XDG_STATE_HOME:-$HOME/.local/state}"
 }
 
-service_lease_dir() {
+runtime_lease_dir() {
   printf '%s/leases/%s\n' "$(llm_state_root)" "$1"
 }
 
-service_owned_file() {
+runtime_owned_file() {
   printf '%s/owned/%s\n' "$(llm_state_root)" "$1"
 }
 
-service_lock_dir() {
+runtime_lock_dir() {
   printf '%s/locks/%s.lock\n' "$(llm_state_root)" "$1"
 }
 
@@ -97,13 +110,13 @@ validate_pid() {
 
 SERVICE_LOCK=""
 
-acquire_service_lock() {
+acquire_runtime_lock() {
   name="$1"
   root="$(llm_state_root)"
 
   mkdir -p "$root/locks"
 
-  SERVICE_LOCK="$(service_lock_dir "$name")"
+  SERVICE_LOCK="$(runtime_lock_dir "$name")"
 
   attempts=0
 
@@ -137,7 +150,7 @@ acquire_service_lock() {
   printf '%s\n' "$$" >"$SERVICE_LOCK/pid"
 }
 
-release_service_lock() {
+release_runtime_lock() {
   [ -n "$SERVICE_LOCK" ] || return 0
 
   rm -f "$SERVICE_LOCK/pid"
@@ -148,7 +161,7 @@ release_service_lock() {
 
 cleanup_stale_leases() {
   name="$1"
-  dir="$(service_lease_dir "$name")"
+  dir="$(runtime_lease_dir "$name")"
 
   [ -d "$dir" ] || return 0
 
@@ -170,8 +183,8 @@ cleanup_stale_leases() {
   done
 }
 
-has_service_leases() {
-  dir="$(service_lease_dir "$1")"
+has_runtime_leases() {
+  dir="$(runtime_lease_dir "$1")"
 
   [ -d "$dir" ] || return 1
 
@@ -182,45 +195,62 @@ has_service_leases() {
   return 1
 }
 
-list_services() {
-  printf '%-18s %-12s %-10s %-10s %-12s %-24s %s\n' \
-    "NAME" "TYPE" "STATE" "START" "BACKEND" "MODEL" "PORT"
+list_runtimes() {
+  printf '%-18s %-14s %-10s %-10s %-24s %s\n' \
+    "NAME" "FEATURE" "STATE" "START" "MODEL" "PORT"
 
   llm_data \
     | jq -r '
-      .llm.services
+      .llmConfig as $config
+      | .llm.runtimes
       | to_entries[]
+      | .key as $name
+      | .value as $runtime
+      | ($runtime | if has("enabled") then .enabled else true end) as $catalog_enabled
+      | (($config.features // []) | index($runtime.feature) != null) as $feature_enabled
+      | (($config.disabledRuntimes // []) | index($name) == null) as $machine_enabled
+      | ($runtime | if has("autostart") then .autostart else false end) as $catalog_autostart
+      | (($config.manualRuntimes // []) | index($name) == null) as $machine_autostart
       | [
-          .key,
-          .value.type,
-          (if .value.enabled then "enabled" else "disabled" end),
-          (if .value.autostart then "autostart" else "manual" end),
-          .value.backend,
-          .value.model,
-          (.value.port | tostring)
+          $name,
+          ($runtime.feature // "-"),
+          (
+            if $catalog_enabled and $feature_enabled and $machine_enabled
+            then "enabled"
+            else "disabled"
+            end
+          ),
+          (
+            if $catalog_autostart and $machine_autostart
+            then "autostart"
+            else "manual"
+            end
+          ),
+          $runtime.model,
+          ($runtime.port | tostring)
         ]
       | @tsv
     ' \
-    | while IFS="$(printf '\t')" read -r name type state start backend model port; do
-      printf '%-18s %-12s %-10s %-10s %-12s %-24s %s\n' \
-        "$name" "$type" "$state" "$start" "$backend" "$model" "$port"
+    | while IFS="$(printf '\t')" read -r name feature state start model port; do
+      printf '%-18s %-14s %-10s %-10s %-24s %s\n' \
+        "$name" "$feature" "$state" "$start" "$model" "$port"
     done
 }
 
 list_models() {
-  type="${1:-}"
+  kind="${1:-}"
 
-  if [ -n "$type" ]; then
+  if [ -n "$kind" ]; then
     llm_data \
-      | jq -r --arg type "$type" '
+      | jq -r --arg kind "$kind" '
         .llm.models[]
-        | select(.type == $type)
+        | select(.kind == $kind)
         | [
             .id,
             .name,
-            .type,
-            (.ctx_size | tostring),
-            (.backends | keys | join(","))
+            .kind,
+            (.context | tostring),
+            (.engines | keys | join(","))
           ]
         | @tsv
       '
@@ -231,58 +261,51 @@ list_models() {
         | [
             .id,
             .name,
-            .type,
-            (.ctx_size | tostring),
-            (.backends | keys | join(","))
+            .kind,
+            (.context | tostring),
+            (.engines | keys | join(","))
           ]
         | @tsv
       '
   fi
 }
 
-status_service() {
+status_runtime() {
   name="$1"
 
-  service_exists "$name" \
-    || die "unknown service: $name"
+  runtime_exists "$name" \
+    || die "unknown runtime: $name"
 
   data="$(llm_data)"
 
-  type="$(
+  feature="$(
     printf '%s\n' "$data" \
-      | jq -r --arg name "$name" '.llm.services[$name].type'
-  )"
-
-  backend="$(
-    printf '%s\n' "$data" \
-      | jq -r --arg name "$name" '.llm.services[$name].backend'
+      | jq -r --arg name "$name" '.llm.runtimes[$name].feature'
   )"
 
   model="$(
     printf '%s\n' "$data" \
-      | jq -r --arg name "$name" '.llm.services[$name].model'
+      | jq -r --arg name "$name" '.llm.runtimes[$name].model'
   )"
 
   port="$(
     printf '%s\n' "$data" \
-      | jq -r --arg name "$name" '.llm.services[$name].port'
+      | jq -r --arg name "$name" '.llm.runtimes[$name].port'
   )"
 
-  autostart="$(
-    printf '%s\n' "$data" \
-      | jq -r --arg name "$name" '
-        if .llm.services[$name].autostart then "yes" else "no" end
-      '
-  )"
+  if runtime_enabled "$name"; then
+    enabled="yes"
+  else
+    enabled="no"
+  fi
 
-  enabled="$(
-    printf '%s\n' "$data" \
-      | jq -r --arg name "$name" '
-        if .llm.services[$name].enabled then "yes" else "no" end
-      '
-  )"
+  if runtime_autostart "$name"; then
+    autostart="yes"
+  else
+    autostart="no"
+  fi
 
-  target="$(service_target "$name")"
+  target="$(runtime_target "$name")"
   log="$HOME/Library/Logs/dotfiles/llm-$name.err.log"
 
   if [ "$enabled" != "yes" ]; then
@@ -298,8 +321,7 @@ status_service() {
 
   printf '%s\n' "$name"
   printf '  state:     %s\n' "$state"
-  printf '  type:      %s\n' "$type"
-  printf '  backend:   %s\n' "$backend"
+  printf '  feature:   %s\n' "$feature"
   printf '  model:     %s\n' "$model"
   printf '  endpoint:  http://127.0.0.1:%s\n' "$port"
   printf '  enabled:   %s\n' "$enabled"
@@ -315,28 +337,28 @@ status_service() {
 
 status_all() {
   llm_data \
-    | jq -r '.llm.services | keys[]' \
+    | jq -r '.llm.runtimes | keys[]' \
     | while IFS= read -r name; do
-      status_service "$name"
+      status_runtime "$name"
     done
 }
 
-is_service_running() {
+is_runtime_running() {
   name="$1"
 
   require_darwin
 
-  if ! service_exists "$name"; then
-    printf 'dotfiles-llm: unknown service: %s\n' "$name" >&2
+  if ! runtime_exists "$name"; then
+    printf 'dotfiles-llm: unknown runtime: %s\n' "$name" >&2
     return 2
   fi
 
-  if ! service_enabled "$name"; then
-    printf 'dotfiles-llm: service is disabled: %s\n' "$name" >&2
+  if ! runtime_enabled "$name"; then
+    printf 'dotfiles-llm: runtime is disabled: %s\n' "$name" >&2
     return 2
   fi
 
-  target="$(service_target "$name")"
+  target="$(runtime_target "$name")"
 
   if launchctl print "$target" 2>/dev/null \
     | grep -q 'state = running'; then
@@ -346,83 +368,83 @@ is_service_running() {
   return 1
 }
 
-start_service() {
+start_runtime() {
   name="$1"
 
   require_darwin
 
-  service_exists "$name" \
-    || die "unknown service: $name"
+  runtime_exists "$name" \
+    || die "unknown runtime: $name"
 
-  service_enabled "$name" \
-    || die "service is disabled: $name"
+  runtime_enabled "$name" \
+    || die "runtime is disabled: $name"
 
-  plist="$(service_plist "$name")"
-  target="$(service_target "$name")"
+  plist="$(runtime_plist "$name")"
+  target="$(runtime_target "$name")"
 
   [ -f "$plist" ] \
-    || die "service is not installed: $plist"
+    || die "runtime is not installed: $plist"
 
   if ! launchctl print "$target" >/dev/null 2>&1; then
-    launchctl bootstrap "$(service_domain)" "$plist"
+    launchctl bootstrap "$(runtime_domain)" "$plist"
   fi
 
   launchctl kickstart -k "$target"
 }
 
-stop_service() {
+stop_runtime() {
   name="$1"
 
   require_darwin
 
-  service_exists "$name" \
-    || die "unknown service: $name"
+  runtime_exists "$name" \
+    || die "unknown runtime: $name"
 
-  launchctl bootout "$(service_target "$name")" >/dev/null 2>&1 || true
+  launchctl bootout "$(runtime_target "$name")" >/dev/null 2>&1 || true
 }
 
-acquire_service() {
+acquire_runtime() {
   name="$1"
   pid="$2"
 
   require_darwin
   validate_pid "$pid"
 
-  service_exists "$name" \
-    || die "unknown service: $name"
+  runtime_exists "$name" \
+    || die "unknown runtime: $name"
 
-  service_enabled "$name" \
-    || die "service is disabled: $name"
+  runtime_enabled "$name" \
+    || die "runtime is disabled: $name"
 
-  # launchd owns autostart services. They never need client leases.
-  if service_autostart "$name"; then
+  # launchd owns autostart runtimes. They never need client leases.
+  if runtime_autostart "$name"; then
     return 0
   fi
 
   root="$(llm_state_root)"
-  leases="$(service_lease_dir "$name")"
-  owned="$(service_owned_file "$name")"
+  leases="$(runtime_lease_dir "$name")"
+  owned="$(runtime_owned_file "$name")"
 
   mkdir -p "$leases" "$root/owned"
 
-  acquire_service_lock "$name"
-  trap 'release_service_lock' 0 1 2 15
+  acquire_runtime_lock "$name"
+  trap 'release_runtime_lock' 0 1 2 15
 
   cleanup_stale_leases "$name"
 
   lease="$leases/$pid"
   : >"$lease"
 
-  if is_service_running "$name"; then
-    release_service_lock
+  if is_runtime_running "$name"; then
+    release_runtime_lock
     trap - 0 1 2 15
     return 0
   fi
 
-  if ! start_service "$name"; then
+  if ! start_runtime "$name"; then
     rm -f "$lease"
 
-    release_service_lock
+    release_runtime_lock
     trap - 0 1 2 15
 
     return 1
@@ -432,30 +454,30 @@ acquire_service() {
   # this start and may stop it when the final lease disappears.
   : >"$owned"
 
-  release_service_lock
+  release_runtime_lock
   trap - 0 1 2 15
 }
 
-release_service() {
+release_runtime() {
   name="$1"
   pid="$2"
 
   require_darwin
   validate_pid "$pid"
 
-  service_exists "$name" \
-    || die "unknown service: $name"
+  runtime_exists "$name" \
+    || die "unknown runtime: $name"
 
-  # launchd owns autostart services.
-  if service_autostart "$name"; then
+  # launchd owns autostart runtimes.
+  if runtime_autostart "$name"; then
     return 0
   fi
 
-  leases="$(service_lease_dir "$name")"
-  owned="$(service_owned_file "$name")"
+  leases="$(runtime_lease_dir "$name")"
+  owned="$(runtime_owned_file "$name")"
 
-  acquire_service_lock "$name"
-  trap 'release_service_lock' 0 1 2 15
+  acquire_runtime_lock "$name"
+  trap 'release_runtime_lock' 0 1 2 15
 
   cleanup_stale_leases "$name"
 
@@ -463,13 +485,28 @@ release_service() {
 
   cleanup_stale_leases "$name"
 
-  if ! has_service_leases "$name" && [ -f "$owned" ]; then
-    stop_service "$name"
+  if ! has_runtime_leases "$name" && [ -f "$owned" ]; then
+    stop_runtime "$name"
     rm -f "$owned"
   fi
 
-  release_service_lock
+  release_runtime_lock
   trap - 0 1 2 15
+}
+
+laya_model_field() {
+  field="$1"
+
+  llm_data \
+    | jq -er --arg field "$field" '
+      .llm.defaults.decision as $runtime_name
+      | .llm.runtimes[$runtime_name].model as $model_id
+      | first(
+          .llm.models[]
+          | select(.id == $model_id and .kind == "decision")
+        )
+      | .engines.laya_mlx[$field]
+    '
 }
 
 decide() {
@@ -546,8 +583,8 @@ case "$command" in
     decide "$2"
     ;;
 
-  services | list)
-    list_services
+  runtimes | list)
+    list_runtimes
     ;;
 
   models)
@@ -556,37 +593,37 @@ case "$command" in
 
   status)
     if [ -n "${2:-}" ]; then
-      status_service "$2"
+      status_runtime "$2"
     else
       status_all
     fi
     ;;
 
   is-running)
-    [ -n "${2:-}" ] || die "missing service"
-    is_service_running "$2"
+    [ -n "${2:-}" ] || die "missing runtime"
+    is_runtime_running "$2"
     ;;
 
   acquire)
-    [ -n "${2:-}" ] || die "missing service"
+    [ -n "${2:-}" ] || die "missing runtime"
     [ -n "${3:-}" ] || die "missing pid"
-    acquire_service "$2" "$3"
+    acquire_runtime "$2" "$3"
     ;;
 
   release)
-    [ -n "${2:-}" ] || die "missing service"
+    [ -n "${2:-}" ] || die "missing runtime"
     [ -n "${3:-}" ] || die "missing pid"
-    release_service "$2" "$3"
+    release_runtime "$2" "$3"
     ;;
 
   start)
-    [ -n "${2:-}" ] || die "missing service"
-    start_service "$2"
+    [ -n "${2:-}" ] || die "missing runtime"
+    start_runtime "$2"
     ;;
 
   stop)
-    [ -n "${2:-}" ] || die "missing service"
-    stop_service "$2"
+    [ -n "${2:-}" ] || die "missing runtime"
+    stop_runtime "$2"
     ;;
 
   *)
