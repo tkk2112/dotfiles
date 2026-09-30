@@ -10,8 +10,8 @@ set -eu
 {{-     $packageGroups = append $packageGroups (printf "llm-provider-%s" $provider) -}}
 {{-   end -}}
 
-{{-   range $runtime := (get $llmConfig "runtimes" | default (list)) -}}
-{{-     $packageGroups = append $packageGroups (printf "llm-runtime-%s" $runtime) -}}
+{{-   range $runtime := (get $llmConfig "engines" | default (list)) -}}
+{{-     $packageGroups = append $packageGroups (printf "llm-engine-%s" $runtime) -}}
 {{-   end -}}
 
 {{-   range $feature := (get $llmConfig "features" | default (list)) -}}

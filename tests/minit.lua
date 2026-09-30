@@ -36,7 +36,7 @@ package.preload["config.llm.capabilities"] = function()
       "claude",
     },
 
-    runtimes = {
+    engines = {
       "mlx",
       "llama_cpp",
     },

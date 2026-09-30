@@ -1,0 +1,134 @@
+{{- $owned := has "owned" .profiles -}}
+{{- $llm := has "llm" .profiles -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $llmEngines := get $llmConfig "engines" | default (list) -}}
+{{- $llmFeatures := get $llmConfig "features" | default (list) -}}
+{{- $llmDisabledRuntimes := get $llmConfig "disabledRuntimes" | default (list) -}}
+{{- $llmManualRuntimes := get $llmConfig "manualRuntimes" | default (list) -}}
+
+{{- $completionEnabled := false -}}
+{{- $completionRuntimeName := "" -}}
+{{- $completionRuntime := dict -}}
+{{- $completionModel := dict -}}
+{{- $completionEngine := "" -}}
+{{- $completionArtifact := dict -}}
+{{- $completionAutostart := false -}}
+
+{{- if and $llm (has "completion" $llmFeatures) -}}
+{{-   $completionRuntimeName = .llm.defaults.completion -}}
+
+{{-   if not (hasKey .llm.runtimes $completionRuntimeName) -}}
+{{-     fail (printf "unknown default LLM completion runtime %s" $completionRuntimeName) -}}
+{{-   end -}}
+
+{{-   $completionRuntime = index .llm.runtimes $completionRuntimeName -}}
+
+{{-   if ne $completionRuntime.feature "completion" -}}
+{{-     fail (printf
+        "default LLM completion runtime %s has feature %s"
+        $completionRuntimeName
+        $completionRuntime.feature
+    ) -}}
+{{-   end -}}
+
+{{-   $runtimeEnabled := true -}}
+
+{{-   if hasKey $completionRuntime "enabled" -}}
+{{-     $runtimeEnabled = $completionRuntime.enabled -}}
+{{-   end -}}
+
+{{-   if has $completionRuntimeName $llmDisabledRuntimes -}}
+{{-     $runtimeEnabled = false -}}
+{{-   end -}}
+
+{{-   $completionEnabled = $runtimeEnabled -}}
+
+{{-   if $completionEnabled -}}
+{{-     if hasKey $completionRuntime "autostart" -}}
+{{-       $completionAutostart = $completionRuntime.autostart -}}
+{{-     end -}}
+
+{{-     if has $completionRuntimeName $llmManualRuntimes -}}
+{{-       $completionAutostart = false -}}
+{{-     end -}}
+
+{{-     range .llm.models -}}
+{{-       if eq .id $completionRuntime.model -}}
+{{-         $completionModel = . -}}
+{{-       end -}}
+{{-     end -}}
+
+{{-     if not (hasKey $completionModel "id") -}}
+{{-       fail (printf
+          "unknown LLM model %s for runtime %s"
+          $completionRuntime.model
+          $completionRuntimeName
+      ) -}}
+{{-     end -}}
+
+{{-     if ne $completionModel.kind "generative" -}}
+{{-       fail (printf
+          "LLM runtime %s requires a generative model, got %s"
+          $completionRuntimeName
+          $completionModel.kind
+      ) -}}
+{{-     end -}}
+
+{{-     $candidateEngines := list -}}
+
+{{-     range $engine := $llmEngines -}}
+{{-       if hasKey $completionModel.engines $engine -}}
+{{-         $candidateEngines = append $candidateEngines $engine -}}
+{{-       end -}}
+{{-     end -}}
+
+{{-     if eq (len $candidateEngines) 0 -}}
+{{-       fail (printf
+          "LLM runtime %s model %s has no selected supported engine"
+          $completionRuntimeName
+          $completionModel.id
+      ) -}}
+{{-     end -}}
+
+{{-     if and
+        (hasKey $completionModel "default_engine")
+        (has $completionModel.default_engine $candidateEngines)
+-}}
+{{-       $completionEngine = $completionModel.default_engine -}}
+{{-     else if eq (len $candidateEngines) 1 -}}
+{{-       $completionEngine = index $candidateEngines 0 -}}
+{{-     else -}}
+{{-       fail (printf
+          "LLM runtime %s cannot resolve engine from %s"
+          $completionRuntimeName
+          ($candidateEngines | toJson)
+      ) -}}
+{{-     end -}}
+
+{{-     $completionArtifact = index $completionModel.engines $completionEngine -}}
+
+{{-     if not (hasKey $completionArtifact "model") -}}
+{{-       fail (printf
+          "LLM model %s engine %s has no model artifact"
+          $completionModel.id
+          $completionEngine
+      ) -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+return {
+  blink_source_build = {{ if $owned }}true{{ else }}false{{ end }},
+
+  completion = {
+    enabled = {{ if $completionEnabled }}true{{ else }}false{{ end }},
+{{- if $completionEnabled }}
+    runtime = {{ $completionRuntimeName | quote }},
+    engine = {{ $completionEngine | quote }},
+    model = {{ $completionArtifact.model | quote }},
+    context = {{ $completionModel.context }},
+    endpoint = {{ printf "http://127.0.0.1:%v" $completionRuntime.port | quote }},
+    autostart = {{ if $completionAutostart }}true{{ else }}false{{ end }},
+{{- end }}
+  },
+}

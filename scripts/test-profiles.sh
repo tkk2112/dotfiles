@@ -87,15 +87,19 @@ test_llm_capability_defaults() {
   if contains_profile "$profiles" llm; then
     jq -e '
       .llmConfig.providers == ["codex", "claude"]
-      and .llmConfig.runtimes == ["mlx", "llama_cpp"]
+      and .llmConfig.engines == ["mlx", "llama_cpp"]
       and .llmConfig.features == ["completion"]
+      and .llmConfig.disabledRuntimes == []
+      and .llmConfig.manualRuntimes == []
     ' "$data_file" >/dev/null \
       || fail "default LLM capabilities did not resolve correctly"
   else
     jq -e '
       .llmConfig.providers == []
-      and .llmConfig.runtimes == []
+      and .llmConfig.engines == []
       and .llmConfig.features == []
+      and .llmConfig.disabledRuntimes == []
+      and .llmConfig.manualRuntimes == []
     ' "$data_file" >/dev/null \
       || fail "non-LLM profile contains LLM capabilities"
   fi
@@ -112,36 +116,36 @@ test_llm_profile() {
     return 0
   fi
 
-  completion_service="$(
+  completion_runtime="$(
     jq -r '.llm.defaults.completion // empty' "$data_file"
   )"
 
-  [ -n "$completion_service" ] \
+  [ -n "$completion_runtime" ] \
     || fail "llm completion default is missing"
 
-  jq -e --arg service "$completion_service" '
-    .llm.services[$service] as $service_config
+  jq -e --arg runtime "$completion_runtime" '
+    .llm.runtimes[$runtime] as $runtime_config
     |
-      $service_config != null
-      and $service_config.enabled == true
-      and $service_config.type == "completion"
+      $runtime_config != null
+      and $runtime_config.feature == "completion"
+      and $runtime_config.model != null
       and any(
         .llm.models[];
-        .id == $service_config.model
-        and .type == "completion"
-        and .backends[$service_config.backend] != null
+        .id == $runtime_config.model
+        and .kind == "generative"
+        and (.engines | length) > 0
       )
   ' "$data_file" >/dev/null \
-    || fail "llm completion default does not resolve to a valid completion service"
+    || fail "llm completion default does not resolve to a valid completion runtime"
 
   jq -e '
     .llm.models[]
     | select(.id == "qwen2.5-coder-3b")
     | .name == "Qwen 2.5 Coder 3B"
-      and .type == "completion"
-      and .ctx_size == 32768
-      and .backends.llama_cpp.model == "bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M"
-      and .backends.mlx.model == "mlx-community/Qwen2.5-Coder-3B-4bit"
+      and .kind == "generative"
+      and .context == 32768
+      and .engines.llama_cpp.model == "bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M"
+      and .engines.mlx.model == "mlx-community/Qwen2.5-Coder-3B-4bit"
   ' "$data_file" >/dev/null \
     || fail "llm model catalog did not resolve correctly"
 
@@ -153,16 +157,16 @@ test_llm_profile() {
   [ -s "$output" ] \
     || fail "llm launcher rendered empty"
 
-  grep -Fq 'inline)' "$output" \
+  grep -Fq 'completion)' "$output" \
     || fail "llm launcher is missing inline service"
 
-  grep -Fq 'BACKEND="llama_cpp"' "$output" \
+  grep -Fq 'ENGINE="llama_cpp"' "$output" \
     || fail "llm launcher did not resolve llama_cpp"
 
   grep -Fq 'PORT="18080"' "$output" \
     || fail "llm launcher did not resolve service port"
 
-  grep -Fq 'CTX_SIZE="32768"' "$output" \
+  grep -Fq 'CONTEXT="32768"' "$output" \
     || fail "llm launcher did not resolve context size"
 
   grep -Fq -- '--host 127.0.0.1' "$output" \
@@ -190,7 +194,7 @@ test_llm_capability_selection() {
   DOTFILES_CI=true \
     DOTFILES_PROFILES="$profiles" \
     DOTFILES_LLM_PROVIDERS="codex" \
-    DOTFILES_LLM_RUNTIMES="mlx" \
+    DOTFILES_LLM_ENGINES="mlx" \
     DOTFILES_LLM_FEATURES="completion,laya" \
     run chezmoi init \
     --config "$config_file" \
@@ -201,7 +205,7 @@ test_llm_capability_selection() {
 
   jq -e '
     .llmConfig.providers == ["codex"]
-    and .llmConfig.runtimes == ["mlx"]
+    and .llmConfig.engines == ["mlx"]
     and .llmConfig.features == ["completion", "laya"]
   ' "$data_file" >/dev/null \
     || fail "custom LLM capabilities did not resolve correctly"
@@ -218,7 +222,7 @@ test_llm_capability_selection() {
   fi
 
   grep -Fq '"mlx"' "$capabilities_output" \
-    || fail "Neovim capabilities did not include MLX runtime"
+    || fail "Neovim capabilities did not include MLX engine"
 
   grep -Fq '"completion"' "$capabilities_output" \
     || fail "Neovim capabilities did not include completion feature"
@@ -238,10 +242,10 @@ test_llm_capability_selection() {
   fi
 
   grep -Fq 'mlx-lm' "$packages_output" \
-    || fail "MLX runtime did not select mlx-lm package"
+    || fail "MLX engine did not select mlx-lm package"
 
   if grep -Fq 'llama.cpp' "$packages_output"; then
-    fail "unselected llama_cpp runtime selected llama.cpp package"
+    fail "unselected llama_cpp engine selected llama.cpp package"
   fi
 
   chezmoi --config "$config_file" execute-template \
@@ -255,21 +259,24 @@ test_llm_capability_selection() {
     <"$repo_root/home/dot_local/bin/executable_dotfiles-llm-launch.tmpl" \
     >"$launcher_output"
 
-  grep -Fq 'BACKEND="mlx"' "$launcher_output" \
-    || fail "single selected MLX runtime was not used by completion service"
+  grep -Fq 'ENGINE="mlx"' "$launcher_output" \
+    || fail "single selected MLX engine was not used by completion service"
 
   grep -Fq 'MODEL="mlx-community/Qwen2.5-Coder-3B-4bit"' "$launcher_output" \
     || fail "MLX completion model did not resolve correctly"
 
   chezmoi --config "$config_file" execute-template \
-    <"$repo_root/home/dot_config/nvim/lua/plugins/completion.lua.tmpl" \
+    <"$repo_root/home/dot_config/nvim/lua/config/llm/local.lua.tmpl" \
     >"$completion_output"
 
-  grep -Fq '"milanglacier/minuet-ai.nvim"' "$completion_output" \
-    || fail "completion feature did not enable Minuet"
+  grep -Fq 'enabled = true' "$completion_output" \
+    || fail "completion feature did not enable local completion"
 
-  grep -Fq 'name = "Local mlx"' "$completion_output" \
-    || fail "Minuet did not use the selected MLX runtime"
+  grep -Fq 'engine = "mlx"' "$completion_output" \
+    || fail "local completion did not resolve MLX engine"
+
+  grep -Fq 'model = "mlx-community/Qwen2.5-Coder-3B-4bit"' "$completion_output" \
+    || fail "local completion did not resolve MLX model"
 }
 
 test_llm_without_completion() {
@@ -283,7 +290,7 @@ test_llm_without_completion() {
   DOTFILES_CI=true \
     DOTFILES_PROFILES="$profiles" \
     DOTFILES_LLM_PROVIDERS="codex" \
-    DOTFILES_LLM_RUNTIMES="mlx" \
+    DOTFILES_LLM_ENGINES="mlx" \
     DOTFILES_LLM_FEATURES="laya" \
     run chezmoi init \
     --config "$config_file" \
@@ -294,17 +301,16 @@ test_llm_without_completion() {
     <"$repo_root/home/dot_local/bin/executable_dotfiles-llm-launch.tmpl" \
     >"$launcher_output"
 
-  if grep -Fq 'inline)' "$launcher_output"; then
-    fail "disabled completion feature still generated inline service"
+  if grep -Fq 'completion)' "$launcher_output"; then
+    fail "disabled completion feature still generated completion runtime"
   fi
 
   chezmoi --config "$config_file" execute-template \
-    <"$repo_root/home/dot_config/nvim/lua/plugins/completion.lua.tmpl" \
+    <"$repo_root/home/dot_config/nvim/lua/config/llm/local.lua.tmpl" \
     >"$completion_output"
 
-  if grep -Fq 'minuet-ai.nvim' "$completion_output"; then
-    fail "disabled completion feature still enabled Minuet"
-  fi
+  grep -Fq 'enabled = false' "$completion_output" \
+    || fail "disabled completion feature still enabled local completion"
 }
 
 test_invalid_llm_provider() {
@@ -326,22 +332,22 @@ test_invalid_llm_provider() {
   fi
 }
 
-test_invalid_llm_runtime() {
-  config_file="$test_root/invalid-llm-runtime.toml"
-  output="$test_root/invalid-llm-runtime.log"
+test_invalid_llm_engine() {
+  config_file="$test_root/invalid-llm-engine.toml"
+  output="$test_root/invalid-llm-engine.log"
 
-  printf '\n==> Rejecting invalid LLM runtime\n'
+  printf '\n==> Rejecting invalid LLM engine\n'
 
   if DOTFILES_CI=true \
     DOTFILES_PROFILES="workstation,development,llm" \
-    DOTFILES_LLM_RUNTIMES="mlx,magic" \
+    DOTFILES_LLM_ENGINES="mlx,magic" \
     chezmoi init \
     --config "$config_file" \
     --source "$repo_root" \
     --promptDefaults \
     >"$output" 2>&1; then
     cat "$output"
-    fail "invalid LLM runtime was accepted"
+    fail "invalid LLM engine was accepted"
   fi
 }
 
@@ -362,6 +368,73 @@ test_invalid_llm_feature() {
     cat "$output"
     fail "invalid LLM feature was accepted"
   fi
+}
+
+test_llm_runtime_overrides() {
+  profiles="workstation,development,llm"
+  config_file="$test_root/llm-runtime-overrides.toml"
+  data_file="$test_root/llm-runtime-overrides.json"
+  runtime_script="$test_root/llm-runtime-overrides-runtime-script"
+  completion_output="$test_root/llm-runtime-overrides-completion.lua"
+
+  printf '\n==> Testing LLM runtime overrides\n'
+
+  DOTFILES_CI=true \
+    DOTFILES_PROFILES="$profiles" \
+    DOTFILES_LLM_PROVIDERS="codex" \
+    DOTFILES_LLM_ENGINES="mlx" \
+    DOTFILES_LLM_FEATURES="completion" \
+    DOTFILES_LLM_MANUAL_RUNTIMES="completion" \
+    run chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults
+
+  chezmoi --config "$config_file" data >"$data_file"
+
+  jq -e '
+    .llmConfig.manualRuntimes == ["completion"]
+    and .llmConfig.disabledRuntimes == []
+  ' "$data_file" >/dev/null \
+    || fail "manual runtime override did not resolve"
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/.chezmoiscripts/run_onchange_after_45-llm-runtimes.sh.tmpl" \
+    >"$runtime_script"
+
+  grep -Fq 'install_runtime "completion" "false"' "$runtime_script" \
+    || fail "manual completion runtime still autostarts"
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_config/nvim/lua/config/llm/local.lua.tmpl" \
+    >"$completion_output"
+
+  grep -Fq 'enabled = true' "$completion_output" \
+    || fail "manual completion runtime was not enabled"
+
+  grep -Fq 'autostart = false' "$completion_output" \
+    || fail "manual completion runtime still autostarts"
+
+  config_file="$test_root/llm-disabled-runtime.toml"
+  completion_output="$test_root/llm-disabled-runtime-completion.lua"
+
+  DOTFILES_CI=true \
+    DOTFILES_PROFILES="$profiles" \
+    DOTFILES_LLM_PROVIDERS="codex" \
+    DOTFILES_LLM_ENGINES="mlx" \
+    DOTFILES_LLM_FEATURES="completion" \
+    DOTFILES_LLM_DISABLED_RUNTIMES="completion" \
+    run chezmoi init \
+    --config "$config_file" \
+    --source "$repo_root" \
+    --promptDefaults
+
+  chezmoi --config "$config_file" execute-template \
+    <"$repo_root/home/dot_config/nvim/lua/config/llm/local.lua.tmpl" \
+    >"$completion_output"
+
+  grep -Fq 'enabled = false' "$completion_output" \
+    || fail "disabled completion runtime remained enabled"
 }
 
 test_profile_set() {
@@ -447,8 +520,9 @@ if [ "$(uname -s)" = "Darwin" ]; then
   test_llm_capability_selection
   test_llm_without_completion
   test_invalid_llm_provider
-  test_invalid_llm_runtime
+  test_invalid_llm_engine
   test_invalid_llm_feature
+  test_llm_runtime_overrides
 fi
 
 if [ "$(uname -s)" != "Darwin" ]; then

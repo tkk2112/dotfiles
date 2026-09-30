@@ -1,49 +1,57 @@
 {{- $profiles := .profiles | default (list) -}}
 {{- $llmConfig := .llmConfig | default (dict) -}}
-{{- $llmRuntimes := get $llmConfig "runtimes" | default (list) -}}
+{{- $llmEngines := get $llmConfig "engines" | default (list) -}}
 {{- $llmFeatures := get $llmConfig "features" | default (list) -}}
-{{- $completionEnabled := and (has "llm" $profiles) (has "completion" $llmFeatures) -}}
+{{- $llmDisabledRuntimes := get $llmConfig "disabledRuntimes" | default (list) -}}
 
 {{- if and (eq .chezmoi.os "darwin") (has "llm" $profiles) -}}
 {{- $ports := dict -}}
-{{- range $serviceName, $service := .llm.services -}}
-{{-   $enabled := $service.enabled -}}
 
-{{-   if eq $service.type "completion" -}}
-{{-     $enabled = and $enabled $completionEnabled -}}
+{{- range $runtimeName, $runtime := .llm.runtimes -}}
+{{-   $enabled := true -}}
+{{-   if hasKey $runtime "enabled" -}}
+{{-     $enabled = $runtime.enabled -}}
+{{-   end -}}
+{{-   $enabled = and $enabled (has $runtime.feature $llmFeatures) -}}
+{{-   if has $runtimeName $llmDisabledRuntimes -}}
+{{-     $enabled = false -}}
 {{-   end -}}
 
 {{-   if $enabled -}}
-{{-     $port := printf "%v" $service.port -}}
+{{-     $port := printf "%v" $runtime.port -}}
 {{-     if hasKey $ports $port -}}
-{{-       fail (printf "LLM services %s and %s use duplicate port %s" (get $ports $port) $serviceName $port) -}}
+{{-       fail (printf "LLM runtimes %s and %s use duplicate port %s" (get $ports $port) $runtimeName $port) -}}
 {{-     end -}}
-{{-     $_ := set $ports $port $serviceName -}}
+{{-     $_ := set $ports $port $runtimeName -}}
 {{-   end -}}
 {{- end -}}
+
 #!/bin/sh
 set -eu
 
-SERVICE_NAME="${1:-}"
+RUNTIME_NAME="${1:-}"
 
 die() {
   printf 'dotfiles-llm-launch: %s\n' "$*" >&2
   exit 1
 }
 
-[ -n "$SERVICE_NAME" ] || die "missing service name"
+[ -n "$RUNTIME_NAME" ] || die "missing runtime name"
 
-case "$SERVICE_NAME" in
-{{- range $serviceName, $service := .llm.services }}
-    {{- $enabled := $service.enabled }}
-
-    {{- if eq $service.type "completion" }}
-    {{-   $enabled = and $enabled $completionEnabled }}
+case "$RUNTIME_NAME" in
+{{- range $runtimeName, $runtime := .llm.runtimes }}
+    {{- $enabled := true }}
+    {{- if hasKey $runtime "enabled" }}
+    {{-   $enabled = $runtime.enabled }}
+    {{- end }}
+    {{- $enabled = and $enabled (has $runtime.feature $llmFeatures) }}
+    {{- if has $runtimeName $llmDisabledRuntimes }}
+    {{-   $enabled = false }}
     {{- end }}
 
     {{- if $enabled }}
-  {{ $serviceName }})
-    {{- $modelID := $service.model }}
+  {{ $runtimeName }})
+    {{- $modelID := $runtime.model }}
     {{- $model := dict }}
 
     {{- range $.llm.models }}
@@ -53,52 +61,67 @@ case "$SERVICE_NAME" in
     {{- end }}
 
     {{- if not (hasKey $model "id") }}
-    {{-   fail (printf "unknown LLM model %s for service %s" $modelID $serviceName) }}
+    {{-   fail (printf "unknown LLM model %s for runtime %s" $modelID $runtimeName) }}
     {{- end }}
 
-    {{- if ne $model.type $service.type }}
-    {{-   fail (printf "LLM service %s has type %s but model %s has type %s" $serviceName $service.type $modelID $model.type) }}
+    {{- if and (eq $runtime.feature "completion") (ne $model.kind "generative") }}
+    {{-   fail (printf "LLM runtime %s for feature completion requires model kind generative, got %s" $runtimeName $model.kind) }}
     {{- end }}
 
-    {{- $backend := $service.backend }}
+    {{- if ne $model.kind "generative" }}
+    {{-   fail (printf "LLM runtime %s uses unsupported model kind %s" $runtimeName $model.kind) }}
+    {{- end }}
 
-    {{- if eq $service.type "completion" }}
-    {{-   if not (has $backend $llmRuntimes) }}
-    {{-     if eq (len $llmRuntimes) 1 }}
-    {{-       $backend = index $llmRuntimes 0 }}
-    {{-     else }}
-    {{-       fail (printf "LLM completion service %s cannot resolve a runtime from %s" $serviceName ($llmRuntimes | toJson)) }}
-    {{-     end }}
+    {{- $candidateEngines := list }}
+
+    {{- range $candidate := $llmEngines }}
+    {{-   if hasKey $model.engines $candidate }}
+    {{-     $candidateEngines = append $candidateEngines $candidate }}
     {{-   end }}
     {{- end }}
 
-    {{- if not (hasKey $model.backends $backend) }}
-    {{-   fail (printf "LLM model %s does not support backend %s" $modelID $backend) }}
+    {{- if eq (len $candidateEngines) 0 }}
+    {{-   fail (printf "LLM runtime %s model %s has no selected supported engine" $runtimeName $modelID) }}
     {{- end }}
 
-    {{- $artifact := index $model.backends $backend }}
-    BACKEND="{{ $backend }}"
+    {{- $engine := "" }}
+
+    {{- if and
+          (hasKey $model "default_engine")
+          (has $model.default_engine $candidateEngines)
+    }}
+    {{-   $engine = $model.default_engine }}
+    {{- else if eq (len $candidateEngines) 1 }}
+    {{-   $engine = index $candidateEngines 0 }}
+    {{- else }}
+    {{-   fail (printf "LLM runtime %s cannot resolve engine from %s" $runtimeName ($candidateEngines | toJson)) }}
+    {{- end }}
+
+    {{- $artifact := index $model.engines $engine }}
+
+    ENGINE="{{ $engine }}"
     MODEL="{{ $artifact.model }}"
-    CTX_SIZE="{{ $model.ctx_size }}"
-    PORT="{{ $service.port }}"
+    CONTEXT="{{ $model.context }}"
+    PORT="{{ $runtime.port }}"
     ;;
     {{- end }}
 {{- end }}
+
   *)
-    die "unknown service: $SERVICE_NAME"
+    die "unknown runtime: $RUNTIME_NAME"
     ;;
 esac
 
 case "$PORT" in
   ''|*[!0-9]*)
-    die "invalid port for $SERVICE_NAME: $PORT"
+    die "invalid port for $RUNTIME_NAME: $PORT"
     ;;
 esac
 
 PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export PATH
 
-case "$BACKEND" in
+case "$ENGINE" in
   llama_cpp)
     SERVER="$(command -v llama-server || true)"
     [ -n "$SERVER" ] || die "llama-server not found"
@@ -111,7 +134,7 @@ case "$BACKEND" in
       --hf-repo "$MODEL" \
       --host 127.0.0.1 \
       --port "$PORT" \
-      --ctx-size "$CTX_SIZE" \
+      --ctx-size "$CONTEXT" \
       --parallel 1 \
       --cors-origins localhost \
       --no-cors-credentials \
@@ -134,7 +157,7 @@ case "$BACKEND" in
     ;;
 
   *)
-    die "unsupported backend for $SERVICE_NAME: $BACKEND"
+    die "unsupported engine for $RUNTIME_NAME: $ENGINE"
     ;;
 esac
 {{- end }}

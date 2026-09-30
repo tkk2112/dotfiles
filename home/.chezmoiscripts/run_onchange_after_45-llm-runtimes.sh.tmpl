@@ -10,7 +10,8 @@ set -eu
 {{- $profiles := .profiles | default (list) }}
 {{- $llmConfig := .llmConfig | default (dict) }}
 {{- $llmFeatures := get $llmConfig "features" | default (list) }}
-{{- $completionEnabled := and (has "llm" $profiles) (has "completion" $llmFeatures) }}
+{{- $llmDisabledRuntimes := get $llmConfig "disabledRuntimes" | default (list) }}
+{{- $llmManualRuntimes := get $llmConfig "manualRuntimes" | default (list) }}
 
 PROFILE_LLM="{{ if has "llm" $profiles }}true{{ else }}false{{ end }}"
 
@@ -19,16 +20,16 @@ LAUNCHER="$HOME/.local/bin/dotfiles-llm-launch"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 LOG_DIR="$HOME/Library/Logs/dotfiles"
 
-unload_service() {
+unload_runtime() {
   name="$1"
   label="com.dotfiles.llm-$name"
-  service="$DOMAIN/$label"
+  target="$DOMAIN/$label"
 
-  if launchctl print "$service" >/dev/null 2>&1; then
-    launchctl bootout "$service" >/dev/null 2>&1 || true
+  if launchctl print "$target" >/dev/null 2>&1; then
+    launchctl bootout "$target" >/dev/null 2>&1 || true
 
     attempts=0
-    while launchctl print "$service" >/dev/null 2>&1; do
+    while launchctl print "$target" >/dev/null 2>&1; do
       attempts=$((attempts + 1))
 
       if [ "$attempts" -ge 20 ]; then
@@ -41,7 +42,7 @@ unload_service() {
   fi
 }
 
-remove_existing_services() {
+remove_existing_runtimes() {
   for plist in "$LAUNCH_AGENTS"/com.dotfiles.llm-*.plist; do
     [ -e "$plist" ] || continue
 
@@ -49,7 +50,7 @@ remove_existing_services() {
     name="${filename#com.dotfiles.llm-}"
     name="${name%.plist}"
 
-    unload_service "$name"
+    unload_runtime "$name"
     rm -f "$plist"
   done
 }
@@ -57,24 +58,28 @@ remove_existing_services() {
 validate_ports() {
   used_ports=""
 
-{{- range $name, $service := .llm.services }}
-{{- $enabled := $service.enabled }}
-{{- if eq $service.type "completion" }}
-{{-   $enabled = and $enabled $completionEnabled }}
+{{- range $name, $runtime := .llm.runtimes }}
+{{- $enabled := true }}
+{{- if hasKey $runtime "enabled" }}
+{{-   $enabled = $runtime.enabled }}
+{{- end }}
+{{- $enabled = and $enabled (has $runtime.feature $llmFeatures) }}
+{{- if has $name $llmDisabledRuntimes }}
+{{-   $enabled = false }}
 {{- end }}
 {{- if $enabled }}
-  port="{{ $service.port }}"
+  port="{{ $runtime.port }}"
 
   case "$port" in
     ''|*[!0-9]*)
-      printf 'Invalid port for LLM service %s: %s\n' "{{ $name }}" "$port" >&2
+      printf 'Invalid port for LLM runtime %s: %s\n' "{{ $name }}" "$port" >&2
       exit 1
       ;;
   esac
 
   case " $used_ports " in
     *" $port "*)
-      printf 'Duplicate LLM service port: %s\n' "$port" >&2
+      printf 'Duplicate LLM runtime port: %s\n' "$port" >&2
       exit 1
       ;;
   esac
@@ -84,7 +89,7 @@ validate_ports() {
 {{- end }}
 }
 
-install_service() {
+install_runtime() {
   name="$1"
   autostart="$2"
 
@@ -134,25 +139,25 @@ EOF
 
   if [ "$autostart" = "true" ]; then
     launchctl bootstrap "$DOMAIN" "$plist"
-    printf 'LLM service %s installed and started\n' "$name"
+    printf 'LLM runtime %s installed and started\n' "$name"
   else
-    printf 'LLM service %s installed for on-demand use\n' "$name"
+    printf 'LLM runtime %s installed for on-demand use\n' "$name"
   fi
 }
 
 if [ "${DOTFILES_CI:-}" = "true" ]; then
-  printf 'Skipping LLM services in CI\n'
+  printf 'Skipping LLM runtimes in CI\n'
   exit 0
 fi
 
 mkdir -p "$LAUNCH_AGENTS" "$LOG_DIR"
 
 # This namespace belongs entirely to dotfiles-llm. Remove the old
-# definitions before regenerating them from the current service catalog.
-remove_existing_services
+# definitions before regenerating them from the current runtime catalog.
+remove_existing_runtimes
 
 if [ "$PROFILE_LLM" != "true" ]; then
-  printf 'Removed LLM services because llm profile is disabled\n'
+  printf 'Removed LLM runtimes because llm profile is disabled\n'
   exit 0
 fi
 
@@ -163,13 +168,26 @@ fi
 
 validate_ports
 
-{{- range $name, $service := .llm.services }}
-{{- $enabled := $service.enabled }}
-{{- if eq $service.type "completion" }}
-{{-   $enabled = and $enabled $completionEnabled }}
+{{- range $name, $runtime := .llm.runtimes }}
+{{- $enabled := true }}
+{{- if hasKey $runtime "enabled" }}
+{{-   $enabled = $runtime.enabled }}
 {{- end }}
+{{- $enabled = and $enabled (has $runtime.feature $llmFeatures) }}
+{{- if has $name $llmDisabledRuntimes }}
+{{-   $enabled = false }}
+{{- end }}
+
+{{- $autostart := false }}
+{{- if hasKey $runtime "autostart" }}
+{{-   $autostart = $runtime.autostart }}
+{{- end }}
+{{- if has $name $llmManualRuntimes }}
+{{-   $autostart = false }}
+{{- end }}
+
 {{- if $enabled }}
-install_service "{{ $name }}" "{{ if $service.autostart }}true{{ else }}false{{ end }}"
+install_runtime "{{ $name }}" "{{ if $autostart }}true{{ else }}false{{ end }}"
 {{- end }}
 {{- end }}
 {{- end }}

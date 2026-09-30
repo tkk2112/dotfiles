@@ -186,13 +186,13 @@ packages:
 
     # LLM: Local model tooling and coding agents.
     - name: llama.cpp
-      group: llm-runtime-llama_cpp
+      group: llm-engine-llama_cpp
       managers: [brew]
     - name: llmfit
       group: llm
       managers: [brew]
     - name: mlx-lm
-      group: llm-runtime-mlx
+      group: llm-engine-mlx
       managers: [brew]
     - name: models
       group: llm
