@@ -265,6 +265,15 @@ test_llm_capability_selection() {
   grep -Fq 'MODEL="mlx-community/Qwen2.5-Coder-3B-4bit"' "$launcher_output" \
     || fail "MLX completion model did not resolve correctly"
 
+  grep -Fq 'laya)' "$launcher_output" \
+    || fail "Laya feature did not enable Laya runtime"
+
+  grep -Fq 'ENGINE="laya_mlx"' "$launcher_output" \
+    || fail "Laya runtime did not resolve laya_mlx engine"
+
+  grep -Fq 'MODEL="aac6fef/laya-mlx"' "$launcher_output" \
+    || fail "Laya runtime did not resolve model"
+
   chezmoi --config "$config_file" execute-template \
     <"$repo_root/home/dot_config/nvim/lua/config/llm/local.lua.tmpl" \
     >"$completion_output"
@@ -304,6 +313,12 @@ test_llm_without_completion() {
   if grep -Fq 'completion)' "$launcher_output"; then
     fail "disabled completion feature still generated completion runtime"
   fi
+
+  grep -Fq 'laya)' "$launcher_output" \
+    || fail "Laya-only configuration did not generate Laya runtime"
+
+  grep -Fq 'ENGINE="laya_mlx"' "$launcher_output" \
+    || fail "Laya-only configuration did not resolve laya_mlx"
 
   chezmoi --config "$config_file" execute-template \
     <"$repo_root/home/dot_config/nvim/lua/config/llm/local.lua.tmpl" \

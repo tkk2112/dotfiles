@@ -68,16 +68,28 @@ case "$RUNTIME_NAME" in
     {{-   fail (printf "LLM runtime %s for feature completion requires model kind generative, got %s" $runtimeName $model.kind) }}
     {{- end }}
 
-    {{- if ne $model.kind "generative" }}
-    {{-   fail (printf "LLM runtime %s uses unsupported model kind %s" $runtimeName $model.kind) }}
+    {{- if and (eq $runtime.feature "laya") (ne $model.kind "decision") }}
+    {{-   fail (printf "LLM runtime %s for feature laya requires model kind decision, got %s" $runtimeName $model.kind) }}
     {{- end }}
 
     {{- $candidateEngines := list }}
 
-    {{- range $candidate := $llmEngines }}
-    {{-   if hasKey $model.engines $candidate }}
+    {{- if eq $model.kind "generative" }}
+
+    {{-   range $candidate := $llmEngines }}
+    {{-     if hasKey $model.engines $candidate }}
+    {{-       $candidateEngines = append $candidateEngines $candidate }}
+    {{-     end }}
+    {{-   end }}
+
+    {{- else if eq $model.kind "decision" }}
+
+    {{-   range $candidate, $_ := $model.engines }}
     {{-     $candidateEngines = append $candidateEngines $candidate }}
     {{-   end }}
+
+    {{- else }}
+    {{-   fail (printf "LLM runtime %s uses unsupported model kind %s" $runtimeName $model.kind) }}
     {{- end }}
 
     {{- if eq (len $candidateEngines) 0 }}
@@ -103,6 +115,10 @@ case "$RUNTIME_NAME" in
     MODEL="{{ $artifact.model }}"
     CONTEXT="{{ $model.context }}"
     PORT="{{ $runtime.port }}"
+{{- if eq $engine "laya_mlx" }}
+    DTYPE="{{ $artifact.dtype }}"
+    DEVICE="{{ $artifact.device }}"
+{{- end }}
     ;;
     {{- end }}
 {{- end }}
@@ -154,6 +170,25 @@ case "$ENGINE" in
       --model "$MODEL" \
       --host 127.0.0.1 \
       --port "$PORT"
+    ;;
+
+  laya_mlx)
+    UV="$(command -v uv || true)"
+    [ -n "$UV" ] || die "uv not found"
+
+    SERVER="$HOME/.local/lib/dotfiles/llm/laya_server.py"
+    [ -f "$SERVER" ] || die "Laya server not found: $SERVER"
+
+    exec "$UV" run \
+      --no-project \
+      --with laya-mlx \
+      -- \
+      python "$SERVER" \
+      --host 127.0.0.1 \
+      --port "$PORT" \
+      --model "$MODEL" \
+      --dtype "$DTYPE" \
+      --device "$DEVICE"
     ;;
 
   *)

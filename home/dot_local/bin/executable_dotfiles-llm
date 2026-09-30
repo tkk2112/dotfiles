@@ -26,8 +26,10 @@ require_darwin() {
     || die "LLM runtimes are currently supported only on macOS"
 }
 
+LLM_DATA="$(chezmoi data)"
+
 llm_data() {
-  chezmoi data
+  printf '%s\n' "$LLM_DATA"
 }
 
 runtime_exists() {
@@ -494,85 +496,75 @@ release_runtime() {
   trap - 0 1 2 15
 }
 
-laya_model_field() {
-  field="$1"
+decision_runtime() {
+  llm_data | jq -er '.llm.defaults.decision'
+}
+
+runtime_port() {
+  name="$1"
 
   llm_data \
-    | jq -er --arg field "$field" '
-      .llm.defaults.decision as $runtime_name
-      | .llm.runtimes[$runtime_name].model as $model_id
-      | first(
-          .llm.models[]
-          | select(.id == $model_id and .kind == "decision")
-        )
-      | .engines.laya_mlx[$field]
-    '
+    | jq -er --arg name "$name" '.llm.runtimes[$name].port'
+}
+
+wait_for_http() {
+  endpoint="$1"
+  attempts=0
+
+  while ! curl -fsS "$endpoint/health" >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+
+    if [ "$attempts" -ge 120 ]; then
+      return 1
+    fi
+
+    sleep 0.25
+  done
 }
 
 decide() {
-  questions="$1"
+  request="$1"
 
-  [ -f "$questions" ] \
-    || die "questions file not found: $questions"
+  [ -f "$request" ] \
+    || die "request file not found: $request"
 
-  command -v jq >/dev/null 2>&1 \
-    || die "jq is required"
+  jq -e '
+    type == "object"
+    and has("state")
+    and (.questions | type == "object")
+  ' "$request" >/dev/null \
+    || die "invalid decision request: expected state and questions"
 
-  command -v laya-mlx >/dev/null 2>&1 \
-    || die "laya-mlx is not installed"
+  runtime="$(decision_runtime)"
 
-  data="$(llm_data)"
+  runtime_enabled "$runtime" \
+    || die "decision runtime is disabled: $runtime"
 
-  printf '%s\n' "$data" \
-    | jq -e '.llmConfig.features | index("laya") != null' >/dev/null \
-    || die "Laya is not enabled on this machine"
+  port="$(runtime_port "$runtime")"
+  endpoint="http://127.0.0.1:$port"
+  acquired=false
 
-  printf '%s\n' "$data" \
-    | jq -e '.llm.laya != null' >/dev/null \
-    || die "Laya configuration is missing"
+  if ! curl -fsS "$endpoint/health" >/dev/null 2>&1; then
+    acquire_runtime "$runtime" "$$"
+    acquired=true
 
-  jq -e . "$questions" >/dev/null \
-    || die "invalid questions JSON: $questions"
+    trap 'release_runtime "$runtime" "$$"' 0 1 2 15
 
-  model="$(
-    printf '%s\n' "$data" \
-      | jq -er '.llm.laya.model'
-  )"
+    wait_for_http "$endpoint" \
+      || die "decision runtime did not become ready: $runtime"
+  fi
 
-  dtype="$(
-    printf '%s\n' "$data" \
-      | jq -er '.llm.laya.dtype'
-  )"
+  curl -fsS \
+    -H 'Content-Type: application/json' \
+    --data-binary "@$request" \
+    "$endpoint/predict"
 
-  device="$(
-    printf '%s\n' "$data" \
-      | jq -er '.llm.laya.device'
-  )"
+  printf '\n'
 
-  state_file="$(
-    mktemp "${TMPDIR:-/tmp}/dotfiles-llm-state.XXXXXX"
-  )"
-
-  trap 'rm -f "$state_file"' 0 1 2 15
-
-  cat >"$state_file"
-
-  jq -e . "$state_file" >/dev/null \
-    || die "stdin must contain valid JSON"
-
-  laya-mlx predict \
-    --model "$model" \
-    --dtype "$dtype" \
-    --device "$device" \
-    --state-file "$state_file" \
-    --questions "$questions"
-
-  result=$?
-
-  rm -f "$state_file"
-  trap - 0 1 2 15
-
-  return "$result"
+  if [ "$acquired" = "true" ]; then
+    release_runtime "$runtime" "$$"
+    trap - 0 1 2 15
+  fi
 }
 
 command="${1:-}"
