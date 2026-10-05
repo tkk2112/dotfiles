@@ -1,0 +1,451 @@
+#!/bin/sh
+set -eu
+
+die() {
+  printf 'nvim-project-mv: %s\n' "$*" >&2
+  exit 1
+}
+
+sha256() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$1" | shasum -a 256 | awk '{ print $1 }'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$1" | sha256sum | awk '{ print $1 }'
+  else
+    die "need shasum or sha256sum"
+  fi
+}
+
+canonical_dir() {
+  CDPATH= cd -P "$1" 2>/dev/null && pwd -P
+}
+
+resolve_root() {
+  config="$1"
+  config_dir="$(dirname "$config")"
+
+  if ! jq -e 'has("root")' "$config" >/dev/null; then
+    canonical_dir "$(dirname "$config_dir")"
+    return
+  fi
+
+  root="$(jq -r '.root' "$config")"
+
+  case "$root" in
+    "~")
+      root="$HOME"
+      ;;
+    "~/"*)
+      root="$HOME/${root#~/}"
+      ;;
+  esac
+
+  case "$root" in
+    /*)
+      canonical_dir "$root"
+      ;;
+    *)
+      canonical_dir "$config_dir/$root"
+      ;;
+  esac
+}
+
+last_opened_for() {
+  root="$1"
+
+  jq -r \
+    --arg root "$root" '
+      [
+        .records[]?
+        | select(.root == $root)
+        | .last_opened
+        | select(type == "number")
+      ][0] // 0
+    ' \
+    "$index_base"
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 \
+    || die "required command not found: $1"
+}
+
+require_command git
+require_command jq
+require_command awk
+require_command mktemp
+
+input="${1:-$PWD}"
+
+[ -d "$input" ] \
+  || die "not a directory: $input"
+
+repo_root="$(
+  git -C "$input" rev-parse --show-toplevel 2>/dev/null
+)" || die "not inside a Git repository: $input"
+
+repo_root="$(canonical_dir "$repo_root")" \
+  || die "could not resolve repository root"
+
+data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+nvim_data="$data_home/nvim"
+
+hash="$(sha256 "$repo_root")"
+
+repo_nvim="$repo_root/.nvim"
+shared_parent="$nvim_data/project-settings/$hash"
+shared_nvim="$shared_parent/.nvim"
+
+index_dir="$nvim_data/project"
+index_file="$index_dir/index.json"
+
+#
+# Determine direction.
+#
+if [ -d "$repo_nvim" ] && [ -d "$shared_nvim" ]; then
+  die "both project and shared .nvim directories exist"
+fi
+
+if [ -d "$repo_nvim" ]; then
+  direction="out"
+  source_nvim="$repo_nvim"
+  destination_nvim="$shared_nvim"
+  destination_owner="$shared_parent"
+
+elif [ -d "$shared_nvim" ]; then
+  direction="in"
+  source_nvim="$shared_nvim"
+  destination_nvim="$repo_nvim"
+  destination_owner="$repo_root"
+
+else
+  die "no .nvim found in project or shared storage"
+fi
+
+source_config="$source_nvim/project.json"
+destination_config="$destination_nvim/project.json"
+
+[ -f "$source_config" ] \
+  || die "missing project.json: $source_config"
+
+jq -e 'type == "object"' "$source_config" >/dev/null \
+  || die "project.json must contain a JSON object"
+
+#
+# Verify that whichever config we found actually belongs to this repository.
+#
+resolved_root="$(resolve_root "$source_config")" \
+  || die "could not resolve project root from $source_config"
+
+[ "$resolved_root" = "$repo_root" ] \
+  || die "project.json points to $resolved_root, not $repo_root"
+
+#
+# Destination must not already exist.
+#
+[ ! -e "$destination_nvim" ] \
+  || die "destination already exists: $destination_nvim"
+
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/nvim-project-mv.XXXXXX")"
+
+original_config="$tmpdir/project.json.orig"
+new_config="$tmpdir/project.json.new"
+index_base="$tmpdir/index.orig"
+index_new="$tmpdir/index.new"
+records_file="$tmpdir/records.jsonl"
+records_json="$tmpdir/records.json"
+
+cp "$source_config" "$original_config"
+
+#
+# Prepare the new project.json before changing anything.
+#
+case "$direction" in
+  out)
+    jq \
+      --arg root "$repo_root" \
+      '.root = $root' \
+      "$source_config" >"$new_config"
+    ;;
+
+  in)
+    jq \
+      '.root = ".."' \
+      "$source_config" >"$new_config"
+    ;;
+esac
+
+#
+# Snapshot the current index, or start a new one.
+#
+index_existed=0
+
+if [ -f "$index_file" ]; then
+  cp "$index_file" "$index_base"
+  index_existed=1
+else
+  printf '%s\n' '{"version":2,"records":[]}' >"$index_base"
+fi
+
+jq -e '
+  .version == 2
+  and (.records | type == "array")
+' "$index_base" >/dev/null \
+  || die "unsupported or invalid project index: $index_file"
+
+#
+# Build replacement project record.
+#
+project_last_opened="$(last_opened_for "$repo_root")"
+
+jq -cn \
+  --arg root "$repo_root" \
+  --arg config "$destination_config" \
+  --argjson last_opened "$project_last_opened" '
+    {
+      root: $root,
+      project_root: $root,
+      config_path: $config,
+      kind: "project",
+      last_opened: $last_opened
+    }
+  ' >>"$records_file"
+
+#
+# Build replacement subproject records.
+#
+jq -r '
+  (.subprojects // {})
+  | keys[]
+' "$new_config" \
+  | while IFS= read -r name; do
+    relative_root="$(
+      jq -r \
+        --arg name "$name" \
+        '.subprojects[$name].root // empty' \
+        "$new_config"
+    )"
+
+    [ -n "$relative_root" ] \
+      || die "subproject $name has no root"
+
+    case "$relative_root" in
+      /*)
+        die "subproject root must be relative: $name"
+        ;;
+    esac
+
+    subproject_root="$(
+      canonical_dir "$repo_root/$relative_root"
+    )" || die "subproject does not exist: $name -> $relative_root"
+
+    case "$subproject_root/" in
+      "$repo_root/"*)
+        ;;
+      *)
+        die "subproject escapes project root: $name"
+        ;;
+    esac
+
+    #
+    # Leave the value in project.json untouched.
+    #
+    # We only use it to calculate the absolute index record.
+    #
+    relative_config="$(
+      jq -r \
+        --arg name "$name" '
+        .subprojects[$name].config
+        // (".nvim/subprojects/" + $name + ".json")
+      ' \
+        "$new_config"
+    )"
+
+    case "$relative_config" in
+      .nvim/*)
+        ;;
+      *)
+        die "subproject config must live below .nvim: $name -> $relative_config"
+        ;;
+    esac
+
+    case "/$relative_config/" in
+      */../*)
+        die "subproject config escapes .nvim: $name -> $relative_config"
+        ;;
+    esac
+
+    subproject_config="$destination_owner/$relative_config"
+
+    child_last_opened="$(last_opened_for "$subproject_root")"
+
+    jq -cn \
+      --arg root "$subproject_root" \
+      --arg project_root "$repo_root" \
+      --arg config "$subproject_config" \
+      --arg name "$name" \
+      --argjson last_opened "$child_last_opened" '
+      {
+        root: $root,
+        project_root: $project_root,
+        config_path: $config,
+        kind: "subproject",
+        name: $name,
+        last_opened: $last_opened
+      }
+    ' >>"$records_file"
+  done
+
+jq -s '.' "$records_file" >"$records_json"
+
+#
+# Update the rest of the index.
+#
+# This also fixes inherited worktree records whose config_path points into the
+# .nvim directory being moved.
+#
+jq \
+  --arg root "$repo_root" \
+  --arg old_nvim "$source_nvim" \
+  --arg new_nvim "$destination_nvim" \
+  --slurpfile replacements "$records_json" '
+    .records = (
+      [
+        (.records // [])[]
+        |
+        select(
+          .root != $root
+          and .project_root != $root
+        )
+        |
+        if (
+          ((.config_path? | type) == "string")
+          and
+          ((.config_path // "") | startswith($old_nvim + "/"))
+        )
+        then
+          .config_path =
+            ($new_nvim + (.config_path | ltrimstr($old_nvim)))
+        else
+          .
+        end
+      ]
+      + $replacements[0]
+    )
+  ' \
+  "$index_base" >"$index_new"
+
+jq -e '
+  .version == 2
+  and (.records | type == "array")
+' "$index_new" >/dev/null \
+  || die "generated index is invalid"
+
+#
+# Everything needed for the operation has now been calculated.
+# From this point on we can roll back if something fails.
+#
+moved=0
+index_modified=0
+success=0
+
+rollback() {
+  status=$?
+
+  trap - EXIT INT TERM HUP
+
+  if [ "$success" -ne 1 ]; then
+    if [ "$index_modified" -eq 1 ]; then
+      if [ "$index_existed" -eq 1 ]; then
+        cp "$index_base" "$index_file" 2>/dev/null || true
+      else
+        rm -f "$index_file"
+      fi
+    fi
+
+    if [ "$moved" -eq 1 ]; then
+      if [ -d "$destination_nvim" ] && [ ! -e "$source_nvim" ]; then
+        mkdir -p "$(dirname "$source_nvim")"
+        mv "$destination_nvim" "$source_nvim" 2>/dev/null || true
+      fi
+
+      if [ -f "$source_nvim/project.json" ]; then
+        cat "$original_config" >"$source_nvim/project.json"
+      fi
+    fi
+  fi
+
+  rm -rf "$tmpdir"
+
+  exit "$status"
+}
+
+trap rollback EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+
+#
+# Perform the move.
+#
+mkdir -p "$(dirname "$destination_nvim")"
+
+mv "$source_nvim" "$destination_nvim"
+
+moved=1
+
+#
+# Replace only the top-level root in the moved project.json.
+#
+cat "$new_config" >"$destination_config"
+
+#
+# Atomically-ish replace the project index.
+#
+mkdir -p "$index_dir"
+
+index_tmp="$index_dir/index.json.tmp.$$"
+
+cp "$index_new" "$index_tmp"
+mv "$index_tmp" "$index_file"
+
+index_modified=1
+
+#
+# Verify the resulting top-level record.
+#
+jq -e \
+  --arg root "$repo_root" \
+  --arg config "$destination_config" '
+    any(
+      .records[];
+      .root == $root
+      and .project_root == $root
+      and .kind == "project"
+      and .config_path == $config
+    )
+  ' \
+  "$index_file" >/dev/null \
+  || die "project index verification failed"
+
+#
+# Moving back in leaves the hashed parent empty.
+#
+if [ "$direction" = "in" ]; then
+  rmdir "$shared_parent" 2>/dev/null || true
+fi
+
+success=1
+
+case "$direction" in
+  out)
+    printf 'Moved project settings out of repository\n'
+    ;;
+  in)
+    printf 'Moved project settings back into repository\n'
+    ;;
+esac
+
+printf 'Project: %s\n' "$repo_root"
+printf 'Config:  %s\n' "$destination_config"
+printf 'Index:   %s\n' "$index_file"
