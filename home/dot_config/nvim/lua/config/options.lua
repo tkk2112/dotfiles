@@ -10,6 +10,13 @@ vim.opt.scrolloff = 8
 vim.opt.sidescrolloff = 8
 vim.opt.wrap = false
 vim.opt.termguicolors = true
+vim.opt.list = true
+vim.opt.listchars = {
+  tab = "→ ",
+  lead = "·",
+  trail = "·",
+  nbsp = "␣",
+}
 
 -- Tabs/indentation
 vim.opt.tabstop = 2

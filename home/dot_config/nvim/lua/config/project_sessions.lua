@@ -18,7 +18,6 @@ local project_sessionoptions = table.concat({
   "curdir",
   "folds",
   "help",
-  "localoptions",
   "tabpages",
   "winsize",
 }, ",")
