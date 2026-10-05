@@ -3,10 +3,37 @@ return {
     "nvim-lualine/lualine.nvim",
     dependencies = {
       { "nvim-mini/mini.icons", opts = {} },
+      {
+        "SmiteshP/nvim-navic",
+        opts = {
+          separator = " › ",
+          lsp = {
+            auto_attach = true,
+          },
+        },
+      },
     },
     opts = function()
       local function project()
         return require("config.project").status()
+      end
+
+      local function breadcrumbs()
+        local navic = require("nvim-navic")
+
+        if navic.is_available() then
+          local location = navic.get_location()
+
+          if location ~= "" then
+            return location
+          end
+        end
+
+        return " "
+      end
+
+      local function breadcrumbs_available()
+        return require("nvim-navic").is_available()
       end
 
       local quickfix_watch = require("config.quickfix_watch")
@@ -65,6 +92,21 @@ return {
           lualine_x = { "location" },
           lualine_y = {},
           lualine_z = {},
+        },
+
+        winbar = {
+          lualine_c = {
+            {
+              breadcrumbs,
+            },
+          },
+        },
+        inactive_winbar = {
+          lualine_c = {
+            {
+              breadcrumbs,
+            },
+          },
         },
       }
     end,

@@ -47,6 +47,20 @@ return {
         end,
         desc = "Commands",
       },
+      {
+        "<leader>ls",
+        function()
+          require("fzf-lua").lsp_document_symbols()
+        end,
+        desc = "Document symbols",
+      },
+      {
+        "<leader>lS",
+        function()
+          require("fzf-lua").lsp_live_workspace_symbols()
+        end,
+        desc = "Workspace symbols",
+  },
     },
     opts = {},
   },

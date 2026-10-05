@@ -135,6 +135,41 @@ local function switch_source_header()
   end)
 end
 
+function M.setup_document_highlight(bufnr, client)
+  if not client:supports_method("textDocument/documentHighlight") then
+    return
+  end
+
+  local group = vim.api.nvim_create_augroup("dotfiles_lsp_document_highlight", {
+    clear = false,
+  })
+
+  vim.api.nvim_clear_autocmds({
+    group = group,
+    buffer = bufnr,
+  })
+
+  vim.api.nvim_create_autocmd("CursorHold", {
+    group = group,
+    buffer = bufnr,
+    callback = function()
+      vim.lsp.buf.document_highlight()
+    end,
+  })
+
+  vim.api.nvim_create_autocmd({
+    "CursorMoved",
+    "InsertEnter",
+    "BufLeave",
+  }, {
+    group = group,
+    buffer = bufnr,
+    callback = function()
+      vim.lsp.buf.clear_references()
+    end,
+  })
+end
+
 function M.setup()
   vim.diagnostic.config({
     virtual_text = true,
@@ -166,12 +201,17 @@ function M.setup()
   vim.api.nvim_create_autocmd("LspAttach", {
     group = group,
     callback = function(event)
+      local client = vim.lsp.get_client_by_id(event.data.client_id)
+
+      if client then
+        M.setup_document_highlight(event.buf, client)
+      end
+
       local map = vim.keymap.set
       local options = {
         buffer = event.buf,
         silent = true,
       }
-
       local function with_desc(description)
         return vim.tbl_extend("force", options, {
           desc = description,

@@ -361,10 +361,15 @@ return {
         end
 
         map("n", "<leader>gb", gitsigns.blame_line, with_desc("Blame line"))
-
         map("n", "<leader>gB", gitsigns.toggle_current_line_blame, with_desc("Toggle current line blame"))
-
         map("n", "<leader>gp", gitsigns.preview_hunk, with_desc("Preview hunk"))
+        map("n", "<leader>gS", gitsigns.stage_hunk, with_desc("Stage hunk"))
+        map("n", "<leader>gu", gitsigns.undo_stage_hunk, with_desc("Undo staged hunk"))
+        map("n", "<leader>gr", gitsigns.reset_hunk, with_desc("Reset hunk"))
+
+        map("n", "<leader>gd", function()
+          gitsigns.diffthis("HEAD")
+        end, with_desc("Diff against HEAD"))
 
         map("n", "]c", function()
           if vim.wo.diff then
