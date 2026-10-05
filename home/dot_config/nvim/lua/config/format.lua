@@ -5,7 +5,21 @@ local M = {}
 
 local buffer = require("config.lib.buffer")
 
+local preserve_trailing_whitespace = {
+  diff = true,
+  gitsendemail = true,
+  markdown = true,
+}
+
+local function should_trim_trailing_whitespace(bufnr)
+  return not preserve_trailing_whitespace[vim.bo[bufnr].filetype]
+end
+
 local function trim_trailing_whitespace(bufnr)
+  if not should_trim_trailing_whitespace(bufnr) then
+    return
+  end
+
   vim.api.nvim_buf_call(bufnr, function()
     local view = vim.fn.winsaveview()
 
