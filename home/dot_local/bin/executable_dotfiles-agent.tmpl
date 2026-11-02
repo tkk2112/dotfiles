@@ -1,0 +1,75 @@
+{{- $models := .llm.models -}}
+#!/bin/sh
+set -eu
+
+die() {
+  printf 'dotfiles-agent: %s\n' "$*" >&2
+  exit 1
+}
+
+runtime="${DOTFILES_AGENT_RUNTIME:-agent}"
+
+case "$runtime" in
+{{- range $name, $runtime := .llm.runtimes }}
+{{-   if eq $runtime.feature "agent" }}
+{{-     $model := dict }}
+{{-     range $models }}
+{{-       if eq .id $runtime.model }}
+{{-         $model = . }}
+{{-       end }}
+{{-     end }}
+{{-     if not (hasKey $model "id") }}
+{{-       fail (printf "unknown agent model %s for runtime %s" $runtime.model $name) }}
+{{-     end }}
+{{-     if ne $model.kind "generative" }}
+{{-       fail (printf "agent model %s is not generative" $model.id) }}
+{{-     end }}
+{{-     if ne $model.default_engine "mlx" }}
+{{-       fail (printf "agent model %s needs an MLX engine" $model.id) }}
+{{-     end }}
+{{-     $artifact := index $model.engines "mlx" }}
+  {{ $name }})
+    model={{ $artifact.model | quote }}
+    context={{ $model.context }}
+    endpoint={{ printf "http://127.0.0.1:%v" $runtime.port | quote }}
+    ;;
+{{-   end }}
+{{- end }}
+  *) die "unknown agent runtime: $runtime" ;;
+esac
+
+command -v goose >/dev/null 2>&1 ||
+  die "goose is not installed"
+
+command -v dotfiles-llm >/dev/null 2>&1 ||
+  die "dotfiles-llm is not installed"
+
+dotfiles-llm start "$runtime" ||
+  die "failed to start runtime $runtime"
+
+attempt=0
+until curl -fsS --max-time 2 "$endpoint/health" >/dev/null 2>&1; do
+  attempt=$((attempt + 1))
+
+  if [ "$attempt" -ge 900 ]; then
+    dotfiles-llm status "$runtime" >&2 || true
+    die "runtime did not become ready: $runtime"
+  fi
+
+  sleep 2
+done
+
+export GOOSE_PROVIDER=openai
+export GOOSE_MODEL="$model"
+export GOOSE_CONTEXT_LIMIT="$context"
+export OPENAI_HOST="$endpoint"
+export OPENAI_BASE_PATH=v1/chat/completions
+export OPENAI_API_KEY=local-only
+export GOOSE_MODE=approve
+export GOOSE_TELEMETRY_ENABLED=false
+
+if [ "$#" -eq 0 ]; then
+  exec goose session
+fi
+
+exec goose "$@"

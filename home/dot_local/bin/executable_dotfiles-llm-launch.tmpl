@@ -172,6 +172,28 @@ case "$ENGINE" in
       --port "$PORT"
     ;;
 
+  colibri)
+    COLI="$HOME/.local/share/dotfiles/llm/src/colibri/c/coli"
+    MODEL_DIR="$HOME/.local/share/dotfiles/llm/models/$MODEL"
+    ENGINE_BIN="$HOME/.local/share/dotfiles/llm/src/colibri/c/laya"
+    PYTHON="$(command -v python3 || true)"
+
+    [ -n "$PYTHON" ] || die "python3 not found"
+    [ -f "$COLI" ] || die "Colibri CLI not found: $COLI"
+    [ -x "$ENGINE_BIN" ] || die "Colibri Laya engine not found"
+    [ -s "$MODEL_DIR/model.safetensors" ] ||
+      die "Colibri model not found: $MODEL_DIR"
+
+    exec /usr/bin/env -i \
+      HOME="$HOME" \
+      PATH="$PATH" \
+      TMPDIR=/tmp \
+      "$PYTHON" "$COLI" serve \
+      --model "$MODEL_DIR" \
+      --host 127.0.0.1 \
+      --port "$PORT"
+    ;;
+
   laya_mlx)
     UV="$(command -v uv || true)"
     [ -n "$UV" ] || die "uv not found"

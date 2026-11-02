@@ -1,0 +1,84 @@
+
+{{- $profiles := .profiles | default (list) -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $engines := get $llmConfig "engines" | default (list) -}}
+{{- $features := get $llmConfig "features" | default (list) -}}
+#!/bin/sh
+set -eu
+
+{{ if and (eq .chezmoi.os "darwin") (has "llm" $profiles) (has "colibri" $engines) (has "laya" $features) -}}
+[ "${DOTFILES_CI:-}" = "true" ] && exit 0
+
+revision={{ .colibri.laya_revision | quote }}
+
+root="$HOME/.local/share/dotfiles/llm"
+release="$root/models/laya-$revision"
+active="$root/models/laya"
+cli="$root/src/colibri/c/coli"
+
+base="https://huggingface.co/convaiinnovations/laya/resolve/$revision"
+
+die() {
+    printf 'colibri-laya: %s\n' "$*" >&2
+    exit 1
+}
+
+command -v curl >/dev/null 2>&1 || die "curl is missing"
+command -v jq >/dev/null 2>&1 || die "jq is missing"
+
+[ -f "$cli" ] || die "Colibri is not installed"
+
+download() {
+    relative="$1"
+    target="$release/$relative"
+
+    [ -s "$target" ] && return 0
+
+    mkdir -p "$(dirname "$target")"
+
+    printf 'Downloading %s\n' "$relative"
+
+    curl --fail --location --retry 4 --retry-all-errors \
+        --continue-at - \
+        --output "$target.part" \
+        "$base/$relative"
+
+    mv "$target.part" "$target"
+}
+
+mkdir -p "$release"
+
+download model.safetensors
+download rl_agent_config.json
+download encoder/config.json
+download tokenizer/tokenizer.json
+download tokenizer/tokenizer_config.json
+
+# Check that the checkpoint and metadata are complete.
+size="$(stat -f %z "$release/model.safetensors")"
+[ "$size" -gt 800000000 ] ||
+    die "Model checkpoint is unexpectedly small: $size bytes"
+
+for file in \
+    rl_agent_config.json \
+    encoder/config.json \
+    tokenizer/tokenizer.json \
+    tokenizer/tokenizer_config.json
+do
+    jq -e . "$release/$file" >/dev/null ||
+        die "Invalid JSON: $file"
+done
+
+# Validate before activating the new checkpoint.
+python3 "$cli" info --model "$release"
+
+if [ -e "$active" ] && [ ! -L "$active" ]; then
+    die "Unmanaged model directory exists: $active"
+fi
+
+ln -sfn "$release" "$active"
+
+printf 'Laya checkpoint ready: %s\n' "$revision"
+{{ else -}}
+exit 0
+{{ end -}}

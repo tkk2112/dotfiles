@@ -198,6 +198,15 @@ packages:
     - name: models
       group: llm
       managers: [brew]
+    - name: libomp
+      group: llm-engine-colibri
+      managers: [brew]
+    - name: block-goose-cli
+      group: llm-feature-agent
+      managers: [brew]
+    - name: hf
+      group: llm
+      managers: [brew]
 
     # Workstation: Interactive local-machine tools.
     - name: duf

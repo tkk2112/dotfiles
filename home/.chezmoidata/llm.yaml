@@ -5,11 +5,9 @@ llm:
       kind: generative
       context: 32768
       default_engine: llama_cpp
-
       engines:
         llama_cpp:
           model: bartowski/Qwen2.5-Coder-3B-GGUF:Q4_K_M
-
         mlx:
           model: mlx-community/Qwen2.5-Coder-3B-4bit
 
@@ -17,12 +15,23 @@ llm:
       name: Laya
       kind: decision
       context: 512
-
+      default_engine: laya_mlx
       engines:
+        colibri:
+          model: laya
         laya_mlx:
           model: aac6fef/laya-mlx
           dtype: float16
           device: gpu
+
+    - id: qwen3-coder-next-reap-48b
+      name: Qwen3-Coder-Next REAP 48B A3B
+      kind: generative
+      context: 32768
+      default_engine: mlx
+      engines:
+        mlx:
+          model: toby1991/Qwen3-Coder-Next-REAP-48B-A3B-4bit-mlx
 
   runtimes:
     completion:
@@ -35,6 +44,12 @@ llm:
       feature: laya
       model: laya
       port: 18081
+      autostart: false
+
+    agent:
+      feature: agent
+      model: qwen3-coder-next-reap-48b
+      port: 18082
       autostart: false
 
   defaults:

@@ -1,0 +1,75 @@
+
+{{- $profiles := .profiles | default (list) -}}
+{{- $llmConfig := .llmConfig | default (dict) -}}
+{{- $engines := get $llmConfig "engines" | default (list) -}}
+#!/bin/sh
+set -eu
+
+{{ if and (eq .chezmoi.os "darwin") (has "llm" $profiles) (has "colibri" $engines) -}}
+[ "${DOTFILES_CI:-}" = "true" ] && exit 0
+
+version={{ .colibri.version | quote }}
+repo="https://github.com/JustVugg/colibri.git"
+
+root="$HOME/.local/share/dotfiles/llm/src"
+release="$root/colibri-$version"
+active="$root/colibri"
+
+die() {
+    printf 'colibri: %s\n' "$*" >&2
+    exit 1
+}
+
+command -v git >/dev/null 2>&1 || die "git is missing"
+command -v make >/dev/null 2>&1 || die "make is missing"
+command -v python3 >/dev/null 2>&1 || die "python3 is missing"
+command -v brew >/dev/null 2>&1 || die "Homebrew is missing"
+
+brew list --formula libomp >/dev/null 2>&1 ||
+    die "libomp is not installed"
+
+mkdir -p "$root"
+
+if [ ! -e "$release" ]; then
+    git clone --depth 1 --branch "$version" \
+        --single-branch "$repo" "$release"
+fi
+
+[ -d "$release/.git" ] ||
+    die "Invalid checkout: $release"
+
+actual="$(
+    git -C "$release" describe --tags --exact-match 2>/dev/null ||
+        true
+)"
+
+[ "$actual" = "$version" ] ||
+    die "Expected $version, found $actual"
+
+printf 'Building Colibri %s\n' "$version"
+
+make -C "$release/c" laya ARCH=native
+
+[ -x "$release/c/laya" ] ||
+    die "Laya engine build failed"
+
+[ -f "$release/c/coli" ] ||
+    die "Colibri CLI is missing"
+
+python3 "$release/c/coli" --help >/dev/null ||
+    die "Colibri CLI validation failed"
+
+# Preserve the previous checkout for rollback.
+# Do not overwrite an unmanaged directory.
+if [ -e "$active" ] && [ ! -L "$active" ]; then
+    die "Existing directory at $active; refusing to replace it"
+fi
+
+ln -sfn "$release" "$active"
+
+printf 'Colibri %s installed (%s)\n' \
+    "$version" \
+    "$(git -C "$release" rev-parse --short HEAD)"
+{{ else -}}
+exit 0
+{{ end -}}

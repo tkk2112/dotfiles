@@ -540,6 +540,28 @@ decide() {
   runtime_enabled "$runtime" \
     || die "decision runtime is disabled: $runtime"
 
+  engine="$(
+    llm_data | jq -er --arg name "$runtime" '
+      .llm.runtimes[$name].model as $model_id
+      | first(
+          .llm.models[]
+          | select(.id == $model_id and .kind == "decision")
+        )
+      | if (.default_engine != null and .engines[.default_engine] != null)
+        then .default_engine
+        elif (.engines | length) == 1
+        then (.engines | keys[0])
+        else empty
+        end
+    '
+  )" || die "cannot resolve decision engine: $runtime"
+
+  case "$engine" in
+    colibri) decision_path="/v1/systemone" ;;
+    laya_mlx) decision_path="/predict" ;;
+    *) die "unsupported decision engine: $engine" ;;
+  esac
+
   port="$(runtime_port "$runtime")"
   endpoint="http://127.0.0.1:$port"
   acquired=false
@@ -557,7 +579,7 @@ decide() {
   curl -fsS \
     -H 'Content-Type: application/json' \
     --data-binary "@$request" \
-    "$endpoint/predict"
+    "$endpoint$decision_path"
 
   printf '\n'
 

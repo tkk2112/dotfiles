@@ -1,0 +1,37 @@
+{{- $runtime := index .llm.runtimes "agent" -}}
+{{- $model := dict -}}
+{{- range .llm.models -}}
+{{-   if eq .id $runtime.model -}}
+{{-     $model = . -}}
+{{-   end -}}
+{{- end -}}
+{{- if ne (get $model "kind") "generative" -}}
+{{-   fail "Goose requires a generative model" -}}
+{{- end -}}
+{{- if ne $model.default_engine "mlx" -}}
+{{-   fail "Goose currently requires the MLX engine" -}}
+{{- end -}}
+{{- $artifact := index $model.engines "mlx" -}}
+active_provider: openai
+providers:
+  openai:
+    enabled: true
+    configured: true
+    model: {{ $artifact.model | quote }}
+
+OPENAI_HOST: {{ printf "http://127.0.0.1:%v" $runtime.port | quote }}
+OPENAI_BASE_PATH: v1/chat/completions
+
+GOOSE_MODE: approve
+GOOSE_MAX_TURNS: 30
+GOOSE_MAX_TOKENS: 4096
+GOOSE_TOOLSHIM: false
+GOOSE_TELEMETRY_ENABLED: false
+
+extensions:
+  developer:
+    type: builtin
+    name: developer
+    enabled: true
+    bundled: true
+    timeout: 300

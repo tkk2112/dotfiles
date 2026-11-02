@@ -24,6 +24,9 @@ fileignoreconfig:
   - filename: home/private_dot_ssh/conf.d/encrypted_80-regional.conf.tmpl.age
     checksum: eec0e0ad3685e9746633c1ec7b94bdb99f418a2d4df23f8d5798e5ab989b29c1
 
+  - filename: home/.chezmoidata/colibri.yaml
+    checksum: 5751b50646bfa266f21cda67f5eb799334b187dc0df99d884425277e74f4494a
+
   - filename: home/dot_zshenv.tmpl
     ignore_detectors:
       - filename
