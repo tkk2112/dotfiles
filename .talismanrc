@@ -27,6 +27,9 @@ fileignoreconfig:
   - filename: home/.chezmoidata/colibri.yaml
     checksum: 5751b50646bfa266f21cda67f5eb799334b187dc0df99d884425277e74f4494a
 
+  - filename: home/.chezmoiscripts/run_onchange_install-proton-drive.sh.tmpl
+    checksum: 58d83258f08a24b29df8834fcae88a02d5f59b05604fa4ad87af6030591b3597
+
   - filename: home/dot_zshenv.tmpl
     ignore_detectors:
       - filename

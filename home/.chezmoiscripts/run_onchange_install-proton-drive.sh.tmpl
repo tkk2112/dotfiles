@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+{{- $tools := index . "tools" | default dict }}
+{{- if (index $tools "protonDriveCLI" | default false) }}
+
+version="0.9.0"
+
+case "{{ .chezmoi.os }}/{{ .chezmoi.arch }}" in
+  linux/amd64)
+    platform="linux-x64"
+    sha512="3533025ba69ae112b64e3e01fbcc1ad0688136a4043f6a72886967d85fdcd9ec235479c2e113171614be5225bfba93427509a05ca5aa6071d924fa7e91ca8"
+    ;;
+  linux/arm64)
+    platform="linux-arm64"
+    sha512="c8d5a6b174e57f06d05cb5483400b9963faf58e743b6b33706bb73ecff718047ffce6b439994255b94b5b226b90d2e91bef7418ec96c1c3f5d8bf39b6cd01321"
+    ;;
+  *)
+    echo "Unsupported Proton Drive CLI platform" >&2
+    exit 1
+    ;;
+esac
+
+install_dir="$HOME/.local/bin"
+destination="$install_dir/proton-drive"
+url="https://proton.me/download/drive/cli/$version/$platform/proton-drive"
+
+mkdir -p "$install_dir"
+tmp="$(mktemp "$install_dir/.proton-drive.XXXXXXXX")"
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+
+curl --fail --location --silent --show-error \
+  --output "$tmp" "$url"
+
+printf '%s  %s\n' "$sha512" "$tmp" | sha512sum -c -
+
+chmod 755 "$tmp"
+mv -f "$tmp" "$destination"
+
+{{- else }}
+# Proton Drive CLI is disabled on this machine.
+{{- end }}
