@@ -23,6 +23,10 @@ packages:
       command: laya-mlx
       skip:
         - linux
+    - name: mdformat
+      group: development
+      with:
+        - mdformat-gfm
 
   casks:
     - name: whatcable
@@ -144,9 +148,6 @@ packages:
     - name: ltrace
       group: development
       managers: [apt, dnf, pacman]
-    - name: mdformat
-      group: development
-      managers: [brew, linuxbrew]
     - name: meson
       group: development
     - name: ninja
