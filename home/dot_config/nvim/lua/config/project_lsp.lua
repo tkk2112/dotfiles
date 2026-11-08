@@ -263,7 +263,9 @@ function M.resolve_command(server_name, default_command, root_dir)
   return command
 end
 
-function M.command(server_name, default_command)
+-- `extend(command, root_dir)` may adjust the resolved command, for example
+-- to add flags discovered at start time.
+function M.command(server_name, default_command, extend)
   return function(dispatchers, config)
     local command, command_error = M.resolve_command(server_name, default_command, config.root_dir)
 
@@ -271,6 +273,10 @@ function M.command(server_name, default_command)
       vim.notify(command_error .. "\nFalling back to the default " .. server_name .. " command.", vim.log.levels.WARN)
 
       command = vim.deepcopy(default_command)
+    end
+
+    if extend then
+      command = extend(command, config.root_dir)
     end
 
     return vim.lsp.rpc.start(command, dispatchers, {
