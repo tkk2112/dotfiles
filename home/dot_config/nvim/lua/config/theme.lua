@@ -16,7 +16,15 @@ local function project_colorscheme(bufnr)
     return nil
   end
 
-  return project_settings.resolved(bufnr or 0).colorscheme
+  local name = project_settings.resolved(bufnr or 0).colorscheme
+
+  -- :colorscheme searches runtimepath for colors/<name>; reject anything that
+  -- could escape that directory, since project files come with repositories.
+  if type(name) ~= "string" or not name:match("^[%w_.-]+$") or name:find("..", 1, true) then
+    return nil
+  end
+
+  return name
 end
 
 function M.apply(name)
