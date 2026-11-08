@@ -145,7 +145,10 @@ local function get_config_path(config_path)
     return {}
   end
 
-  local mtime = vim.fn.getftime(config_path)
+  -- Nanosecond mtime plus size: getftime() has one-second resolution, which
+  -- misses an edit saved within the same second as the previous read.
+  local stat = vim.uv.fs_stat(config_path)
+  local mtime = stat and string.format("%d.%d:%d", stat.mtime.sec, stat.mtime.nsec, stat.size) or -1
   local cached = config_cache[config_path]
 
   if cached and cached.mtime == mtime then
@@ -509,8 +512,12 @@ function M.set_filetype(bufnr, filetype)
   )
 end
 
-function M.apply_options(bufnr)
+-- Options are applied when they change, not on every BufEnter, so local
+-- :setlocal adjustments survive switching buffers. FileType and reload pass
+-- force, because ftplugins reset options that the project overrides.
+function M.apply_options(bufnr, opts)
   bufnr = bufnr or 0
+  opts = opts or {}
 
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
@@ -521,8 +528,17 @@ function M.apply_options(bufnr)
   local options = type(vim_settings) == "table" and vim_settings.opt or nil
 
   if type(options) ~= "table" then
+    vim.b[bufnr].project_options_signature = nil
     return
   end
+
+  local signature = vim.inspect(options)
+
+  if not opts.force and vim.b[bufnr].project_options_signature == signature then
+    return
+  end
+
+  vim.b[bufnr].project_options_signature = signature
 
   -- vim.opt_local targets the current buffer; run in the target buffer.
   vim.api.nvim_buf_call(bufnr, function()
@@ -579,6 +595,7 @@ end
 function M.reload()
   config_cache = {}
   M.apply(0)
+  M.apply_options(0, { force = true })
   vim.notify("Reloaded project settings", vim.log.levels.INFO)
 end
 
@@ -617,7 +634,7 @@ function M.setup()
   vim.api.nvim_create_autocmd("FileType", {
     group = group,
     callback = function(event)
-      M.apply_options(event.buf)
+      M.apply_options(event.buf, { force = true })
     end,
   })
 
