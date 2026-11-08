@@ -1,0 +1,16 @@
+# Login shells also provide the environment for GUI apps that read it, such as
+# Neovide started from the Dock; .zshrc (which also does this) only runs for
+# interactive shells. Without it, rg, fzf and other Homebrew tools are missing.
+for brew_bin in \
+  /opt/homebrew/bin/brew \
+  /usr/local/bin/brew \
+  /home/linuxbrew/.linuxbrew/bin/brew \
+  "$HOME/.linuxbrew/bin/brew"
+do
+  if [[ -x "$brew_bin" ]]; then
+    eval "$("$brew_bin" shellenv)"
+    break
+  fi
+done
+
+unset brew_bin
