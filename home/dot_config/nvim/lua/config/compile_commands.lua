@@ -1,7 +1,8 @@
 -- Finds compile_commands.json files that build systems leave inside build
 -- folders (build/<preset>/, out/<config>/, cmake-build-debug/, …), which
--- clangd does not search by itself. The newest one wins, since it belongs to
--- the most recent build.
+-- clangd does not search by itself. Databases built for this machine (OS and
+-- CPU named in the path, e.g. build/targets/macos-arm) win over cross builds;
+-- among equals the newest wins, since it belongs to the most recent build.
 --
 -- The search stays inside build-like folders directly below the root, goes at
 -- most `max_depth` levels deep, skips CMake and dependency internals, and
@@ -36,6 +37,67 @@ local skipped_folders = {
 -- Explicit choice per root, made with :CompileCommandsSelect.
 local selected = {}
 
+local os_tokens = {
+  mac = { "mac", "darwin", "osx", "apple" },
+  linux = { "linux", "ubuntu", "debian", "fedora", "arch", "rhel", "centos" },
+  windows = { "win", "msvc", "mingw" },
+}
+
+local arch_tokens = {
+  arm = { "arm", "aarch64" },
+  x86 = { "x86", "x64", "amd64", "i686" },
+}
+
+local function host()
+  local uname = vim.uv.os_uname()
+  local system = uname.sysname == "Darwin" and "mac" or uname.sysname == "Linux" and "linux" or "windows"
+  local machine = uname.machine:match("^arm") and "arm" or uname.machine:match("^aarch64") and "arm" or "x86"
+
+  return system, machine
+end
+
+-- True when a word of the path starts with one of the tokens, so "macos"
+-- matches "mac" but "darwin" does not match "win".
+local function contains_any(words, tokens)
+  for _, word in ipairs(words) do
+    for _, token in ipairs(tokens) do
+      if vim.startswith(word, token) then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+-- Builds for this machine beat cross builds: +2 when the path names this OS,
+-- -2 when it names another one, +1 when it names this CPU family.
+function M.host_score(relative_path, system, machine)
+  if not system then
+    system, machine = host()
+  end
+
+  local words = {}
+
+  for word in relative_path:lower():gmatch("[%a%d]+") do
+    table.insert(words, word)
+  end
+
+  local score = 0
+
+  for name, tokens in pairs(os_tokens) do
+    if contains_any(words, tokens) then
+      score = score + (name == system and 2 or -2)
+    end
+  end
+
+  if contains_any(words, arch_tokens[machine] or {}) then
+    score = score + 1
+  end
+
+  return score
+end
+
 local function is_build_folder(name)
   name = name:lower()
 
@@ -48,9 +110,10 @@ local function is_build_folder(name)
   return false
 end
 
--- Returns every compile_commands.json below the build folders of `root`,
--- newest first, as { path, dir, mtime } tables.
-function M.find_all(root)
+-- Returns every compile_commands.json below the build folders of `root`, best
+-- match for this machine first, as { path, dir, mtime, score } tables.
+-- `system`/`machine` override the host ("mac"/"linux", "arm"/"x86").
+function M.find_all(root, system, machine)
   local found = {}
   local budget = M.max_entries
   local queue = {}
@@ -104,7 +167,15 @@ function M.find_all(root)
     end
   end
 
+  for _, item in ipairs(found) do
+    item.score = M.host_score(vim.fs.relpath(root, item.dir) or item.dir, system, machine)
+  end
+
   table.sort(found, function(a, b)
+    if a.score ~= b.score then
+      return a.score > b.score
+    end
+
     return a.mtime > b.mtime
   end)
 

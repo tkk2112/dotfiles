@@ -24,13 +24,13 @@ end
 describe("compile_commands", function()
   it("uses the newest database in the build folders", function()
     with_tree(function(root)
-      database(root, "build/linux-release", 1000)
+      database(root, "build/release", 1000)
       local newest = database(root, "out/debug/x86_64", 3000)
       database(root, "cmake-build-relwithdebinfo", 2000)
 
       -- Not a build folder, and CMake internals are skipped.
       database(root, "src/lib", 9000)
-      database(root, "build/linux-release/CMakeFiles/x", 9000)
+      database(root, "build/release/CMakeFiles/x", 9000)
 
       assert.are.equal(newest, compile_commands.dir_for(root))
       assert.are.equal(3, #compile_commands.find_all(root))
@@ -69,5 +69,29 @@ describe("compile_commands", function()
       assert.are.same({ "clangd", "--background-index", "--compile-commands-dir=" .. dir }, command)
       assert.are.same({ "clangd", "--compile-commands-dir=/elsewhere" }, project)
     end)
+  end)
+
+  it("prefers the database built for this machine over newer cross builds", function()
+    with_tree(function(root)
+      local mac = database(root, "build/targets/macos-arm", 1000)
+      local ubuntu = database(root, "build/targets/ubuntu", 2000)
+      local jetson = database(root, "build/targets/stoneface-jetson-orin", 3000)
+
+      local function best(system, machine)
+        return compile_commands.find_all(root, system, machine)[1].dir
+      end
+
+      assert.are.equal(mac, best("mac", "arm"))
+      assert.are.equal(ubuntu, best("linux", "x86"))
+
+      -- Without a host match, the most recent configure wins.
+      assert.are.equal(jetson, best("windows", "x86"))
+    end)
+  end)
+  it("matches path words, not substrings", function()
+    assert.are.equal(3, compile_commands.host_score("build/macos-arm64", "mac", "arm"))
+    assert.are.equal(2, compile_commands.host_score("build/darwin", "mac", "arm"))
+    assert.are.equal(-2, compile_commands.host_score("build/targets/ubuntu", "mac", "arm"))
+    assert.are.equal(0, compile_commands.host_score("cmake-build-relwithdebinfo", "linux", "x86"))
   end)
 end)
