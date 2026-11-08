@@ -124,4 +124,102 @@ exit 1]],
     assert.are.equal(path, openscad.snapshot_path("/p/part.scad"))
     assert.are_not.equal(path, openscad.snapshot_path("/p/other.scad"))
   end)
+  it("updates OpenSCAD's settings file without losing other values", function()
+    local before = table.concat({
+      "[General]",
+      "lastVersion=2026",
+      "",
+      "[view]",
+      "hideEditor=false",
+      "showAxes=true",
+      "",
+      "[window]",
+      "size=@Size(800 600)",
+      "",
+    }, "\n")
+
+    local after = openscad.update_ini(before, {
+      ["view/hideEditor"] = true,
+      ["view/hideConsole"] = true,
+      ["design/autoReload"] = true,
+    })
+
+    assert.are.equal(
+      table.concat({
+        "[General]",
+        "lastVersion=2026",
+        "",
+        "[view]",
+        "hideEditor=true",
+        "showAxes=true",
+        "hideConsole=true",
+        "",
+        "[window]",
+        "size=@Size(800 600)",
+        "",
+        "[design]",
+        "autoReload=true",
+        "",
+      }, "\n"),
+      after
+    )
+
+    assert.are.equal("[view]\nhideEditor=true\n", openscad.update_ini("", { ["view/hideEditor"] = true }))
+  end)
+
+  it("finds the OpenSCAD window already showing a file", function()
+    local ps = table.concat({
+      "  101 /usr/bin/nvim /p/part.scad",
+      "  202 /Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD /p/other.scad",
+      "  303 /opt/homebrew/bin/openscad /p/part.scad",
+    }, "\n")
+
+    assert.are.equal(303, openscad.find_window_pid("/p/part.scad", ps))
+    assert.are.equal(202, openscad.find_window_pid("/p/other.scad", ps))
+    assert.is_nil(openscad.find_window_pid("/p/missing.scad", ps))
+  end)
+  it("opens one app window per file and applies the render-only layout", function()
+    with_fake_openscad(
+      [[#!/bin/sh
+echo started >> "$(dirname "$0")/launches"
+sleep 30]],
+      function(dir)
+        local config_home = vim.env.XDG_CONFIG_HOME
+        vim.env.XDG_CONFIG_HOME = vim.fs.joinpath(dir, "config")
+
+        local bufnr, file = scad_buffer(dir)
+        local launches = vim.fs.joinpath(dir, "launches")
+        local notify = vim.notify
+        vim.notify = function() end
+
+        local ok, err = pcall(function()
+          openscad.preview(bufnr)
+
+          assert.is_true(vim.wait(5000, function()
+            return openscad.find_window_pid(file) ~= nil
+          end))
+
+          openscad.preview(bufnr)
+          vim.wait(500)
+        end)
+
+        vim.notify = notify
+        local pid = openscad.find_window_pid(file)
+
+        if pid then
+          vim.uv.kill(pid, "sigterm")
+        end
+
+        local conf = vim.fs.joinpath(dir, "config", "OpenSCAD", "OpenSCAD.conf")
+        local settings = vim.fn.filereadable(conf) == 1 and table.concat(vim.fn.readfile(conf), "\n") or ""
+
+        vim.env.XDG_CONFIG_HOME = config_home
+
+        assert(ok, err)
+        assert.are.equal(1, #vim.fn.readfile(launches))
+        assert.is_truthy(settings:find("hideEditor=true", 1, true))
+        assert.is_truthy(settings:find("autoReload=true", 1, true))
+      end
+    )
+  end)
 end)

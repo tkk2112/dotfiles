@@ -1,6 +1,7 @@
 -- OpenSCAD integration for .scad buffers.
 --
---   :OpenSCADPreview    open the file in the OpenSCAD app (live 3D view)
+--   :OpenSCADPreview    show the file in the OpenSCAD app (3D view and
+--                       Customizer, one window per file, follows saves)
 --   :OpenSCADSnapshot   render a PNG and show it beside the code; it is
 --                       re-rendered on every save while the window is open
 --   :OpenSCADExport     export STL/3MF/... next to the file
@@ -36,18 +37,6 @@ local function find_openscad()
 
   if vim.fn.executable(command) == 1 then
     return command
-  end
-
-  return nil
-end
-
-local function find_app()
-  for _, pattern in ipairs({ "/Applications/OpenSCAD*.app", vim.fn.expand("~/Applications/OpenSCAD*.app") }) do
-    local match = vim.fn.glob(pattern, true, true)[1]
-
-    if match then
-      return match
-    end
   end
 
   return nil
@@ -169,6 +158,178 @@ local function render(bufnr, output, extra_args, callback)
   end
 end
 
+-- App window layout used when Neovim starts OpenSCAD: only the 3D view and
+-- the Customizer (sliders, checkboxes and dropdowns for annotated
+-- parameters), re-rendering whenever the file is saved. Set
+-- vim.g.openscad_render_only = false to keep OpenSCAD's own layout.
+M.app_settings = {
+  ["view/hideEditor"] = true,
+  ["view/hideConsole"] = true,
+  ["view/hideErrorLog"] = true,
+  ["view/hideCustomizer"] = false,
+  ["design/autoReload"] = true,
+}
+
+-- Returns `text` (an INI file as written by Qt) with `settings` applied.
+function M.update_ini(text, settings)
+  local lines = vim.split(text or "", "\n", { plain = true })
+  local pending = vim.deepcopy(settings)
+
+  if lines[#lines] == "" then
+    table.remove(lines)
+  end
+
+  local function flush(section, at)
+    local added = 0
+
+    for key, value in vim.spairs(pending) do
+      local key_section, name = key:match("^([^/]+)/(.+)$")
+
+      if key_section == section then
+        table.insert(lines, at + added, name .. "=" .. tostring(value))
+        pending[key] = nil
+        added = added + 1
+      end
+    end
+
+    return added
+  end
+
+  local section
+  local index = 1
+  local last_in_section = 0
+
+  while index <= #lines do
+    local line = lines[index]
+    local header = line:match("^%[(.+)%]$")
+
+    if header then
+      if section then
+        index = index + flush(section, last_in_section + 1)
+      end
+
+      section = header
+      last_in_section = index
+    elseif section then
+      local name = line:match("^([^=]+)=")
+      local key = name and section .. "/" .. name
+
+      if key and pending[key] ~= nil then
+        lines[index] = name .. "=" .. tostring(pending[key])
+        pending[key] = nil
+      end
+
+      if line ~= "" then
+        last_in_section = index
+      end
+    end
+
+    index = index + 1
+  end
+
+  if section then
+    flush(section, last_in_section + 1)
+  end
+
+  local sections = {}
+
+  for key in vim.spairs(pending) do
+    local key_section = key:match("^([^/]+)/")
+
+    if not vim.tbl_contains(sections, key_section) then
+      table.insert(sections, key_section)
+    end
+  end
+
+  for _, name in ipairs(sections) do
+    if #lines > 0 and lines[#lines] ~= "" then
+      table.insert(lines, "")
+    end
+
+    table.insert(lines, "[" .. name .. "]")
+    flush(name, #lines + 1)
+  end
+
+  return table.concat(lines, "\n") .. "\n"
+end
+
+local function apply_app_settings()
+  if vim.g.openscad_render_only == false then
+    return
+  end
+
+  if vim.fn.has("mac") == 1 then
+    -- Qt stores "group/key" as "group.key" in the macOS defaults domain.
+    for key, value in pairs(M.app_settings) do
+      vim
+        .system({
+          "defaults",
+          "write",
+          "org.openscad.OpenSCAD",
+          (key:gsub("/", ".")),
+          "-bool",
+          tostring(value),
+        })
+        :wait()
+    end
+
+    return
+  end
+
+  local config_home = vim.env.XDG_CONFIG_HOME or vim.fn.expand("~/.config")
+  local path = vim.fs.joinpath(config_home, "OpenSCAD", "OpenSCAD.conf")
+  local text = vim.uv.fs_stat(path) and table.concat(vim.fn.readfile(path), "\n") or ""
+
+  vim.fn.mkdir(vim.fs.dirname(path), "p")
+  vim.fn.writefile(vim.split(M.update_ini(text, M.app_settings), "\n", { plain = true }), path)
+end
+
+-- Finds a running OpenSCAD showing `file`, also one started before this
+-- Neovim session. `ps_output` is for tests.
+function M.find_window_pid(file, ps_output)
+  if not ps_output then
+    local result = vim.system({ "ps", "-axo", "pid=,command=" }, { text = true }):wait()
+    ps_output = result.stdout or ""
+  end
+
+  for line in vim.gsplit(ps_output, "\n", { plain = true, trimempty = true }) do
+    local pid, command = line:match("^%s*(%d+)%s+(.*)$")
+
+    if pid and command:lower():find("openscad", 1, true) and command:sub(-#file) == file then
+      return tonumber(pid)
+    end
+  end
+
+  return nil
+end
+
+-- Brings the window of `pid` to the front. Returns false where the system
+-- does not allow it (for example Wayland).
+local function focus(pid)
+  if vim.fn.has("mac") == 1 then
+    local result = vim
+      .system({
+        "osascript",
+        "-e",
+        string.format(
+          'tell application "System Events" to set frontmost of (first process whose unix id is %d) to true',
+          pid
+        ),
+      })
+      :wait()
+
+    return result.code == 0
+  end
+
+  if vim.env.DISPLAY and not vim.env.WAYLAND_DISPLAY and vim.fn.executable("xdotool") == 1 then
+    local result = vim.system({ "xdotool", "search", "--onlyvisible", "--pid", tostring(pid), "windowactivate" }):wait()
+
+    return result.code == 0
+  end
+
+  return false
+end
+
 function M.preview(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
@@ -178,31 +339,33 @@ function M.preview(bufnr)
     return
   end
 
-  local app = vim.fn.has("mac") == 1 and find_app() or nil
-  local command
+  local running = M.find_window_pid(file)
 
-  if app then
-    -- `open` reuses the running app and focuses the file's window.
-    command = { "open", "-a", app, file }
-  else
-    local openscad = find_openscad()
-
-    if not openscad then
-      notify("openscad is not installed", vim.log.levels.ERROR)
-      return
+  if running then
+    if not focus(running) then
+      notify("OpenSCAD is already showing this file")
     end
 
-    command = { openscad, file }
+    return
   end
 
-  local ok, err = pcall(vim.system, command, {
+  local openscad = find_openscad()
+
+  if not openscad then
+    notify("openscad is not installed", vim.log.levels.ERROR)
+    return
+  end
+
+  apply_app_settings()
+
+  -- Start the binary directly (not `open -a`) so the process carries the
+  -- file path, which find_window_pid() relies on.
+  local ok, err = pcall(vim.system, { openscad, file }, {
     detach = true,
     cwd = vim.fs.dirname(file),
   })
 
-  if ok then
-    notify("Opened in OpenSCAD; enable Design > Automatic Reload and Preview to follow saves")
-  else
+  if not ok then
     notify("Could not start OpenSCAD: " .. tostring(err), vim.log.levels.ERROR)
   end
 end
