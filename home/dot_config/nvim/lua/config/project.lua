@@ -453,19 +453,32 @@ end
 
 -- File listing and pickers --------------------------------------------------------
 
+-- Listing is synchronous so results can be ordered by recent use. Bound it,
+-- so a huge tree cannot freeze the UI; callers fall back to streaming.
+local list_timeout_ms = 3000
+
 local function list_project_files(root)
-  local result = vim
-    .system({
-      "rg",
-      "--files",
-      "--hidden",
-      "--glob",
-      "!.git",
-    }, {
-      cwd = root,
-      text = true,
-    })
-    :wait()
+  local ok, process = pcall(vim.system, {
+    "rg",
+    "--files",
+    "--hidden",
+    "--glob",
+    "!.git",
+  }, {
+    cwd = root,
+    text = true,
+  })
+
+  if not ok then
+    vim.notify("Failed listing project files:\n" .. tostring(process), vim.log.levels.ERROR)
+    return nil
+  end
+
+  local result = process:wait(list_timeout_ms)
+
+  if result.code == 124 then
+    return nil, "timeout"
+  end
 
   if result.code ~= 0 then
     vim.notify("Failed listing project files:\n" .. (result.stderr or ""), vim.log.levels.ERROR)
@@ -478,8 +491,29 @@ local function list_project_files(root)
   })
 end
 
-local function find_files(root)
-  local files = list_project_files(root)
+-- Streams results and can be cancelled; used outside projects (for example
+-- when Neovide starts in / or $HOME) and when a listing takes too long.
+local function stream_files(root)
+  require("fzf-lua").files({
+    cwd = root,
+  })
+end
+
+local function find_files(root, options)
+  options = options or {}
+
+  if not options.project then
+    stream_files(root)
+    return
+  end
+
+  local files, err = list_project_files(root)
+
+  if err == "timeout" then
+    vim.notify("Project file list is large; streaming results instead", vim.log.levels.INFO)
+    stream_files(root)
+    return
+  end
 
   if not files then
     return
@@ -845,14 +879,18 @@ end
 -- Scope operations ---------------------------------------------------------------
 
 function M.find_files()
-  find_files(M.scope_root())
+  find_files(M.scope_root(), {
+    project = M.current_project_root() ~= nil,
+  })
 end
 
 function M.find_files_project()
   local root = M.current_project_root()
 
   if root then
-    find_files(root)
+    find_files(root, {
+      project = true,
+    })
   end
 end
 

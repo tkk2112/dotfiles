@@ -33,6 +33,12 @@ function M.setup()
     return
   end
 
+  -- Started from the Dock or a launcher, Neovim begins in "/", where file
+  -- pickers would scan the whole disk. Start in the home directory instead.
+  if vim.fn.argc() == 0 and vim.fn.getcwd() == "/" then
+    vim.api.nvim_set_current_dir(vim.uv.os_homedir())
+  end
+
   -- Terminals deliver Option combinations as Meta (<M-Up> moves lines,
   -- <M-Left> jumps back). Keep the right Option key for special characters.
   vim.g.neovide_input_macos_option_key_is_meta = "only_left"

@@ -181,4 +181,26 @@ describe("project", function()
       pcall(vim.api.nvim_del_augroup_by_name, "dotfiles_project_tracking")
     end)
   end)
+  it("streams files instead of listing them outside a project", function()
+    with_tmpdir(function(tmp)
+      local plain = mkdir(vim.fs.joinpath(tmp, "plain"))
+      local original = package.loaded["fzf-lua"]
+      local streamed
+
+      package.loaded["fzf-lua"] = {
+        files = function(opts)
+          streamed = opts.cwd
+        end,
+      }
+
+      local ok, err = pcall(with_cwd, plain, function()
+        project.find_files()
+      end)
+
+      package.loaded["fzf-lua"] = original
+
+      assert(ok, err)
+      assert.are.equal(plain, streamed)
+    end)
+  end)
 end)
