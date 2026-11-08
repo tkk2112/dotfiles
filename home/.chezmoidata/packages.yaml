@@ -79,6 +79,8 @@ packages:
       managers: [brew, dnf]
     - name: shellcheck
     - name: shfmt
+      # Not packaged for Fedora; owned Fedora hosts get it from Linuxbrew.
+      managers: [apt, pacman, brew, linuxbrew]
     - name: taproom
       managers: [brew, linuxbrew]
     - name: tldr
