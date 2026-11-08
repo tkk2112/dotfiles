@@ -6,6 +6,8 @@
 --   :OpenSCADExport     export STL/3MF/... next to the file
 --   :OpenSCADCheatsheet open the language cheatsheet
 --
+-- The same actions are in the <leader>, context menu (p s S e E c).
+--
 -- Render errors and warnings become diagnostics on the buffer. Language
 -- features (completion, hover docs, formatting) come from openscad-lsp.
 
@@ -369,30 +371,44 @@ function M.cheatsheet()
 end
 
 local function attach(bufnr)
-  local function map(lhs, rhs, desc)
-    vim.keymap.set("n", lhs, rhs, {
-      buffer = bufnr,
-      silent = true,
-      desc = desc,
-    })
-  end
-
-  map("<localleader>p", function()
-    M.preview(bufnr)
-  end, "OpenSCAD: preview in app")
-  map("<localleader>s", function()
-    M.snapshot(bufnr)
-  end, "OpenSCAD: snapshot")
-  map("<localleader>S", function()
-    M.close_snapshot(bufnr)
-  end, "OpenSCAD: close snapshot")
-  map("<localleader>e", function()
-    M.export(bufnr, "stl")
-  end, "OpenSCAD: export STL")
-  map("<localleader>E", function()
-    M.export(bufnr)
-  end, "OpenSCAD: export as…")
-  map("<localleader>c", M.cheatsheet, "OpenSCAD: cheatsheet")
+  require("config.context_menu").add(bufnr, "OpenSCAD", {
+    {
+      "p",
+      function()
+        M.preview(bufnr)
+      end,
+      "Preview in OpenSCAD",
+    },
+    {
+      "s",
+      function()
+        M.snapshot(bufnr)
+      end,
+      "Snapshot",
+    },
+    {
+      "S",
+      function()
+        M.close_snapshot(bufnr)
+      end,
+      "Close snapshot",
+    },
+    {
+      "e",
+      function()
+        M.export(bufnr, "stl")
+      end,
+      "Export STL",
+    },
+    {
+      "E",
+      function()
+        M.export(bufnr)
+      end,
+      "Export as…",
+    },
+    { "c", M.cheatsheet, "Cheatsheet" },
+  })
 
   -- Keep an open snapshot in sync with the file.
   vim.api.nvim_create_autocmd("BufWritePost", {

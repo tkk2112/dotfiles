@@ -62,15 +62,17 @@ describe("openscad", function()
     assert.are.equal('Ignoring unknown module "bolt" (/lib/screws.scad:9)', diagnostics[3].message)
   end)
 
-  it("adds buffer-local mappings for .scad files", function()
+  it("adds the OpenSCAD context menu to .scad buffers", function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, "p")
 
     local bufnr = scad_buffer(dir)
 
     assert.are.equal("openscad", vim.bo[bufnr].filetype)
-    assert.are.equal("OpenSCAD: snapshot", vim.fn.maparg("<localleader>s", "n", false, true).desc)
-    assert.are.equal("OpenSCAD: export STL", vim.fn.maparg("<localleader>e", "n", false, true).desc)
+    assert.are.equal("Snapshot", vim.fn.maparg("<leader>,s", "n", false, true).desc)
+    assert.are.equal("Export STL", vim.fn.maparg("<leader>,e", "n", false, true).desc)
+    assert.are.equal("Cheatsheet", vim.fn.maparg("<leader>,c", "n", false, true).desc)
+    assert.are.equal(1, vim.fn.maparg("<leader>,c", "n", false, true).buffer)
 
     vim.fn.delete(dir, "rf")
   end)

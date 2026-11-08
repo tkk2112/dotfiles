@@ -11,6 +11,7 @@ return {
       wk.setup(opts)
 
       wk.add({
+        { "<leader>,", group = "context" },
         { "<leader>b", group = "buffer" },
         { "<leader>f", group = "file/find" },
         { "<leader>g", group = "git" },
