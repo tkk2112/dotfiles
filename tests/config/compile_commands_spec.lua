@@ -94,4 +94,79 @@ describe("compile_commands", function()
     assert.are.equal(-2, compile_commands.host_score("build/targets/ubuntu", "mac", "arm"))
     assert.are.equal(0, compile_commands.host_score("cmake-build-relwithdebinfo", "linux", "x86"))
   end)
+  it("maps directories to databases from project settings", function()
+    with_tree(function(root)
+      local jetson = database(root, "build/targets/stoneface-jetson-orin", 1000)
+      local ubuntu = database(root, "build/targets/ubuntu", 1000)
+
+      local mapping = {
+        ["firmware/jetson"] = "build/targets/stoneface-jetson-orin/compile_commands.json",
+        ["."] = { "build/targets/macos-arm", "${projectRoot}/build/targets/ubuntu" },
+        ["tools/"] = "build/targets/missing",
+      }
+
+      local function configured(relative)
+        return compile_commands.configured(root, mapping, vim.fs.joinpath(root, relative))
+      end
+
+      -- Longest directory wins; a file path to the database also works.
+      assert.are.equal(jetson, (configured("firmware/jetson/src/main.cpp")))
+      -- The first existing entry of a list is used (macos-arm is missing here).
+      assert.are.equal(ubuntu, (configured("apps/viewer/main.cpp")))
+      -- "firmware/jetsonx" is not inside "firmware/jetson".
+      assert.are.equal(ubuntu, (configured("firmware/jetsonx/a.cpp")))
+      -- A mapping whose database does not exist falls back to discovery.
+      assert.is_nil(configured("tools/gen.cpp"))
+      -- Files outside the project are not mapped.
+      assert.is_nil(compile_commands.configured(root, mapping, "/elsewhere/a.cpp"))
+    end)
+  end)
+
+  it("starts one clangd per mapped database", function()
+    with_tree(function(root)
+      local jetson = database(root, "build/targets/jetson", 1000)
+      local host = database(root, "build/targets/ubuntu", 1000)
+
+      vim.fn.mkdir(vim.fs.joinpath(root, ".nvim"), "p")
+      vim.fn.writefile({
+        vim.json.encode({
+          root = "..",
+          lsp = {
+            clangd = {
+              compile_commands = {
+                ["firmware"] = "build/targets/jetson",
+                ["drivers"] = "build/targets/jetson",
+                ["."] = "build/targets/ubuntu",
+              },
+            },
+          },
+        }),
+      }, vim.fs.joinpath(root, ".nvim", "project.json"))
+
+      local function root_for(relative)
+        local file = vim.fs.joinpath(root, relative)
+        vim.fn.mkdir(vim.fs.dirname(file), "p")
+        vim.fn.writefile({ "int main() {}" }, file)
+
+        local bufnr = vim.fn.bufadd(file)
+        vim.fn.bufload(bufnr)
+
+        local clangd_root = compile_commands.mapped_root(bufnr)
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        return clangd_root
+      end
+
+      local firmware = root_for("firmware/a.cpp")
+      local drivers = root_for("drivers/b.cpp")
+      local apps = root_for("apps/c.cpp")
+
+      -- firmware and drivers share the jetson database, so one clangd.
+      assert.are.equal(firmware, drivers)
+      assert.are_not.equal(firmware, apps)
+
+      assert.are.equal(jetson, compile_commands.dir_for(firmware))
+      assert.are.equal(host, compile_commands.dir_for(apps))
+    end)
+  end)
 end)

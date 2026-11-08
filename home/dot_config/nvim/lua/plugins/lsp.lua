@@ -94,8 +94,25 @@ return {
       -- where clangd does not look; pass the newest one explicitly.
       local compile_commands = require("config.compile_commands")
 
+      local clangd_root_markers = (vim.lsp.config.clangd or {}).root_markers
+        or { ".clangd", "compile_commands.json", ".git" }
+
       vim.lsp.config("clangd", {
         cmd = project_lsp.command("clangd", clangd_command, compile_commands.extend_clangd_command),
+
+        -- Directories mapped to their own database in project.json get their
+        -- own clangd; everything else uses the usual root.
+        root_dir = function(bufnr, on_dir)
+          if not project_lsp.enabled("clangd", bufnr, true) then
+            return
+          end
+
+          local root = compile_commands.mapped_root(bufnr) or vim.fs.root(bufnr, clangd_root_markers)
+
+          if root then
+            on_dir(root)
+          end
+        end,
       })
 
       local cmake_language_server = executables.find("cmake-language-server", {

@@ -249,6 +249,29 @@
         "enabled": {
           "type": "boolean",
           "description": "Enable or disable this LSP for the project. If omitted, the global default is used."
+        },
+        "compile_commands": {
+          "type": "object",
+          "description": "clangd only: compile_commands.json per directory. Keys are directories relative to the project root (\".\" for everything); the longest match wins. Values are a database directory or file, or a list where the first existing one is used. Paths are relative to the project root and support ~, ${projectRoot} and ${env:NAME}. Unmapped files use automatic discovery in build folders.",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          }
         }
       }
     },

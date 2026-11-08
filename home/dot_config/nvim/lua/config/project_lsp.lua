@@ -49,6 +49,8 @@ local function expand_value(value, project_root)
   return value
 end
 
+M.expand_value = expand_value
+
 local function expand_list(values, project_root, description)
   if type(values) ~= "table" or not vim.islist(values) then
     return nil, description .. " must be a list"
