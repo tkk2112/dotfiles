@@ -35,7 +35,7 @@ done
 export PATH
 
 export MANROFFOPT="-c"
-{{- if eq .osid "debian" }}
+{{- if has .osid (list "linux-debian" "linux-ubuntu") }}
 export MANPAGER="sh -c 'col -bx | batcat -l man -p'"
 {{- else }}
 export MANPAGER="sh -c 'col -bx | bat -l man -p'"

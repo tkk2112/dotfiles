@@ -68,7 +68,7 @@ plugins=(
   macos
 {{- end }}
 
-{{- if eq .osid "arch" }}
+{{- if has .osid (list "linux-arch" "linux-cachyos") }}
   archlinux
 {{- end }}
 
