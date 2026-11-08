@@ -30,3 +30,4 @@ require("config.zsh_diagnostics").setup()
 
 require("config.tmux_nav").setup()
 require("config.keymaps").setup()
+require("config.neovide").setup()
