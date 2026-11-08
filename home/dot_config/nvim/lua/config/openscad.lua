@@ -1,7 +1,7 @@
 -- OpenSCAD integration for .scad buffers.
 --
---   :OpenSCADPreview    show the file in the OpenSCAD app (3D view and
---                       Customizer, one window per file, follows saves)
+--   :OpenSCADPreview    show the file in the OpenSCAD app (one window per
+--                       file, re-renders on save)
 --   :OpenSCADSnapshot   render a PNG and show it beside the code; it is
 --                       re-rendered on every save while the window is open
 --   :OpenSCADExport     export STL/3MF/... next to the file
@@ -158,15 +158,12 @@ local function render(bufnr, output, extra_args, callback)
   end
 end
 
--- App window layout used when Neovim starts OpenSCAD: only the 3D view and
--- the Customizer (sliders, checkboxes and dropdowns for annotated
--- parameters), re-rendering whenever the file is saved. Set
--- vim.g.openscad_render_only = false to keep OpenSCAD's own layout.
+-- Settings applied before Neovim starts OpenSCAD: re-render whenever the
+-- file is saved. Panel visibility (editor, console, Customizer) is not a
+-- setting in current OpenSCAD; it restores the layout it was closed with, so
+-- arrange the window once. Set vim.g.openscad_auto_reload = false to leave
+-- OpenSCAD's settings alone.
 M.app_settings = {
-  ["view/hideEditor"] = true,
-  ["view/hideConsole"] = true,
-  ["view/hideErrorLog"] = true,
-  ["view/hideCustomizer"] = false,
   ["design/autoReload"] = true,
 }
 
@@ -254,7 +251,7 @@ function M.update_ini(text, settings)
 end
 
 local function apply_app_settings()
-  if vim.g.openscad_render_only == false then
+  if vim.g.openscad_auto_reload == false then
     return
   end
 
@@ -288,7 +285,8 @@ end
 -- Neovim session. `ps_output` is for tests.
 function M.find_window_pid(file, ps_output)
   if not ps_output then
-    local result = vim.system({ "ps", "-axo", "pid=,command=" }, { text = true }):wait()
+    -- -ww: macOS ps cuts commands to 80 columns otherwise, losing the path.
+    local result = vim.system({ "ps", "-axww", "-o", "pid=,command=" }, { text = true }):wait()
     ps_output = result.stdout or ""
   end
 
