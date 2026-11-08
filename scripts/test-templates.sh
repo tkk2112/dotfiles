@@ -44,7 +44,7 @@ python_has() {
 CONFIGURATIONS="
 headless-server|headless,server,owned|none|
 workstation|workstation,development,owned|omz|
-workstation-proton|workstation,development,gaming,server,owned|proton-pass|
+workstation-proton|workstation,development,gaming,server,owned|proton-pass|DOTFILES_PROTON_DRIVE_CLI=1
 "
 
 DARWIN_CONFIGURATIONS="
