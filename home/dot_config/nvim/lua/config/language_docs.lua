@@ -237,6 +237,12 @@ local lookups = {
 }
 
 function M.open(query)
+  -- OpenSCAD has no per-symbol reference pages; hover (K) shows builtin docs.
+  if vim.bo.filetype == "openscad" then
+    vim.ui.open("https://openscad.org/cheatsheet/")
+    return
+  end
+
   local kind = providers[vim.bo.filetype]
 
   if not kind then

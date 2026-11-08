@@ -246,6 +246,7 @@ local lsp_formatter_by_filetype = {
   objc = "clangd",
   objcpp = "clangd",
   python = "ruff",
+  openscad = "openscad_lsp",
 }
 
 local function lsp_formatter(bufnr)

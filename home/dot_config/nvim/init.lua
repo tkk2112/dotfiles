@@ -21,6 +21,7 @@ require("config.autosave").setup()
 require("config.format").setup()
 require("config.lsp_ui").setup()
 require("config.language_docs").setup()
+require("config.openscad").setup()
 
 require("config.theme").setup()
 require("config.theme_dev").setup()

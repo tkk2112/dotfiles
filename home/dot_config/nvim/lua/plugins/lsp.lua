@@ -11,15 +11,16 @@ return {
       "neovim/nvim-lspconfig",
     },
     opts = {
-      -- Intentionally avoids Node/npm-backed servers.
-      ensure_installed = {
+      -- Intentionally avoids Node/npm-backed servers. openscad-lsp is built
+      -- with cargo, so only request it where cargo exists.
+      ensure_installed = vim.list_extend({
         "ty",
         "ruff",
         "clangd",
         "zls",
         "lemminx",
         "lua_ls",
-      },
+      }, vim.fn.executable("cargo") == 1 and { "openscad_lsp" } or {}),
       automatic_enable = false,
     },
   },
@@ -122,7 +123,28 @@ return {
         },
       })
 
-      for _, server in ipairs({ "pylsp", "ruff", "ty", "clangd", "zls", "lemminx", "lua_ls", "cmake" }) do
+      -- Library folders OpenSCAD searches for include/use, so completion and
+      -- go-to-definition also work for installed libraries (BOSL2, …).
+      local openscad_libraries = vim.tbl_filter(
+        function(path)
+          return vim.fn.isdirectory(path) == 1
+        end,
+        vim.list_extend(vim.split(vim.env.OPENSCADPATH or "", ":", { trimempty = true }), {
+          vim.fn.expand("~/Documents/OpenSCAD/libraries"),
+          vim.fn.expand("~/.local/share/OpenSCAD/libraries"),
+        })
+      )
+
+      vim.lsp.config("openscad_lsp", {
+        cmd = { "openscad-lsp", "--stdio", "--indent", "    " },
+        settings = {
+          openscad = {
+            search_paths = table.concat(openscad_libraries, ":"),
+          },
+        },
+      })
+
+      for _, server in ipairs({ "pylsp", "ruff", "ty", "clangd", "zls", "lemminx", "lua_ls", "cmake", "openscad_lsp" }) do
         vim.lsp.enable(server)
       end
     end,

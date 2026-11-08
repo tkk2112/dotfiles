@@ -29,6 +29,10 @@ packages:
         - mdformat-gfm
 
   casks:
+    # 3D modelling: the stable cask is the 2021 release; the snapshot is current.
+    - name: openscad
+      group: workstation
+      cask: openscad@snapshot
     - name: whatcable
       group: development
       tap: darrylmorley/whatcable
@@ -211,6 +215,9 @@ packages:
       managers: [brew]
 
     # Workstation: Interactive local-machine tools.
+    - name: openscad
+      group: workstation
+      managers: [apt, dnf, pacman]
     - name: duf
       group: workstation
       managers: [brew, dnf, pacman]
