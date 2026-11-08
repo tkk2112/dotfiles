@@ -169,4 +169,76 @@ describe("compile_commands", function()
       assert.are.equal(host, compile_commands.dir_for(apps))
     end)
   end)
+  it("rewrites a database built in CI for this checkout", function()
+    with_tree(function(root)
+      local sdk = vim.fs.joinpath(root, "sdk")
+      vim.fn.mkdir(vim.fs.joinpath(sdk, "sysroots", "aarch64", "usr", "include"), "p")
+      vim.fn.mkdir(vim.fs.joinpath(root, "SqFoundation", "include"), "p")
+
+      local ci = vim.fs.joinpath(root, "build", "targets", "jetson")
+      vim.fn.mkdir(ci, "p")
+      vim.fn.writefile({
+        vim.json.encode({
+          {
+            directory = "/builds/x/main/build/targets/jetson",
+            file = "/builds/x/main/benk/a.cpp",
+            command = "/opt/sdk/bin/aarch64-poky-linux-g++ --sysroot=/opt/sdk/sysroots/aarch64 "
+              .. "-I/builds/x/main/SqFoundation/include -isystem /opt/sdk/sysroots/aarch64/usr/include/eigen3 "
+              .. '-isystem /builds/x/main/Dependencies/miniz "-DNAME=\\"a b\\"" -o a.o -c /builds/x/main/benk/a.cpp',
+          },
+          {
+            directory = "/builds/x/main/build/targets/jetson",
+            file = "/builds/x/main/benk/b.c",
+            arguments = { "/opt/sdk/bin/aarch64-poky-linux-gcc", "-c", "/builds/x/main/benk/b.c" },
+          },
+        }),
+      }, vim.fs.joinpath(ci, "compile_commands.json"))
+
+      local mapping = {
+        ["."] = {
+          path = "build/targets/jetson",
+          remap = {
+            ["/builds/x/main"] = "${projectRoot}",
+            ["/opt/sdk"] = sdk,
+          },
+          drop_missing_paths = true,
+          compiler = "clang++",
+        },
+      }
+
+      local dir = compile_commands.configured(root, mapping, vim.fs.joinpath(root, "benk", "a.cpp"))
+
+      assert.is_truthy(vim.startswith(dir, vim.fs.normalize(vim.fn.stdpath("cache"))))
+
+      local entries =
+        vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(dir, "compile_commands.json")), "\n"))
+
+      assert.are.equal(vim.fs.joinpath(root, "benk", "a.cpp"), entries[1].file)
+      assert.are.equal(vim.fs.joinpath(root, "build", "targets", "jetson"), entries[1].directory)
+      assert.are.same({
+        "clang++",
+        "--sysroot=" .. sdk .. "/sysroots/aarch64",
+        "-I" .. root .. "/SqFoundation/include",
+        -- eigen3 and miniz do not exist here and were dropped.
+        '-DNAME="a b"',
+        "-o",
+        "a.o",
+        "-c",
+        root .. "/benk/a.cpp",
+      }, entries[1].arguments)
+
+      -- C sources keep a C driver.
+      assert.are.equal("clang", entries[2].arguments[1])
+    end)
+  end)
+
+  it("only remaps when nothing else is requested", function()
+    local arguments = compile_commands.rewrite_arguments(
+      { "g++", "-isystem", "/opt/sdk/include", "-I/nowhere", "x.cpp" },
+      { { "/opt/sdk", "/local/sdk" } },
+      {}
+    )
+
+    assert.are.same({ "g++", "-isystem", "/local/sdk/include", "-I/nowhere", "x.cpp" }, arguments)
+  end)
 end)

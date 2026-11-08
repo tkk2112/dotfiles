@@ -252,7 +252,7 @@
         },
         "compile_commands": {
           "type": "object",
-          "description": "clangd only: compile_commands.json per directory. Keys are directories relative to the project root (\".\" for everything); the longest match wins. Values are a database directory or file, or a list where the first existing one is used. Paths are relative to the project root and support ~, ${projectRoot} and ${env:NAME}. Unmapped files use automatic discovery in build folders.",
+          "description": "clangd only: compile_commands.json per directory. Keys are directories relative to the project root (\".\" for everything); the longest match wins. Values are a database directory or file, a list where the first existing one is used, or an object that also rewrites the database (remap, drop_missing_paths, compiler). Paths are relative to the project root and support ~, ${projectRoot} and ${env:NAME}. Unmapped files use automatic discovery in build folders.",
           "propertyNames": {
             "minLength": 1
           },
@@ -268,6 +268,49 @@
                 "items": {
                   "type": "string",
                   "minLength": 1
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "description": "Database directory or file, or a list where the first existing one is used.",
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    ]
+                  },
+                  "remap": {
+                    "type": "object",
+                    "description": "Path prefixes to replace in the database, e.g. CI or container paths to this checkout. Values support ~, ${projectRoot} and ${env:NAME}.",
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "drop_missing_paths": {
+                    "type": "boolean",
+                    "description": "Drop -I/-isystem/--sysroot/... flags whose path does not exist on this machine."
+                  },
+                  "compiler": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Replace the compiler, e.g. clang++ to use this machine's toolchain instead of a cross compiler; C sources get clang."
+                  }
                 }
               }
             ]
