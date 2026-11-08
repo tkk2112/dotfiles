@@ -337,17 +337,22 @@ end
 
 -- Rewrites `command` to run inside the container, translating host paths in
 -- its arguments. Exposed for tests.
+-- Translates host paths inside `value` to the container's paths.
+function M.to_container_path(value, container)
+  for _, mapping in ipairs(container.mappings) do
+    local at = value:find(mapping[1], 1, true)
+
+    if at then
+      return value:sub(1, at - 1) .. mapping[2] .. value:sub(at + #mapping[1])
+    end
+  end
+
+  return value
+end
+
 function M.container_command(command, container, server_name)
   local function to_container(value)
-    for _, mapping in ipairs(container.mappings) do
-      local at = value:find(mapping[1], 1, true)
-
-      if at then
-        return value:sub(1, at - 1) .. mapping[2] .. value:sub(at + #mapping[1])
-      end
-    end
-
-    return value
+    return M.to_container_path(value, container)
   end
 
   local result = { container.engine, "exec", "-i" }
@@ -421,7 +426,9 @@ function M.command(server_name, default_command, extend)
     end
 
     if container then
-      local problem = container_problem(container, command[1])
+      -- The server may live in the mounted project (e.g. a Linux clangd under
+      -- build/), so check for it under its container path.
+      local problem = container_problem(container, M.to_container_path(command[1], container))
 
       if problem then
         vim.notify(
