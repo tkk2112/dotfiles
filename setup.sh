@@ -22,23 +22,45 @@ if ! command -v git >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v chezmoi >/dev/null 2>&1; then
-  bin_dir="${HOME}/.local/bin"
-  mkdir -p "$bin_dir"
+install_chezmoi() {
+  bin_dir="$1"
 
   if command -v curl >/dev/null 2>&1; then
-    log "Installing chezmoi with curl into $bin_dir"
-    sh -c "$(curl -fsLS https://get.chezmoi.io)" -- -b "$bin_dir"
+    installer="$(curl -fsLS https://get.chezmoi.io)" || return 1
   elif command -v wget >/dev/null 2>&1; then
-    log "Installing chezmoi with wget into $bin_dir"
-    sh -c "$(wget -qO- https://get.chezmoi.io)" -- -b "$bin_dir"
+    installer="$(wget -qO- https://get.chezmoi.io)" || return 1
   else
     printf 'chezmoi is not installed and neither curl nor wget is available.\n' >&2
     exit 1
   fi
 
+  sh -c "$installer" -- -b "$bin_dir"
+}
+
+if ! command -v chezmoi >/dev/null 2>&1; then
+  bin_dir="${HOME}/.local/bin"
+  mkdir -p "$bin_dir"
+
+  # Downloads fail now and then (connection resets in CI); retry before giving up.
+  attempt=1
+  until install_chezmoi "$bin_dir"; do
+    if [ "$attempt" -ge 3 ]; then
+      printf 'Failed to install chezmoi after %s attempts.\n' "$attempt" >&2
+      exit 1
+    fi
+
+    printf 'chezmoi install failed (attempt %s); retrying\n' "$attempt" >&2
+    attempt=$((attempt + 1))
+    sleep $((attempt * 5))
+  done
+
   PATH="${bin_dir}:${PATH}"
   export PATH
+
+  if ! command -v chezmoi >/dev/null 2>&1; then
+    printf 'chezmoi was installed but is not on PATH: %s\n' "$bin_dir" >&2
+    exit 1
+  fi
 fi
 
 repo_dir="${DOTFILES_LOCATION:-}"
@@ -171,9 +193,9 @@ if [ -n "$repo_dir" ] && [ -f "$repo_dir/.chezmoiroot" ]; then
   log "Using local chezmoi source: $repo_dir"
 
   if [ "${DOTFILES_CI:-}" = "true" ]; then
-    run chezmoi init --source "$repo_dir" --promptDefaults
+    run chezmoi init --source "$repo_dir" --promptDefaults || exit
   else
-    run chezmoi init --source "$repo_dir"
+    run chezmoi init --source "$repo_dir" || exit
   fi
 
   apply_dotfiles "$repo_dir" "$@"
@@ -181,9 +203,9 @@ else
   log "Using remote chezmoi source: $PULL_REPO_URL"
 
   if [ "${DOTFILES_CI:-}" = "true" ]; then
-    run chezmoi init "$PULL_REPO_URL" --promptDefaults
+    run chezmoi init "$PULL_REPO_URL" --promptDefaults || exit
   else
-    run chezmoi init "$PULL_REPO_URL"
+    run chezmoi init "$PULL_REPO_URL" || exit
   fi
 
   apply_dotfiles "" "$@"
