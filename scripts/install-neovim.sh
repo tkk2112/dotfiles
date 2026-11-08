@@ -1,13 +1,13 @@
 #!/bin/sh
 set -eu
 
-minimum_version="0.11"
+minimum_version="0.12"
 bin_dir="${HOME}/.local/bin"
 install_dir="${HOME}/.local/opt/neovim"
 
 if command -v nvim >/dev/null 2>&1 \
   && nvim --headless --clean -u NONE -i NONE \
-    -c 'if !has("nvim-0.11") | cquit | endif' \
+    -c 'if !has("nvim-0.12") | cquit | endif' \
     -c 'quit' >/dev/null 2>&1; then
   printf 'Neovim already satisfies the minimum version: '
   nvim --version | sed -n '1p'
