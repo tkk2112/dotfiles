@@ -94,7 +94,6 @@ install_runtime() {
   autostart="$2"
 
   label="com.dotfiles.llm-$name"
-  service="$DOMAIN/$label"
   plist="$LAUNCH_AGENTS/$label.plist"
 
   if [ "$autostart" = "true" ]; then
