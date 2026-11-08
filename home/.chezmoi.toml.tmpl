@@ -190,6 +190,15 @@
 {{- $gitName := promptStringOnce . "git.name" "git user name" "Thomas Kristensen" -}}
 {{- $gitEmail := promptStringOnce . "git.email" "git user email" "" -}}
 
+{{- $protonDriveCLI := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if env "DOTFILES_PROTON_DRIVE_CLI" -}}
+{{-     $protonDriveCLI = has (env "DOTFILES_PROTON_DRIVE_CLI") (list "1" "true" "yes") -}}
+{{-   else -}}
+{{-     $protonDriveCLI = promptBoolOnce . "tools.protonDriveCLI" "Install Proton Drive CLI" false -}}
+{{-   end -}}
+{{- end -}}
+
 encryption = "age"
 sourceDir = {{ .chezmoi.workingTree | quote }}
 
@@ -209,6 +218,9 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
 [data.git]
     name = {{ $gitName | quote }}
     email = {{ $gitEmail | quote }}
+
+[data.tools]
+    protonDriveCLI = {{ $protonDriveCLI }}
 
 [data.llmConfig]
     providers = {{ $llmProviders | toToml }}
