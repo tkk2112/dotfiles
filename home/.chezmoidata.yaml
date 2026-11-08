@@ -3,4 +3,5 @@ git:
   email: ""
 
 ssh:
+  protonPassAgentSocket: .ssh/proton-pass-ssh-agent.sock
   defaultAuthorizedKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAX2m792UY8H0/ykGmd6myqoP3raXPVr6nNM3H+hhUuB m04r
