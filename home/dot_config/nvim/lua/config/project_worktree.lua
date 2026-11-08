@@ -124,46 +124,51 @@ function M.list(value)
   return parse_porcelain(output)
 end
 
-function M.info(value)
-  local cwd = path_directory(value)
+-- Worktree information is requested several times for every buffer event.
+-- Cache it per directory and revalidate with two stats: the worktrees
+-- directory changes when worktrees are added or removed, and HEAD changes on
+-- checkout. Directories outside Git are remembered briefly.
+local info_cache = {}
+local negative_ttl_ms = 2000
 
-  if not cwd then
-    return nil
+local function stat_signature(path)
+  local stat = path and vim.uv.fs_stat(path)
+
+  if not stat then
+    return "-"
   end
 
-  local root = git(cwd, {
+  return string.format("%d.%d", stat.mtime.sec, stat.mtime.nsec)
+end
+
+local function cache_signature(info)
+  return stat_signature(info.common_dir .. "/worktrees") .. ":" .. stat_signature(info.git_dir .. "/HEAD")
+end
+
+local function read_info(cwd)
+  local output = git(cwd, {
     "rev-parse",
+    "--path-format=absolute",
     "--show-toplevel",
-  })
-
-  if not root then
-    return nil
-  end
-
-  root = normalize_git_path(root)
-
-  if not root then
-    return nil
-  end
-
-  local common_dir = git(cwd, {
-    "rev-parse",
-    "--path-format=absolute",
     "--git-common-dir",
-  })
-
-  local git_dir = git(cwd, {
-    "rev-parse",
-    "--path-format=absolute",
     "--git-dir",
   })
 
-  if not common_dir or not git_dir then
+  if not output then
     return nil
   end
 
-  common_dir = normalize_git_path(common_dir)
-  git_dir = normalize_git_path(git_dir)
+  local lines = vim.split(output, "\n", {
+    plain = true,
+  })
+
+  local root = normalize_git_path(lines[1])
+  local common_dir = normalize_git_path(lines[2])
+  local git_dir = normalize_git_path(lines[3])
+
+  if not root or not common_dir or not git_dir then
+    return nil
+  end
 
   local worktrees = M.list(root)
 
@@ -194,6 +199,40 @@ function M.info(value)
     head = current and current.head or nil,
     detached = current and current.detached == true or false,
   }
+end
+
+function M.clear_cache()
+  info_cache = {}
+end
+
+function M.info(value)
+  local cwd = path_directory(value)
+
+  if not cwd then
+    return nil
+  end
+
+  local cached = info_cache[cwd]
+
+  if cached then
+    if cached.info == nil then
+      if vim.uv.now() - cached.time < negative_ttl_ms then
+        return nil
+      end
+    elseif cached.signature == cache_signature(cached.info) then
+      return vim.deepcopy(cached.info)
+    end
+  end
+
+  local info = read_info(cwd)
+
+  info_cache[cwd] = {
+    info = info,
+    time = vim.uv.now(),
+    signature = info and cache_signature(info) or nil,
+  }
+
+  return info and vim.deepcopy(info) or nil
 end
 
 function M.is_linked(value)

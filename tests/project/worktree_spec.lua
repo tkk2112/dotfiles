@@ -85,6 +85,18 @@ describe("project worktree", function()
     end)
   end)
 
+  it("refreshes cached information after a checkout", function()
+    with_tmpdir(function(tmp)
+      local root = make_repository(tmp)
+
+      assert.are.equal("main", assert(worktree.info(root)).branch)
+
+      git(root, "checkout", "-q", "-b", "feature")
+
+      assert.are.equal("feature", assert(worktree.info(root)).branch)
+    end)
+  end)
+
   it("describes the main working tree", function()
     with_tmpdir(function(tmp)
       local root = make_repository(tmp)
