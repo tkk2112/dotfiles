@@ -178,7 +178,7 @@ exit 1]],
     assert.are.equal(202, openscad.find_window_pid("/p/other.scad", ps))
     assert.is_nil(openscad.find_window_pid("/p/missing.scad", ps))
   end)
-  it("opens one app window per file and applies the render-only layout", function()
+  it("opens one app window per file and turns on automatic reload", function()
     with_fake_openscad(
       [[#!/bin/sh
 echo started >> "$(dirname "$0")/launches"
@@ -217,8 +217,7 @@ sleep 30]],
 
         assert(ok, err)
         assert.are.equal(1, #vim.fn.readfile(launches))
-        assert.is_truthy(settings:find("hideEditor=true", 1, true))
-        assert.is_truthy(settings:find("autoReload=true", 1, true))
+        assert.is_truthy(settings:find("[design]\nautoReload=true", 1, true))
       end
     )
   end)
