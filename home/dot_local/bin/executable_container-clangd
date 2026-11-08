@@ -1,0 +1,112 @@
+#!/bin/sh
+# Installs a Linux clangd into a folder that a running container mounts, so
+# Neovim can run clangd inside the container (lsp.clangd.container in
+# .nvim/project.json) when its image does not ship one.
+#
+#   container-clangd [-v VERSION] CONTAINER [DIR]
+#
+# DIR defaults to build/tools/clangd in the current directory and must be
+# inside one of the container's mounts. x86_64 containers get the standalone
+# clangd release; arm64 containers get clangd out of the LLVM release archive
+# (a large download, of which only clangd and its headers are kept).
+set -eu
+
+usage() {
+  printf 'usage: %s [-v VERSION] CONTAINER [DIR]\n' "${0##*/}" >&2
+  exit 2
+}
+
+die() {
+  printf 'container-clangd: %s\n' "$*" >&2
+  exit 1
+}
+
+version=""
+
+while getopts v:h option; do
+  case "$option" in
+    v) version="$OPTARG" ;;
+    *) usage ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+[ "$#" -ge 1 ] || usage
+
+container="$1"
+dest="${2:-build/tools/clangd}"
+engine="${CONTAINER_ENGINE:-docker}"
+
+for command in "$engine" curl jq tar; do
+  command -v "$command" >/dev/null 2>&1 || die "$command is required"
+done
+
+[ "$("$engine" inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = true ] \
+  || die "container $container is not running"
+
+mkdir -p "$dest"
+dest="$(CDPATH='' cd -- "$dest" && pwd -P)"
+
+# Where DEST appears inside the container: the mount whose source contains it.
+mounts="$("$engine" inspect -f '{{json .Mounts}}' "$container")"
+mount="$(printf '%s\n' "$mounts" | jq -r --arg dest "$dest" '
+  [ .[] | select(.Source != null) | .Source as $source
+    | select($dest == $source or ($dest | startswith($source + "/")))
+    | { length: ($source | length), source: $source, destination: .Destination } ]
+  | sort_by(-.length) | .[0] // empty | "\(.source)\t\(.destination)"')"
+
+[ -n "$mount" ] || die "$dest is not inside any mount of $container"
+
+mount_source="${mount%%	*}"
+mount_destination="${mount#*	}"
+container_dest="$mount_destination${dest#"$mount_source"}"
+
+arch="$("$engine" exec "$container" uname -m)"
+
+latest() {
+  curl -fsSL "https://api.github.com/repos/$1/releases/latest" | jq -r .tag_name
+}
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT INT TERM
+
+printf 'Installing clangd for %s (%s) into %s\n' "$container" "$arch" "$dest"
+
+case "$arch" in
+  x86_64 | amd64)
+    version="${version:-$(latest clangd/clangd)}"
+    curl -fL "https://github.com/clangd/clangd/releases/download/$version/clangd-linux-$version.zip" \
+      -o "$tmp/clangd.zip"
+    (cd "$tmp" && unzip -q clangd.zip)
+    rm -rf "$dest" && mkdir -p "$dest"
+    cp -R "$tmp/clangd_$version/." "$dest/"
+    ;;
+  aarch64 | arm64)
+    tag="$(latest llvm/llvm-project)"
+    version="${version:-${tag#llvmorg-}}"
+    archive="LLVM-$version-Linux-ARM64"
+    printf 'Streaming clangd out of %s.tar.xz (large download)\n' "$archive"
+    curl -fL "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/$archive.tar.xz" \
+      | tar -xJf - -C "$tmp" "$archive/bin/clangd" "$archive/lib/clang"
+    rm -rf "$dest" && mkdir -p "$dest"
+    cp -R "$tmp/$archive/." "$dest/"
+    ;;
+  *)
+    die "no clangd builds for $arch"
+    ;;
+esac
+
+"$engine" exec "$container" "$container_dest/bin/clangd" --version >/dev/null \
+  || die "clangd does not run in $container (see the error above, e.g. a too old glibc)"
+
+printf '\nclangd %s runs in %s as %s/bin/clangd\n' \
+  "$version" "$container" "$container_dest"
+printf '\nIn .nvim/project.json:\n\n'
+printf '  "lsp": { "clangd": {\n'
+printf '    "cmd": ["%s/bin/clangd", "--background-index", "--clang-tidy"],\n' "$dest"
+printf '    "container": {\n'
+printf '      "name": "%s",\n' "$container"
+printf '      "path_mappings": { "%s": "%s" }\n' "$mount_source" "$mount_destination"
+printf '    }\n'
+printf '  } }\n'

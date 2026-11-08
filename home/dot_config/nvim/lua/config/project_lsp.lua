@@ -400,7 +400,13 @@ local function container_problem(container, executable)
     :wait(5000)
 
   if found.code ~= 0 then
-    return executable .. " is not installed in container " .. container.name
+    local hint = ""
+
+    if vim.fs.basename(executable) == "clangd" then
+      hint = " (install one with: container-clangd " .. container.name .. ")"
+    end
+
+    return executable .. " is not installed in container " .. container.name .. hint
   end
 
   return nil
