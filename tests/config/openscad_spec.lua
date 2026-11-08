@@ -184,12 +184,21 @@ exit 1]],
 echo started >> "$(dirname "$0")/launches"
 sleep 30]],
       function(dir)
-        local config_home = vim.env.XDG_CONFIG_HOME
-        vim.env.XDG_CONFIG_HOME = vim.fs.joinpath(dir, "config")
-
         local bufnr, file = scad_buffer(dir)
         local launches = vim.fs.joinpath(dir, "launches")
-        local notify = vim.notify
+
+        -- Do not touch the real OpenSCAD preferences or focus real windows;
+        -- update_ini() is tested separately.
+        local apply_app_settings, focus, notify = openscad.apply_app_settings, openscad.focus, vim.notify
+        local settings_applied, focused = 0, 0
+
+        openscad.apply_app_settings = function()
+          settings_applied = settings_applied + 1
+        end
+        openscad.focus = function()
+          focused = focused + 1
+          return true
+        end
         vim.notify = function() end
 
         local ok, err = pcall(function()
@@ -203,21 +212,18 @@ sleep 30]],
           vim.wait(500)
         end)
 
-        vim.notify = notify
+        openscad.apply_app_settings, openscad.focus, vim.notify = apply_app_settings, focus, notify
+
         local pid = openscad.find_window_pid(file)
 
         if pid then
           vim.uv.kill(pid, "sigterm")
         end
 
-        local conf = vim.fs.joinpath(dir, "config", "OpenSCAD", "OpenSCAD.conf")
-        local settings = vim.fn.filereadable(conf) == 1 and table.concat(vim.fn.readfile(conf), "\n") or ""
-
-        vim.env.XDG_CONFIG_HOME = config_home
-
         assert(ok, err)
         assert.are.equal(1, #vim.fn.readfile(launches))
-        assert.is_truthy(settings:find("[design]\nautoReload=true", 1, true))
+        assert.are.equal(1, settings_applied)
+        assert.are.equal(1, focused)
       end
     )
   end)
