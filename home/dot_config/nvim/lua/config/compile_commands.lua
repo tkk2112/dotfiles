@@ -259,7 +259,15 @@ function M.configured(project_root, mapping, file)
     return nil
   end
 
-  local candidates = mapping[best_key.key]
+  local entry = mapping[best_key.key]
+  local options = {}
+  local candidates = entry
+
+  -- Object form: { path = ..., remap = ..., drop_missing_paths = ..., compiler = ... }
+  if type(entry) == "table" and not vim.islist(entry) then
+    options = entry
+    candidates = entry.path
+  end
 
   if type(candidates) == "string" then
     candidates = { candidates }
@@ -269,11 +277,285 @@ function M.configured(project_root, mapping, file)
     local database = database_dir(project_root, candidate)
 
     if database then
+      if options.remap or options.drop_missing_paths or options.compiler then
+        local rewritten, err = M.rewrite(database, project_root, options)
+
+        if not rewritten then
+          vim.schedule(function()
+            vim.notify("clangd: could not rewrite " .. database .. ": " .. tostring(err), vim.log.levels.WARN)
+          end)
+        end
+
+        database = rewritten or database
+      end
+
       return database, best_key.directory
     end
   end
 
   return nil
+end
+
+-- Rewriting databases built elsewhere (CI, containers, cross SDKs) -------------
+
+-- Splits a shell command line as CMake writes it into compile_commands.json.
+function M.split_command(command)
+  local words = {}
+  local word
+  local quote
+  local index = 1
+
+  while index <= #command do
+    local character = command:sub(index, index)
+
+    if quote then
+      if character == quote then
+        quote = nil
+      elseif character == "\\" and quote == '"' and index < #command then
+        index = index + 1
+        word = word .. command:sub(index, index)
+      else
+        word = word .. character
+      end
+    elseif character == "'" or character == '"' then
+      quote = character
+      word = word or ""
+    elseif character == "\\" and index < #command then
+      index = index + 1
+      word = (word or "") .. command:sub(index, index)
+    elseif character:match("%s") then
+      if word then
+        table.insert(words, word)
+        word = nil
+      end
+    else
+      word = (word or "") .. character
+    end
+
+    index = index + 1
+  end
+
+  if word then
+    table.insert(words, word)
+  end
+
+  return words
+end
+
+-- Flags whose value is a path, as attached prefix (-I/x) or next argument.
+local path_flags = {
+  "-I",
+  "-isystem",
+  "-iquote",
+  "-idirafter",
+  "-isysroot",
+  "--sysroot",
+  "--sysroot=",
+  "--gcc-toolchain=",
+  "-include",
+  "-imacros",
+  "-B",
+}
+
+-- Longest first, so "--sysroot=" is tried before "--sysroot".
+table.sort(path_flags, function(a, b)
+  return #a > #b
+end)
+
+local function split_path_flag(argument)
+  for _, flag in ipairs(path_flags) do
+    if argument == flag then
+      return flag, nil
+    end
+
+    if vim.startswith(argument, flag) and #argument > #flag then
+      local value = argument:sub(#flag + 1)
+
+      -- "-isystem" must not be read as "-I" + "system".
+      if flag == "-I" and vim.startswith(argument, "-isystem") then
+        return nil
+      end
+
+      return flag, value
+    end
+  end
+
+  return nil
+end
+
+local function exists(path)
+  return vim.uv.fs_stat(path) ~= nil
+end
+
+-- Rewrites one entry's arguments: remaps path prefixes, optionally drops
+-- path flags whose target does not exist here and replaces the compiler.
+function M.rewrite_arguments(arguments, remap, options)
+  local function map(value)
+    for _, pair in ipairs(remap) do
+      if vim.startswith(value, pair[1]) then
+        return pair[2] .. value:sub(#pair[1] + 1)
+      end
+
+      -- Also inside values such as -DROOT=/builds/... or --sysroot=/opt/...
+      local at = value:find(pair[1], 1, true)
+
+      if at then
+        return value:sub(1, at - 1) .. pair[2] .. value:sub(at + #pair[1])
+      end
+    end
+
+    return value
+  end
+
+  local result = {}
+  local index = 1
+
+  while index <= #arguments do
+    local argument = map(arguments[index])
+    local flag, value = split_path_flag(argument)
+    local separate = flag and value == nil and index < #arguments
+
+    if separate then
+      value = map(arguments[index + 1])
+    end
+
+    if flag and value and options.drop_missing_paths and not exists(value) then
+      index = index + (separate and 2 or 1)
+    else
+      table.insert(result, argument)
+
+      if separate then
+        table.insert(result, value)
+        index = index + 1
+      end
+
+      index = index + 1
+    end
+  end
+
+  if options.compiler and result[1] then
+    local compiler = options.compiler
+
+    -- Keep C sources on the C driver (gcc, cc, clang -> clang).
+    local original = vim.fs.basename(result[1])
+
+    if compiler == "clang++" and (original:match("gcc$") or original:match("[^+]cc$") or original:match("clang$")) then
+      compiler = "clang"
+    end
+
+    result[1] = compiler
+  end
+
+  return result
+end
+
+local function expanded_remap(project_root, remap)
+  local pairs_list = {}
+  local project_lsp = require("config.project_lsp")
+
+  for from, to in pairs(type(remap) == "table" and remap or {}) do
+    local target = project_lsp.expand_value(to, project_root)
+
+    if target then
+      target = vim.fs.normalize(target)
+      table.insert(pairs_list, { from:gsub("/$", ""), (target:gsub("/$", "")) })
+    end
+  end
+
+  -- Longest prefix first, so nested mappings win.
+  table.sort(pairs_list, function(a, b)
+    return #a[1] > #b[1]
+  end)
+
+  return pairs_list
+end
+
+-- Writes a rewritten copy of the database in `database_dir` to the cache and
+-- returns its directory. The copy is reused until the source or the options
+-- change.
+function M.rewrite(database_dir, project_root, options)
+  local source = vim.fs.joinpath(database_dir, "compile_commands.json")
+  local stat = vim.uv.fs_stat(source)
+
+  if not stat then
+    return nil, "missing " .. source
+  end
+
+  local remap = expanded_remap(project_root, options.remap)
+  local key = vim.fn
+    .sha256(vim.json.encode({
+      source = source,
+      remap = remap,
+      drop = options.drop_missing_paths == true,
+      compiler = options.compiler or vim.NIL,
+    }))
+    :sub(1, 16)
+
+  local target_dir = vim.fs.joinpath(vim.fn.stdpath("cache"), "compile_commands", key)
+  local target = vim.fs.joinpath(target_dir, "compile_commands.json")
+  local target_stat = vim.uv.fs_stat(target)
+
+  if target_stat and target_stat.mtime.sec >= stat.mtime.sec then
+    return target_dir
+  end
+
+  local handle = io.open(source, "r")
+
+  if not handle then
+    return nil, "cannot read " .. source
+  end
+
+  local ok, entries = pcall(vim.json.decode, handle:read("*a"))
+  handle:close()
+
+  if not ok or type(entries) ~= "table" then
+    return nil, "invalid JSON in " .. source
+  end
+
+  local function map(value)
+    for _, pair in ipairs(remap) do
+      if type(value) == "string" and vim.startswith(value, pair[1]) then
+        return pair[2] .. value:sub(#pair[1] + 1)
+      end
+    end
+
+    return value
+  end
+
+  local rewritten = {}
+
+  for _, entry in ipairs(entries) do
+    local arguments = entry.arguments or M.split_command(entry.command or "")
+
+    table.insert(rewritten, {
+      directory = map(entry.directory),
+      file = map(entry.file),
+      output = entry.output and map(entry.output) or nil,
+      arguments = M.rewrite_arguments(arguments, remap, options),
+    })
+  end
+
+  vim.fn.mkdir(target_dir, "p")
+
+  -- Compact JSON, written atomically; these files can be several MB.
+  local temporary = string.format("%s.%d.tmp", target, vim.uv.os_getpid())
+  local out = io.open(temporary, "w")
+
+  if not out then
+    return nil, "cannot write " .. temporary
+  end
+
+  out:write(vim.json.encode(rewritten))
+  out:close()
+
+  local renamed, err = os.rename(temporary, target)
+
+  if not renamed then
+    os.remove(temporary)
+    return nil, err
+  end
+
+  return target_dir
 end
 
 -- clangd root for `bufnr` when project settings map its directory to a
