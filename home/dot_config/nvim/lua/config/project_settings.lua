@@ -20,22 +20,48 @@ local project_scope = require("config.project_scope")
 
 local config_cache = {}
 
--- Project configuration is data, not code. Deny options that affect command
--- execution, runtime loading, persistent paths, or the surrounding environment.
-local denied_options = {
-  runtimepath = true,
-  packpath = true,
-  shell = true,
-  shellcmdflag = true,
-  shellquote = true,
-  shellxquote = true,
-  clipboard = true,
-  backupdir = true,
-  directory = true,
-  undodir = true,
-  viewdir = true,
-  secure = true,
-  exrc = true,
+-- Project configuration is data, not code, and project.json files arrive with
+-- cloned repositories. Only allow options that cannot evaluate expressions,
+-- run programs, load runtime files, or write outside the buffer. Options such
+-- as foldexpr, indentexpr, statusline, makeprg or omnifunc are not listed.
+local allowed_options = {
+  autoindent = true,
+  breakindent = true,
+  cindent = true,
+  cinoptions = true,
+  colorcolumn = true,
+  comments = true,
+  commentstring = true,
+  conceallevel = true,
+  cursorcolumn = true,
+  cursorline = true,
+  endofline = true,
+  expandtab = true,
+  fileformat = true,
+  fixendofline = true,
+  foldenable = true,
+  foldlevel = true,
+  foldmethod = true,
+  formatoptions = true,
+  iskeyword = true,
+  linebreak = true,
+  list = true,
+  matchpairs = true,
+  number = true,
+  relativenumber = true,
+  shiftround = true,
+  shiftwidth = true,
+  signcolumn = true,
+  smartindent = true,
+  smarttab = true,
+  softtabstop = true,
+  spell = true,
+  spelllang = true,
+  synmaxcol = true,
+  tabstop = true,
+  textwidth = true,
+  wrap = true,
+  wrapmargin = true,
 }
 
 local function cwd_project_root()
@@ -229,8 +255,8 @@ local function apply_project_option(option, value)
 
   local key = "vim.opt." .. option
 
-  if denied_options[option] then
-    vim.notify("Project setting denied: " .. key, vim.log.levels.WARN)
+  if not allowed_options[option] then
+    vim.notify("Project setting not allowed: " .. key, vim.log.levels.WARN)
     return
   end
 
@@ -498,16 +524,19 @@ function M.apply_options(bufnr)
     return
   end
 
-  for option, value in pairs(options) do
-    if option ~= "shiftwidth" and option ~= "softtabstop" then
-      apply_project_option(option, value)
+  -- vim.opt_local targets the current buffer; run in the target buffer.
+  vim.api.nvim_buf_call(bufnr, function()
+    for option, value in pairs(options) do
+      if option ~= "shiftwidth" and option ~= "softtabstop" then
+        apply_project_option(option, value)
+      end
     end
-  end
 
-  if options.tabstop ~= nil then
-    apply_project_option("shiftwidth", 0)
-    apply_project_option("softtabstop", -1)
-  end
+    if options.tabstop ~= nil then
+      apply_project_option("shiftwidth", 0)
+      apply_project_option("softtabstop", -1)
+    end
+  end)
 end
 
 local project_commands = require("config.project_commands")

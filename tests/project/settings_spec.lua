@@ -232,4 +232,45 @@ describe("project settings context", function()
       end)
     end)
   end)
+  it("applies only data-only vim options from project settings", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local file = write_file(vim.fs.joinpath(root, "main.txt"), "one\ntwo\n")
+      local marker = vim.fs.joinpath(tmp, "executed")
+      local payload = string.format("writefile(['x'], '%s')", marker)
+
+      write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+        root = "..",
+        global = {
+          vim = {
+            opt = {
+              tabstop = 3,
+              foldmethod = "expr",
+              foldexpr = payload,
+              indentexpr = payload,
+              makeprg = "touch " .. marker,
+              statusline = "%{" .. payload .. "}",
+            },
+          },
+        },
+      })
+
+      local notify = vim.notify
+      vim.notify = function() end
+
+      local ok, err = pcall(with_buffer, file, function(bufnr)
+        settings.apply_options(bufnr)
+        vim.cmd("redrawstatus | normal! zx")
+
+        assert.are.equal(3, vim.bo[bufnr].tabstop)
+        assert.are_not.equal(payload, vim.wo.foldexpr)
+        assert.are_not.equal(payload, vim.bo[bufnr].indentexpr)
+        assert.are_not.equal("touch " .. marker, vim.bo[bufnr].makeprg)
+      end)
+
+      vim.notify = notify
+      assert(ok, err)
+      assert.is_nil(vim.uv.fs_stat(marker))
+    end)
+  end)
 end)
