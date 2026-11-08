@@ -17,7 +17,7 @@ sha256() {
 }
 
 canonical_dir() {
-  CDPATH= cd -P "$1" 2>/dev/null && pwd -P
+  CDPATH='' cd -P "$1" 2>/dev/null && pwd -P
 }
 
 resolve_root() {
@@ -31,12 +31,14 @@ resolve_root() {
 
   root="$(jq -r '.root' "$config")"
 
+  # Match a literal "~" or "~/" from project.json.
+  # shellcheck disable=SC2088
   case "$root" in
     "~")
       root="$HOME"
       ;;
     "~/"*)
-      root="$HOME/${root#~/}"
+      root="$HOME/${root#"~/"}"
       ;;
   esac
 
