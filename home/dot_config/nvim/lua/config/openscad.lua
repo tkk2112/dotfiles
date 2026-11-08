@@ -250,7 +250,7 @@ function M.update_ini(text, settings)
   return table.concat(lines, "\n") .. "\n"
 end
 
-local function apply_app_settings()
+function M.apply_app_settings()
   if vim.g.openscad_auto_reload == false then
     return
   end
@@ -339,7 +339,8 @@ end
 
 -- Brings the window of `pid` to the front. Returns false where the system
 -- does not allow it (for example Wayland).
-local function focus(pid)
+-- Waits are bounded so a macOS permission prompt cannot block Neovim.
+function M.focus(pid)
   if vim.fn.has("mac") == 1 then
     local result = vim
       .system({
@@ -350,13 +351,14 @@ local function focus(pid)
           pid
         ),
       })
-      :wait()
+      :wait(2000)
 
     return result.code == 0
   end
 
   if vim.env.DISPLAY and not vim.env.WAYLAND_DISPLAY and vim.fn.executable("xdotool") == 1 then
-    local result = vim.system({ "xdotool", "search", "--onlyvisible", "--pid", tostring(pid), "windowactivate" }):wait()
+    local result =
+      vim.system({ "xdotool", "search", "--onlyvisible", "--pid", tostring(pid), "windowactivate" }):wait(2000)
 
     return result.code == 0
   end
@@ -376,7 +378,7 @@ function M.preview(bufnr)
   local running = M.find_window_pid(file)
 
   if running then
-    if not focus(running) then
+    if not M.focus(running) then
       notify("OpenSCAD is already showing this file")
     end
 
@@ -390,7 +392,7 @@ function M.preview(bufnr)
     return
   end
 
-  apply_app_settings()
+  M.apply_app_settings()
 
   -- Start the binary directly (not `open -a`) so the process carries the
   -- file path, which find_window_pid() relies on.
