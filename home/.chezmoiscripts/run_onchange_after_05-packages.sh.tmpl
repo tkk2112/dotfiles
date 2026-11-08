@@ -81,6 +81,9 @@ set -eu
 
 PROFILE_OWNED="{{ if has "owned" $profiles }}true{{ else }}false{{ end }}"
 
+# Changes once Homebrew is installed, so a run skipped without it is repeated.
+# brew: {{ template "find-command" (list "brew" .chezmoi.homeDir) }}
+
 BREW_PACKAGES="$(cat <<'EOF'
 {{ template "packageLines" (list "brew" .packages.catalog $packageGroups) }}
 EOF
@@ -244,10 +247,16 @@ install_brew() {
     return 0
   fi
 
-  if ! command -v brew >/dev/null 2>&1; then
+  brew_command="$(find_brew || true)"
+
+  if [ -z "$brew_command" ]; then
     printf 'Homebrew is not installed; skipping packages\n' >&2
     return 0
   fi
+
+  # Homebrew may be installed but not yet on PATH in a fresh shell.
+  PATH="$(dirname "$brew_command"):$PATH"
+  export PATH
 
   install_user_packages Homebrew "$BREW_PACKAGES" brew install --quiet
   install_brew_casks

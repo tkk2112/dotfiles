@@ -3,6 +3,11 @@ set -eu
 
 # Re-run when the package catalog changes.
 # packages.yaml: {{ include ".chezmoidata/packages.yaml" | sha256sum }}
+# Changes once tldr is installed, so a run skipped without it is repeated.
+# tldr: {{ template "find-command" (list "tldr" .chezmoi.homeDir) }}
+
+PATH="$HOME/.local/bin:$PATH:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin"
+export PATH
 
 {{ $profiles := .profiles | default (list) }}
 PROFILE_SERVER="{{ if has "server" $profiles }}true{{ else }}false{{ end }}"
