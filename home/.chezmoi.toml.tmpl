@@ -13,11 +13,9 @@
 {{- $profileChoices := concat $roleProfiles $capabilityProfiles -}}
 {{- $defaultProfiles := get $hostProfiles .chezmoi.hostname | default (list "workstation" "development") -}}
 {{- $profiles := $defaultProfiles -}}
-{{- $profilesFromEnv := false -}}
 
 {{- if env "DOTFILES_PROFILES" -}}
 {{-   $profiles = splitList "," (env "DOTFILES_PROFILES") -}}
-{{-   $profilesFromEnv = true -}}
 {{- else -}}
 {{-   $profiles = promptMultichoiceOnce . "profiles" "profiles" $profileChoices $defaultProfiles -}}
 {{- end -}}
@@ -104,8 +102,6 @@
         (list)
 -}}
 {{-   end -}}
-{{-   $manualRuntimeChoices := list -}}
-
 {{-   $manualRuntimeChoices := list -}}
 
 {{-   range $runtime := $llmManualRuntimeChoices -}}
