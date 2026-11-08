@@ -31,7 +31,20 @@ return {
       local executables = require("config.executables")
       local project_lsp = require("config.project_lsp")
 
+      -- Project settings may replace the command, add arguments or run the
+      -- server in a container (lsp.<server> in .nvim/project.json).
+      local function project_command(server)
+        local default = (vim.lsp.config[server] or {}).cmd
+
+        if type(default) == "table" then
+          return project_lsp.command(server, default)
+        end
+
+        return default
+      end
+
       vim.lsp.config("pylsp", {
+        cmd = project_command("pylsp"),
         root_dir = project_lsp.root_dir("pylsp", {
           "pyproject.toml",
           "setup.py",
@@ -57,6 +70,7 @@ return {
       })
 
       vim.lsp.config("ruff", {
+        cmd = project_command("ruff"),
         root_dir = project_lsp.root_dir("ruff", {
           "pyproject.toml",
           "ruff.toml",
@@ -68,6 +82,7 @@ return {
       })
 
       vim.lsp.config("ty", {
+        cmd = project_command("ty"),
         root_dir = project_lsp.root_dir("ty", {
           "ty.toml",
           "pyproject.toml",

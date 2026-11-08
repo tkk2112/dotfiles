@@ -99,6 +99,65 @@ local function empty_override()
     args = {},
     settings = nil,
     init_options = nil,
+    container = nil,
+  }
+end
+
+-- Parses lsp.<server>.container:
+--
+--   "container": {
+--     "name": "stoneface-jetson-orin-builder",
+--     "engine": "docker",                      (default; or "podman")
+--     "path_mappings": { "${projectRoot}": "/builds/sqhead/software/products/main" },
+--     "workdir": "/builds/sqhead/software/products/main"   (optional)
+--   }
+--
+-- The server then runs with `<engine> exec -i <name> <command>`. Host paths in
+-- the command are translated to container paths; clangd also gets
+-- --path-mappings so the files Neovim sends map to the files clangd reads.
+local function parse_container(value, project_root, server_name)
+  if not is_object(value) then
+    return nil, string.format("Project LSP container for %s must be an object", server_name)
+  end
+
+  if type(value.name) ~= "string" or value.name == "" then
+    return nil, string.format("Project LSP container for %s needs a name", server_name)
+  end
+
+  local engine = value.engine or "docker"
+
+  if engine ~= "docker" and engine ~= "podman" then
+    return nil, string.format("Project LSP container engine for %s must be docker or podman", server_name)
+  end
+
+  local mappings = {}
+
+  for host, container_path in pairs(is_object(value.path_mappings) and value.path_mappings or {}) do
+    local expanded_host = expand_value(host, project_root)
+    local expanded_container = expand_value(container_path, project_root)
+
+    if not expanded_host or not expanded_container then
+      return nil, string.format("Project LSP container path mapping for %s is invalid: %s", server_name, host)
+    end
+
+    table.insert(mappings, {
+      (vim.fs.normalize(expanded_host):gsub("/$", "")),
+      (expanded_container:gsub("/$", "")),
+    })
+  end
+
+  -- Longest host path first, so nested mappings win.
+  table.sort(mappings, function(a, b)
+    return #a[1] > #b[1]
+  end)
+
+  local workdir = value.workdir and expand_value(value.workdir, project_root) or nil
+
+  return {
+    name = value.name,
+    engine = engine,
+    mappings = mappings,
+    workdir = workdir,
   }
 end
 
@@ -180,6 +239,16 @@ local function project_override(server_name, root_dir)
     override.args = arguments
   end
 
+  if server.container ~= nil then
+    local container, container_error = parse_container(server.container, project_root, server_name)
+
+    if not container then
+      return nil, container_error
+    end
+
+    override.container = container
+  end
+
   for _, field in ipairs({ "settings", "init_options" }) do
     local value = server[field]
 
@@ -198,7 +267,7 @@ local function project_override(server_name, root_dir)
     end
   end
 
-  if override.cmd or #override.args > 0 or override.settings or override.init_options then
+  if override.cmd or #override.args > 0 or override.settings or override.init_options or override.container then
     local config_path = project_settings.config_path_for_root(project_root)
 
     local trusted, trust_error = verify_project_trust(config_path)
@@ -258,27 +327,123 @@ function M.resolve_command(server_name, default_command, root_dir)
 
   vim.list_extend(command, override.args)
 
-  if vim.fn.executable(command[1]) ~= 1 then
+  -- In a container the executable only has to exist there; see M.command.
+  if not override.container and vim.fn.executable(command[1]) ~= 1 then
     return nil, string.format("LSP executable for %s was not found or is not executable: %s", server_name, command[1])
   end
 
-  return command
+  return command, override.container
 end
 
--- `extend(command, root_dir)` may adjust the resolved command, for example
--- to add flags discovered at start time.
+-- Rewrites `command` to run inside the container, translating host paths in
+-- its arguments. Exposed for tests.
+function M.container_command(command, container, server_name)
+  local function to_container(value)
+    for _, mapping in ipairs(container.mappings) do
+      local at = value:find(mapping[1], 1, true)
+
+      if at then
+        return value:sub(1, at - 1) .. mapping[2] .. value:sub(at + #mapping[1])
+      end
+    end
+
+    return value
+  end
+
+  local result = { container.engine, "exec", "-i" }
+
+  if container.workdir then
+    vim.list_extend(result, { "-w", container.workdir })
+  end
+
+  table.insert(result, container.name)
+
+  for _, argument in ipairs(command) do
+    table.insert(result, to_container(argument))
+  end
+
+  if server_name == "clangd" and #container.mappings > 0 then
+    local pairs_list = {}
+
+    for _, mapping in ipairs(container.mappings) do
+      table.insert(pairs_list, mapping[1] .. "=" .. mapping[2])
+    end
+
+    table.insert(result, "--path-mappings=" .. table.concat(pairs_list, ","))
+  end
+
+  return result
+end
+
+-- Checks that the container runs and has the server; returns an error
+-- message otherwise.
+local function container_problem(container, executable)
+  if vim.fn.executable(container.engine) ~= 1 then
+    return container.engine .. " is not installed"
+  end
+
+  local running = vim
+    .system({ container.engine, "inspect", "-f", "{{.State.Running}}", container.name }, { text = true })
+    :wait(5000)
+
+  if running.code ~= 0 or vim.trim(running.stdout or "") ~= "true" then
+    return "container " .. container.name .. " is not running"
+  end
+
+  local found = vim
+    .system({ container.engine, "exec", container.name, "sh", "-c", 'command -v "$1"', "sh", executable }, { text = true })
+    :wait(5000)
+
+  if found.code ~= 0 then
+    return executable .. " is not installed in container " .. container.name
+  end
+
+  return nil
+end
+
+-- `extend(command, root_dir, container)` may adjust the resolved command, for
+-- example to add flags discovered at start time; `container` is set when the
+-- server will run in a container (paths are translated afterwards).
 function M.command(server_name, default_command, extend)
   return function(dispatchers, config)
-    local command, command_error = M.resolve_command(server_name, default_command, config.root_dir)
+    local command, container_or_error = M.resolve_command(server_name, default_command, config.root_dir)
+    local container
 
     if not command then
-      vim.notify(command_error .. "\nFalling back to the default " .. server_name .. " command.", vim.log.levels.WARN)
+      vim.notify(
+        container_or_error .. "\nFalling back to the default " .. server_name .. " command.",
+        vim.log.levels.WARN
+      )
 
       command = vim.deepcopy(default_command)
+    else
+      container = container_or_error
+    end
+
+    if container then
+      local problem = container_problem(container, command[1])
+
+      if problem then
+        vim.notify(
+          string.format("%s: %s; running it on this machine instead.", server_name, problem),
+          vim.log.levels.WARN
+        )
+
+        container = nil
+        command = vim.deepcopy(default_command)
+      end
     end
 
     if extend then
-      command = extend(command, config.root_dir)
+      command = extend(command, config.root_dir, container)
+    end
+
+    if container then
+      command = M.container_command(command, container, server_name)
+
+      vim.schedule(function()
+        vim.notify(string.format("%s: running in container %s", server_name, container.name), vim.log.levels.INFO)
+      end)
     end
 
     return vim.lsp.rpc.start(command, dispatchers, {

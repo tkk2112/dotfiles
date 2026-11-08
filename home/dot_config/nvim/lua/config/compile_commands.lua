@@ -629,14 +629,44 @@ local function has_compile_commands_argument(command)
   return false
 end
 
+local function inside_container(path, container)
+  for _, mapping in ipairs(container.mappings) do
+    if path == mapping[1] or vim.startswith(path, mapping[1] .. "/") then
+      return true
+    end
+  end
+
+  return false
+end
+
 -- Adds --compile-commands-dir to a clangd command unless the project
--- already sets one in .nvim/project.json.
-function M.extend_clangd_command(command, root)
+-- already sets one in .nvim/project.json. In a container the database must be
+-- reachable through its path mappings; rewritten copies in the cache are not,
+-- and the container's build database needs no rewriting anyway.
+function M.extend_clangd_command(command, root, container)
   if has_compile_commands_argument(command) then
     return command
   end
 
   local dir = M.dir_for(root)
+
+  if dir and container and not inside_container(dir, container) then
+    local cache = vim.fs.normalize(vim.fn.stdpath("cache"))
+
+    if vim.startswith(dir, cache) then
+      -- A rewrite configured for running locally; use the source database.
+      dir = nil
+
+      for _, item in ipairs(M.find_all(root)) do
+        if inside_container(item.dir, container) then
+          dir = item.dir
+          break
+        end
+      end
+    else
+      dir = nil
+    end
+  end
 
   if dir then
     table.insert(command, "--compile-commands-dir=" .. dir)
