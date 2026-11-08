@@ -315,6 +315,41 @@
               }
             ]
           }
+        },
+        "container": {
+          "type": "object",
+          "description": "Run this server inside a running container with `<engine> exec -i <name> <command>`. Host paths in the command are translated with path_mappings; clangd also gets --path-mappings. Falls back to running locally when the container is not running or lacks the server. Requires trusting the project file.",
+          "additionalProperties": false,
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Container name or id."
+            },
+            "engine": {
+              "enum": [
+                "docker",
+                "podman"
+              ],
+              "description": "Container engine; default docker."
+            },
+            "path_mappings": {
+              "type": "object",
+              "description": "Host path (e.g. ${projectRoot}) to the same directory inside the container.",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "workdir": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Working directory inside the container."
+            }
+          }
         }
       }
     },
