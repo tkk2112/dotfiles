@@ -86,8 +86,8 @@ test_llm_capability_defaults() {
 
   if contains_profile "$profiles" llm; then
     jq -e '
-      .llmConfig.providers == ["codex", "claude"]
-      and .llmConfig.engines == ["mlx", "llama_cpp"]
+      .llmConfig.providers == []
+      and .llmConfig.engines == ["llama_cpp"]
       and .llmConfig.features == ["completion"]
       and .llmConfig.disabledRuntimes == []
       and .llmConfig.manualRuntimes == []
