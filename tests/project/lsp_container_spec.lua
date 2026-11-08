@@ -155,4 +155,46 @@ describe("LSP servers in containers", function()
       "--path-mappings=/Users/me/code/main=/builds/main",
     }, started)
   end)
+  it("checks for a server in the mounted project under its container path", function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, "p")
+
+    local fake = vim.fs.joinpath(dir, "docker")
+    vim.fn.writefile({
+      "#!/bin/sh",
+      '[ "$1" = inspect ] && { echo true; exit 0; }',
+      -- exec builder sh -c 'command -v "$1"' sh <executable>
+      'echo "$7" >> "$(dirname "$0")/checked"',
+      "exit 0",
+    }, fake)
+    vim.fn.setfperm(fake, "rwxr-xr-x")
+
+    local path = vim.env.PATH
+    vim.env.PATH = dir .. ":" .. path
+
+    local notify = vim.notify
+    vim.notify = function() end
+    local start = vim.lsp.rpc.start
+    vim.lsp.rpc.start = function()
+      return {}
+    end
+    local resolve = project_lsp.resolve_command
+    project_lsp.resolve_command = function()
+      return { "/Users/me/code/main/build/tools/clangd/bin/clangd" }, container
+    end
+
+    local ok, err = pcall(project_lsp.command("clangd", { "clangd" }), {}, { root_dir = dir })
+
+    project_lsp.resolve_command = resolve
+    vim.lsp.rpc.start = start
+    vim.wait(20)
+    vim.notify = notify
+    vim.env.PATH = path
+
+    local checked = vim.fn.readfile(vim.fs.joinpath(dir, "checked"))
+    vim.fn.delete(dir, "rf")
+
+    assert(ok, err)
+    assert.are.same({ "/builds/main/build/tools/clangd/bin/clangd" }, checked)
+  end)
 end)
