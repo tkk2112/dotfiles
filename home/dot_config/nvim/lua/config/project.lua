@@ -436,9 +436,15 @@ local function add_subproject(project_root, subproject_root)
       return
     end
 
-    local subproject_config = project_root .. "/" .. project_marker .. "/subprojects/" .. name .. ".json"
+    -- Scope configs live beside the definition source, which is not the
+    -- project root for moved-out projects or inherited worktrees.
+    for _, subproject in ipairs(project_scope.list(project_root)) do
+      if subproject.name == name then
+        write_default_subproject_config(subproject.config_path)
+        break
+      end
+    end
 
-    write_default_subproject_config(subproject_config)
     select_scope(project_root, name)
 
     vim.notify(string.format("Subproject added: %s\n%s", name, relative_root), vim.log.levels.INFO)
