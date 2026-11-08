@@ -2,3 +2,16 @@
 .config/borders
 .config/borders/**
 {{ end -}}
+
+.config/nvim/.nvim
+.config/nvim/.nvim/**
+.config/nvim/lazy-lock.json
+.ssh/agent
+.ssh/agent/**
+.ssh/known_hosts
+.ssh/keys
+.ssh/keys/*
+{{ if or (eq (env "DOTFILES_CI") "true") (eq (env "DOTFILES_SKIP_PRIVATE_SSH") "1") }}
+.ssh/conf.d/*
+!.ssh/conf.d/99-global.conf
+{{ end }}
