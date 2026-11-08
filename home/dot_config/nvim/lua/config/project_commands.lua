@@ -11,6 +11,8 @@
 
 local M = {}
 
+local namespace = vim.api.nvim_create_namespace("dotfiles_project_commands")
+
 local mapping = "<leader><space>"
 
 local valid_outputs = {
@@ -477,7 +479,7 @@ local function choose_entry(entries)
   vim.wo[window].wrap = false
 
   for index, entry in ipairs(entries) do
-    vim.api.nvim_buf_add_highlight(buffer, -1, "Special", index - 1, 1, 1 + #entry.key)
+    vim.hl.range(buffer, namespace, "Special", { index - 1, 1 }, { index - 1, 1 + #entry.key })
   end
 
   vim.cmd("redraw")
