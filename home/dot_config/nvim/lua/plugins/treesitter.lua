@@ -5,6 +5,9 @@ local languages = {
   "python",
   "zig",
 
+  -- 3D modelling.
+  "openscad",
+
   -- Hardware and assembly.
   "asm",
   "nasm",
@@ -59,6 +62,23 @@ return {
     branch = "main",
 
     lazy = false,
+
+    init = function()
+      -- Not in nvim-treesitter's parser list; use the official grammar and
+      -- its Neovim highlight/indent queries.
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "TSUpdate",
+        callback = function()
+          require("nvim-treesitter.parsers").openscad = {
+            install_info = {
+              url = "https://github.com/openscad/tree-sitter-openscad",
+              revision = "27329e1905a346131d6beb6e2a32fed8cd7e2816",
+              queries = "queries",
+            },
+          }
+        end,
+      })
+    end,
 
     build = function()
       local treesitter = require("nvim-treesitter")

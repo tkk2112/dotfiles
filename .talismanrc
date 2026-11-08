@@ -54,6 +54,10 @@ fileignoreconfig:
     allowed_patterns:
       - 'defaultAuthorizedKey:[[:space:]]+ssh-ed25519[[:space:]]+[A-Za-z0-9+/]+([[:space:]]+[^[:space:]]+)?'
 
+  - filename: home/dot_config/nvim/lua/plugins/treesitter.lua
+    allowed_patterns:
+      - 'revision = "[0-9a-f]{40}"'
+
   - filename: home/.chezmoi.toml.tmpl
     allowed_patterns:
       - 'age1[023456789acdefghjklmnpqrstuvwxyz]+'
