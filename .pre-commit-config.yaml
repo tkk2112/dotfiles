@@ -29,7 +29,7 @@ repos:
           - --no-sort-keys
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.38.2
+    rev: 0.39.0
     hooks:
       - id: check-metaschema
         name: validate Neovim project schema
@@ -57,7 +57,7 @@ repos:
         exclude: '\.tmpl$'
 
   - repo: https://github.com/JohnnyMorganz/StyLua
-    rev: v2.5.2
+    rev: v2.6.0
     hooks:
       - id: stylua-github
 
