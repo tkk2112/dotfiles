@@ -281,16 +281,52 @@ local function apply_app_settings()
   vim.fn.writefile(vim.split(M.update_ini(text, M.app_settings), "\n", { plain = true }), path)
 end
 
--- Finds a running OpenSCAD showing `file`, also one started before this
--- Neovim session. `ps_output` is for tests.
-function M.find_window_pid(file, ps_output)
-  if not ps_output then
-    -- -ww: macOS ps cuts commands to 80 columns otherwise, losing the path.
-    local result = vim.system({ "ps", "-axww", "-o", "pid=,command=" }, { text = true }):wait()
-    ps_output = result.stdout or ""
+-- Lists running processes as "pid command line" text. Linux reads /proc, so
+-- it works without procps (minimal containers); macOS uses ps, with -ww
+-- because it otherwise cuts commands to 80 columns and loses the path.
+local function process_list()
+  local proc = vim.uv.fs_scandir("/proc")
+
+  if proc then
+    local lines = {}
+
+    while true do
+      local name = vim.uv.fs_scandir_next(proc)
+
+      if not name then
+        break
+      end
+
+      if name:match("^%d+$") then
+        local handle = io.open("/proc/" .. name .. "/cmdline", "rb")
+        local cmdline = handle and handle:read("*a") or ""
+
+        if handle then
+          handle:close()
+        end
+
+        if cmdline ~= "" then
+          table.insert(lines, name .. " " .. cmdline:gsub("%z$", ""):gsub("%z", " "))
+        end
+      end
+    end
+
+    return table.concat(lines, "\n")
   end
 
-  for line in vim.gsplit(ps_output, "\n", { plain = true, trimempty = true }) do
+  if vim.fn.executable("ps") ~= 1 then
+    return ""
+  end
+
+  return vim.system({ "ps", "-axww", "-o", "pid=,command=" }, { text = true }):wait().stdout or ""
+end
+
+-- Finds a running OpenSCAD showing `file`, also one started before this
+-- Neovim session. `processes` ("pid command" lines) is for tests.
+function M.find_window_pid(file, processes)
+  processes = processes or process_list()
+
+  for line in vim.gsplit(processes, "\n", { plain = true, trimempty = true }) do
     local pid, command = line:match("^%s*(%d+)%s+(.*)$")
 
     if pid and command:lower():find("openscad", 1, true) and command:sub(-#file) == file then
