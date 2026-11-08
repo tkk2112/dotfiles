@@ -80,7 +80,7 @@ run() {
   "$@"
 }
 
-printf '%s\n' "$UV_TOOLS" | awk 'NF' | while IFS='|' read -r package command with1 with2 with3 with4 with5; do
+printf '%s\n' "$UV_TOOLS" | awk 'NF' | while IFS='|' read -r package _ with1 with2 with3 with4 with5; do
   set -- uv tool install "$package"
 
   for dep in "$with1" "$with2" "$with3" "$with4" "$with5"; do
