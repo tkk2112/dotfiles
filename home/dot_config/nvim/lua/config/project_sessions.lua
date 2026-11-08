@@ -409,6 +409,14 @@ function M.switch(root)
     return nil
   end
 
+  -- Check before saving and resetting the workspace: a missing root (for
+  -- example a removed worktree) would otherwise leave an empty workspace.
+  if vim.fn.isdirectory(root) ~= 1 then
+    vim.notify("Project root does not exist: " .. root, vim.log.levels.ERROR)
+
+    return nil
+  end
+
   local current_root = resolve_current_root()
 
   if current_root == root then

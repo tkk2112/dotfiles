@@ -258,7 +258,9 @@ local function start_direnv(cwd, callback)
     open_progress(request)
   end, progress_delay_ms)
 
-  request.process = vim.system({
+  -- vim.system throws (for example when cwd no longer exists); report that
+  -- through the normal completion path instead of raising from the caller.
+  local ok, process = pcall(vim.system, {
     "direnv",
     "export",
     "json",
@@ -321,6 +323,13 @@ local function start_direnv(cwd, callback)
       finish(request, true, "direnv environment loaded")
     end)
   end)
+
+  if not ok then
+    finish(request, false, "direnv failed: " .. tostring(process))
+    return request
+  end
+
+  request.process = process
 
   return request
 end
