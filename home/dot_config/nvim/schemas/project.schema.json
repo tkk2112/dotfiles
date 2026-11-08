@@ -91,6 +91,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "colorscheme": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "description": "Colorscheme name; applied when the project is active."
+        },
         "vim": {
           "$ref": "#/$defs/vimSettings"
         },
