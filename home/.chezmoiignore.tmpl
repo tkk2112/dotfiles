@@ -15,3 +15,10 @@
 .ssh/conf.d/*
 !.ssh/conf.d/99-global.conf
 {{ end }}
+
+{{- $llmConfig := .llmConfig | default (dict) }}
+{{- if not (and (has "llm" (.profiles | default (list))) (has "agent" (get $llmConfig "features" | default (list)))) }}
+.config/goose
+.config/goose/**
+.local/bin/dotfiles-agent
+{{- end }}
