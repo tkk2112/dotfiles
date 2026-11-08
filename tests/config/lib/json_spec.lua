@@ -103,7 +103,7 @@ describe("json helpers", function()
 
       assert.are.equal("new", value.value)
 
-      assert.are.equal(0, vim.fn.filereadable(path .. ".tmp"))
+      assert.are.same({}, vim.fn.glob(path .. "*.tmp", true, true))
     end)
   end)
 

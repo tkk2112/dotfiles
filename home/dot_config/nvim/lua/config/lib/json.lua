@@ -80,7 +80,9 @@ function M.write(path, value, options)
     return nil, encode_error
   end
 
-  local temporary_path = path .. ".tmp"
+  -- A per-process name keeps concurrent Neovim instances from sharing (and
+  -- renaming away) each other's temporary file.
+  local temporary_path = string.format("%s.%d.%d.tmp", path, vim.uv.os_getpid(), vim.uv.hrtime())
   local ok_write, write_result = pcall(vim.fn.writefile, lines, temporary_path)
 
   if not ok_write or write_result ~= 0 then
