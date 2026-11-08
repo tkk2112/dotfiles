@@ -90,8 +90,12 @@ return {
         end
       end
 
+      -- Build systems put compile_commands.json deep inside build folders,
+      -- where clangd does not look; pass the newest one explicitly.
+      local compile_commands = require("config.compile_commands")
+
       vim.lsp.config("clangd", {
-        cmd = project_lsp.command("clangd", clangd_command),
+        cmd = project_lsp.command("clangd", clangd_command, compile_commands.extend_clangd_command),
       })
 
       local cmake_language_server = executables.find("cmake-language-server", {
