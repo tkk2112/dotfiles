@@ -1,0 +1,16 @@
+{{- /* Print the path of a command, also looking in user and Homebrew
+       directories that may not be on chezmoi's PATH yet. Arguments: list
+       NAME HOME. Used to make run_once/run_onchange scripts change (and run
+       again) once a prerequisite they skipped without is installed. */ -}}
+{{- $name := index . 0 -}}
+{{- $home := index . 1 -}}
+{{- $found := lookPath $name -}}
+{{- range list (joinPath $home ".local/bin") (joinPath $home ".cargo/bin") "/opt/homebrew/bin" "/usr/local/bin" "/home/linuxbrew/.linuxbrew/bin" (joinPath $home ".linuxbrew/bin") -}}
+{{-   if not $found -}}
+{{-     $candidate := joinPath . $name -}}
+{{-     if stat $candidate -}}
+{{-       $found = $candidate -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- $found -}}

@@ -1,6 +1,14 @@
 #!/bin/sh
 set -eu
 
+# Skipping below is recorded as done; these lines change once the tools are
+# installed, so chezmoi runs this script again then.
+# pass-cli: {{ template "find-command" (list "pass-cli" .chezmoi.homeDir) }}
+# age-keygen: {{ template "find-command" (list "age-keygen" .chezmoi.homeDir) }}
+
+PATH="$HOME/.local/bin:$PATH:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin"
+export PATH
+
 case ${DOTFILES_CI:-${CI:-}} in
   1|true|TRUE|yes|YES)
     printf '%s\n' 'Skipping chezmoi age identity provisioning in CI'

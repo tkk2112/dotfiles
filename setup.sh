@@ -63,6 +63,8 @@ add_homebrew_to_path() {
   fi
 
   for prefix in \
+    /opt/homebrew \
+    /usr/local \
     /home/linuxbrew/.linuxbrew \
     "$HOME/.linuxbrew"; do
     if [ -x "$prefix/bin/brew" ]; then
