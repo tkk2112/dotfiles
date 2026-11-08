@@ -273,4 +273,35 @@ describe("project settings context", function()
       assert.is_nil(vim.uv.fs_stat(marker))
     end)
   end)
+  it("keeps local option changes until project options change", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local file = write_file(vim.fs.joinpath(root, "main.txt"), "x\n")
+      local config_path = vim.fs.joinpath(root, ".nvim", "project.json")
+
+      write_json(config_path, {
+        root = "..",
+        global = { vim = { opt = { textwidth = 60 } } },
+      })
+
+      with_buffer(file, function(bufnr)
+        settings.apply_options(bufnr)
+        assert.are.equal(60, vim.bo[bufnr].textwidth)
+
+        vim.bo[bufnr].textwidth = 99
+        settings.apply_options(bufnr)
+        assert.are.equal(99, vim.bo[bufnr].textwidth)
+
+        settings.apply_options(bufnr, { force = true })
+        assert.are.equal(60, vim.bo[bufnr].textwidth)
+
+        write_json(config_path, {
+          root = "..",
+          global = { vim = { opt = { textwidth = 72 } } },
+        })
+        settings.apply_options(bufnr)
+        assert.are.equal(72, vim.bo[bufnr].textwidth)
+      end)
+    end)
+  end)
 end)
