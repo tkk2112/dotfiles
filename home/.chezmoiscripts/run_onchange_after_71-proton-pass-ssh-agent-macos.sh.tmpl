@@ -3,7 +3,8 @@
 set -eu
 
 # Bump when changing the LaunchAgent structure.
-# proton-pass-ssh-agent-revision: 1
+# proton-pass-ssh-agent-revision: 2
+# agent launcher hash: {{ include "dot_local/bin/executable_proton-pass-ssh-agent.tmpl" | sha256sum }}
 # configured-agent: {{ .sshAgent }}
 # configured-vault: {{ .sshVault }}
 

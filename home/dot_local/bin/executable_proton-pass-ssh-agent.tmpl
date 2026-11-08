@@ -7,5 +7,5 @@ export PATH
 
 exec pass-cli ssh-agent start \
   --vault-name {{ .sshVault | quote }} \
-  --socket-path "$HOME/.ssh/proton-pass-agent.sock"
+  --socket-path "$HOME/{{ .ssh.protonPassAgentSocket }}"
 {{- end }}
