@@ -271,6 +271,47 @@ local function discover(path)
   return inherit_worktree(path, worktree)
 end
 
+-- The index remembers earlier resolutions, but it must not hide a definition
+-- that is closer to path: a nested project, or a worktree-local definition
+-- added after the worktree was indexed as inheriting one. A deleted config
+-- also invalidates the indexed record. Only stats files; nothing is parsed.
+local function index_record_is_current(path, record)
+  local project = project_record_for(record)
+
+  if not project then
+    return false
+  end
+
+  if project.config_path and not vim.uv.fs_stat(project.config_path) then
+    return false
+  end
+
+  local stat = vim.uv.fs_stat(path)
+  local current = (stat and stat.type ~= "directory") and vim.fs.dirname(path) or path
+
+  while current and paths.is_within(current, project.root) do
+    local candidate = project_definition.default_path(current)
+
+    if candidate and candidate ~= project.config_path and vim.uv.fs_stat(candidate) then
+      return false
+    end
+
+    if current == project.root then
+      break
+    end
+
+    local parent = vim.fs.dirname(current)
+
+    if not parent or parent == current then
+      break
+    end
+
+    current = parent
+  end
+
+  return true
+end
+
 function M.resolve(value, options)
   options = options or {}
 
@@ -281,6 +322,10 @@ function M.resolve(value, options)
   end
 
   local record = project_index.find(path)
+
+  if record and not index_record_is_current(path, record) then
+    record = nil
+  end
 
   if record then
     sync_project(record.project_root, false, false)

@@ -147,6 +147,47 @@ describe("project context", function()
     end)
   end)
 
+  it("prefers a nested definition over an indexed outer project", function()
+    with_tmpdir(function(tmp)
+      local outer = mkdir(vim.fs.joinpath(tmp, "outer"))
+      local inner = mkdir(vim.fs.joinpath(outer, "inner"))
+      local file_dir = mkdir(vim.fs.joinpath(inner, "src"))
+
+      write_json(vim.fs.joinpath(outer, ".nvim", "project.json"), {
+        root = "..",
+        global = {},
+      })
+
+      assert.are.equal(outer, assert(context.resolve(outer)).project_root)
+      assert.are.equal(outer, assert(context.resolve(file_dir)).project_root)
+
+      local inner_config = write_json(vim.fs.joinpath(inner, ".nvim", "project.json"), {
+        root = "..",
+        global = {},
+      })
+
+      local result = assert(context.resolve(file_dir))
+
+      assert.are.equal(inner, result.project_root)
+      assert.are.equal(inner_config, result.config_path)
+    end)
+  end)
+
+  it("drops an indexed project whose definition was deleted", function()
+    with_tmpdir(function(tmp)
+      local root = mkdir(vim.fs.joinpath(tmp, "project"))
+      local config = write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+        root = "..",
+        global = {},
+      })
+
+      assert(context.resolve(root))
+      assert(vim.uv.fs_unlink(config))
+
+      assert.is_nil(context.resolve(root))
+    end)
+  end)
+
   it("can disable filesystem discovery", function()
     with_tmpdir(function(tmp)
       local root = mkdir(vim.fs.joinpath(tmp, "project"))
