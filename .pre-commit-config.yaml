@@ -68,6 +68,15 @@ repos:
         args: [--check]
         exclude: \.tmpl$
 
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+        types: [file]
+        files: '^(setup\.sh|scripts/.*\.sh|home/dot_local/bin/executable_[^/]+|home/dot_config/borders/executable_bordersrc)$'
+        exclude: '\.tmpl$'
+
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.13.1-1
     hooks:
@@ -104,9 +113,10 @@ repos:
         files: '^\.chezmoiroot$'
         pass_filenames: false
 
-      - id: chezmoi-dry-run
-        name: chezmoi dry-run apply
+      - id: chezmoi-templates
+        name: chezmoi template render and lint
         language: system
-        entry: sh -c 'chezmoi --source "$PWD" --destination "$(mktemp -d)" apply --dry-run --exclude scripts'
+        entry: scripts/test-templates.sh
+        files: '^(home/|scripts/test-templates\.sh$)'
         pass_filenames: false
         stages: [pre-push]
