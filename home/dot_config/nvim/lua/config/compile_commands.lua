@@ -1,3 +1,6 @@
+-- Chooses the compile_commands.json clangd uses: per directory as configured
+-- in .nvim/project.json (see M.configured), otherwise found automatically.
+--
 -- Finds compile_commands.json files that build systems leave inside build
 -- folders (build/<preset>/, out/<config>/, cmake-build-debug/, …), which
 -- clangd does not search by itself. Databases built for this machine (OS and
@@ -182,6 +185,134 @@ function M.find_all(root, system, machine)
   return found
 end
 
+-- Per-directory databases from .nvim/project.json:
+--
+--   "lsp": { "clangd": { "compile_commands": {
+--     "firmware/jetson": "build/targets/stoneface-jetson-orin",
+--     ".": ["build/targets/macos-arm", "build/targets/ubuntu"]
+--   } } }
+--
+-- Keys are directories relative to the project root ("." for all of it); the
+-- longest one containing the file wins. Values are a database directory or
+-- file, or a list where the first existing one is used. Paths are relative to
+-- the project root and may use ~, ${projectRoot} and ${env:NAME}.
+--
+-- clangd uses one database per process, so each database gets its own clangd,
+-- identified by a root directory chosen for it (mapped_roots).
+local mapped_roots = {}
+local roots_by_database = {}
+
+local function database_dir(project_root, value)
+  if type(value) ~= "string" or value == "" then
+    return nil
+  end
+
+  local expanded = require("config.project_lsp").expand_value(value, project_root)
+
+  if not expanded then
+    return nil
+  end
+
+  expanded = vim.fs.normalize(expanded)
+
+  if not vim.startswith(expanded, "/") then
+    expanded = vim.fs.joinpath(project_root, expanded)
+  end
+
+  if vim.fs.basename(expanded) == "compile_commands.json" then
+    expanded = vim.fs.dirname(expanded)
+  end
+
+  if vim.uv.fs_stat(vim.fs.joinpath(expanded, "compile_commands.json")) then
+    return vim.uv.fs_realpath(expanded) or expanded
+  end
+
+  return nil
+end
+
+-- Returns the database directory configured for `file`, the mapped directory
+-- that matched, or nil when no mapping applies or none of its paths exist.
+function M.configured(project_root, mapping, file)
+  if type(mapping) ~= "table" or not project_root then
+    return nil
+  end
+
+  local relative = vim.fs.relpath(project_root, file)
+
+  if not relative then
+    return nil
+  end
+
+  local best_key
+
+  for key in pairs(mapping) do
+    local directory = vim.fs.normalize(key):gsub("^%./?", ""):gsub("/$", "")
+
+    if directory == "" or relative == directory or vim.startswith(relative, directory .. "/") then
+      if not best_key or #directory > #best_key.directory then
+        best_key = { key = key, directory = directory }
+      end
+    end
+  end
+
+  if not best_key then
+    return nil
+  end
+
+  local candidates = mapping[best_key.key]
+
+  if type(candidates) == "string" then
+    candidates = { candidates }
+  end
+
+  for _, candidate in ipairs(type(candidates) == "table" and candidates or {}) do
+    local database = database_dir(project_root, candidate)
+
+    if database then
+      return database, best_key.directory
+    end
+  end
+
+  return nil
+end
+
+-- clangd root for `bufnr` when project settings map its directory to a
+-- database; nil to use clangd's normal root.
+function M.mapped_root(bufnr)
+  local ok, project_settings = pcall(require, "config.project_settings")
+
+  if not ok then
+    return nil
+  end
+
+  local project_root = project_settings.root(bufnr)
+  local file = vim.api.nvim_buf_get_name(bufnr)
+
+  if not project_root or file == "" then
+    return nil
+  end
+
+  local config = project_settings.get(bufnr)
+  local clangd = type(config.lsp) == "table" and config.lsp.clangd or nil
+  local mapping = type(clangd) == "table" and clangd.compile_commands or nil
+  local database, directory = M.configured(project_root, mapping, file)
+
+  if not database then
+    return nil
+  end
+
+  -- One clangd per database: reuse the root picked when it was first used.
+  local root = roots_by_database[database]
+
+  if not root then
+    root = directory == "" and project_root or vim.fs.joinpath(project_root, directory)
+    roots_by_database[database] = root
+    mapped_roots[root] = database
+  end
+
+  return root
+end
+
 -- Directory to pass as --compile-commands-dir for `root`, or nil when clangd
 -- can find the database itself (one at the root) or there is none.
 function M.dir_for(root)
@@ -191,6 +322,10 @@ function M.dir_for(root)
 
   if selected[root] then
     return selected[root]
+  end
+
+  if mapped_roots[root] then
+    return mapped_roots[root]
   end
 
   if vim.uv.fs_stat(vim.fs.joinpath(root, "compile_commands.json")) then
