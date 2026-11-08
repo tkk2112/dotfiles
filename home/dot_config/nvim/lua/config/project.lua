@@ -952,6 +952,13 @@ function M.setup()
   }, {
     group = group,
     callback = function(event)
+      -- Visiting a buffer from another project must not change the active
+      -- project; only adopt one when none is active yet (for example when
+      -- Neovim was started outside any project).
+      if active_project then
+        return
+      end
+
       local bufnr = event.buf
 
       if not bufnr or bufnr == 0 then
@@ -969,6 +976,10 @@ function M.setup()
     callback = function()
       -- Changing cwd must not silently change the active project context. A
       -- scope switch goes through pp/ps so its session can be saved/restored.
+      if active_project then
+        return
+      end
+
       record_project(cwd_project_root())
     end,
   })

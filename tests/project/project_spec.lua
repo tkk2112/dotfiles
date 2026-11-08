@@ -149,4 +149,36 @@ describe("project", function()
       assert.is_true(record.last_opened > 0)
     end)
   end)
+  it("keeps the active project when visiting another project's files", function()
+    with_tmpdir(function(tmp)
+      local first = mkdir(vim.fs.joinpath(tmp, "first"))
+      local second = mkdir(vim.fs.joinpath(tmp, "second"))
+
+      for _, root in ipairs({ first, second }) do
+        write_json(vim.fs.joinpath(root, ".nvim", "project.json"), {
+          root = "..",
+          global = {},
+        })
+      end
+
+      local other_file = vim.fs.joinpath(second, "other.txt")
+      vim.fn.writefile({ "x" }, other_file)
+
+      with_cwd(first, function()
+        project.setup()
+
+        assert.are.equal(first, project.current_project_root())
+
+        vim.cmd.edit(vim.fn.fnameescape(other_file))
+        assert.are.equal(first, project.current_project_root())
+
+        vim.api.nvim_set_current_dir(second)
+        assert.are.equal(first, project.current_project_root())
+
+        vim.cmd("silent! %bwipeout!")
+      end)
+
+      pcall(vim.api.nvim_del_augroup_by_name, "dotfiles_project_tracking")
+    end)
+  end)
 end)
