@@ -1,6 +1,6 @@
 #!/bin/sh
-# Render every chezmoi template for a set of machine configurations and lint
-# the rendered output: shell syntax, shellcheck, JSON/TOML/YAML/plist/Lua
+# Render every chezmoi template for a set of machine configurations, dry-run
+# apply them into a scratch home, and lint the rendered output: shell syntax, shellcheck, JSON/TOML/YAML/plist/Lua
 # parsing, plus cross-file invariants that rendering alone does not catch.
 set -eu
 
@@ -204,6 +204,13 @@ check_configuration() {
     lint_rendered "$output" "$template" "$name: $relative"
     count=$((count + 1))
   done
+
+  if ! DOTFILES_CI=true chezmoi --config "$config" --source "$repo_root" \
+    --destination "$test_root/$name-home" \
+    apply --dry-run --exclude scripts,encrypted >"$test_root/$name.apply.log" 2>&1; then
+    cat "$test_root/$name.apply.log" >&2
+    fail "$name: chezmoi apply --dry-run failed"
+  fi
 
   check_ssh_agent_socket "$name" "$out_dir" "$ssh_agent"
   check_ci_excludes_encrypted "$name" "$config"
