@@ -1,0 +1,15 @@
+{{- /* Accent colour for a hostname, matching host_accent in
+       dot_zsh/functions/host-color.zsh.tmpl. Arguments: list HOSTNAME
+       PALETTE ACCENTS. The lower-cased short name (first label, unless it
+       is an IP address) is hashed with SHA-256; its first byte modulo the
+       number of accents picks the accent. */ -}}
+{{- $name := lower (index . 0) -}}
+{{- $palette := index . 1 -}}
+{{- $accents := index . 2 -}}
+{{- if not (regexMatch "^[0-9.]+$|:" $name) -}}
+{{-   $name = first (splitList "." $name) -}}
+{{- end -}}
+{{- $digits := dict "0" 0 "1" 1 "2" 2 "3" 3 "4" 4 "5" 5 "6" 6 "7" 7 "8" 8 "9" 9 "a" 10 "b" 11 "c" 12 "d" 13 "e" 14 "f" 15 -}}
+{{- $digest := sha256sum $name -}}
+{{- $byte := add (mul (index $digits (substr 0 1 $digest)) 16) (index $digits (substr 1 2 $digest)) -}}
+{{- index $palette (index $accents (mod $byte (len $accents))) -}}

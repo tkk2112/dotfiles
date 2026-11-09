@@ -77,3 +77,10 @@ ansi = [
   "#0598BC",
   "#FFFFFF",
 ]
+
+# Per-host colours: hostname hash -> one of these accents. Used for the tmux
+# status badge and, inside tmux, to tint a pane while `ssh` is connected.
+[host_color]
+# Background tint strength in percent; DOTFILES_HOST_TINT overrides it.
+tint_percent = 15
+accents = ["red", "orange", "yellow", "green", "cyan", "blue", "purple"]

@@ -1,0 +1,117 @@
+# Deterministic per-host colours, matching the tmux status badge
+# (.chezmoitemplates/host-accent). Inside tmux, `ssh` tints the pane
+# background with the target host's colour while it is connected.
+#
+#   host_accent NAME          the host's accent colour
+#   host_tint NAME [PERCENT]  the accent blended into the background
+#
+# DOTFILES_HOST_TINT sets the tint strength in percent; try e.g.
+# `DOTFILES_HOST_TINT=14 ssh host` before changing the default in
+# .chezmoidata/theme.toml.
+
+typeset -gA _host_color_palette=(
+{{- range $name := .host_color.accents }}
+  {{ $name }} {{ index $.theme.dark $name | quote }}
+{{- end }}
+)
+typeset -ga _host_color_accents=({{ .host_color.accents | join " " }})
+typeset -g _host_color_background={{ .theme.dark.background | quote }}
+: ${DOTFILES_HOST_TINT:={{ .host_color.tint_percent }}}
+
+# Lower-cased short name; IP addresses are kept whole.
+_host_color_name() {
+  emulate -L zsh
+  local name=${1:l}
+
+  if [[ $name != *:* && $name != <->.<->.<->.<-> ]]; then
+    name=${name%%.*}
+  fi
+
+  print -r -- $name
+}
+
+host_accent() {
+  emulate -L zsh
+  local name digest
+  name=$(_host_color_name "$1")
+
+  if (( $+commands[sha256sum] )); then
+    digest=$(print -rn -- $name | sha256sum)
+  else
+    digest=$(print -rn -- $name | shasum -a 256)
+  fi
+
+  local index=$(( 16#${digest[1,2]} % ${#_host_color_accents} + 1 ))
+  print -r -- ${_host_color_palette[${_host_color_accents[index]}]}
+}
+
+host_tint() {
+  emulate -L zsh
+  local accent percent=${2:-$DOTFILES_HOST_TINT}
+  accent=$(host_accent "$1")
+  local background=$_host_color_background
+  local -a channels
+  local i base target
+
+  for i in 2 4 6; do
+    base=$(( 16#${background[i,i+1]} ))
+    target=$(( 16#${accent[i,i+1]} ))
+    channels+=($(( base + (target - base) * percent / 100 )))
+  done
+
+  printf '#%02X%02X%02X\n' $channels
+}
+
+# The host an ssh command line connects to: the configured HostName, or what
+# was typed when that is an IP address (IPs say little about the host).
+_host_color_ssh_target() {
+  emulate -L zsh
+  local resolved arg skip=0
+  resolved=$(command ssh -G "$@" 2>/dev/null | awk '$1 == "hostname" { print $2; exit }')
+
+  if [[ -n $resolved && $resolved != *:* && $resolved != <->.<->.<->.<-> ]]; then
+    print -r -- $resolved
+    return
+  fi
+
+  for arg in "$@"; do
+    if (( skip )); then
+      skip=0
+      continue
+    fi
+
+    case $arg in
+      -[BbcDEeFIiJLlmOopQRSWw]) skip=1 ;;
+      -*) ;;
+      *)
+        arg=${arg#ssh://}
+        arg=${arg#*@}
+        print -r -- ${arg%%:*}
+        return
+        ;;
+    esac
+  done
+}
+
+ssh() {
+  if [[ -z $TMUX || -z $TMUX_PANE ]] || (( ! $+commands[tmux] )); then
+    command ssh "$@"
+    return
+  fi
+
+  local target
+  target=$(_host_color_ssh_target "$@")
+
+  if [[ -z $target ]]; then
+    command ssh "$@"
+    return
+  fi
+
+  tmux select-pane -t "$TMUX_PANE" -P "bg=$(host_tint "$target")"
+
+  {
+    command ssh "$@"
+  } always {
+    tmux select-pane -t "$TMUX_PANE" -P 'bg=default'
+  }
+}
